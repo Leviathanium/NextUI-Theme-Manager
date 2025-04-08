@@ -8,22 +8,18 @@ It is also important to note that currently, for dynamic themes, NOT ALL SYSTEMS
 
 ## Gallery
 
-![Noir-Minimal](themes/dynamic/Noir-Minimal/bg.png)
-![Screens-Thematic](themes/dynamic/Screens-Thematic/bg.png)
-![Blackstreets](themes/static/blackstreets/bg.png)
-![Cozy](themes/static/cozy/bg.png)
-![Sunset Forest](themes/static/sunset_forest/bg.png)
-![Firewatch](themes/static/firewatch/bg.png)
+![Arcade-Dark](Theme-Manager.pak/themes/global/Arcade-Dark/bg.png)
+![Blackstreets](Theme-Manager.pak/themes/global/Blackstreets/bg.png)
+![Cozy](Theme-Manager.pak/themes/global/Cozy/bg.png)
+![Firewatch](Theme-Manager.pak/themes/global/Firewatch/bg.png)
+![Retro-Mario-Chill](Theme-Manager.pak/themes/global/Retro-Mario-Chill/bg.png)
+![Sunset-Forest](Theme-Manager.pak/themes/global/Sunset-Forest/bg.png)
 
 ## Installation
 
-The installation steps may change as NextUI develops. Here's how it should work currently:
-
-1. Choose a theme from `themes/dynamic` or `themes/static`.
-2. For dynamic themes, take `bg.png`, `Recently Played`, `Roms`, and `Tools` and MERGE them onto the root of your SD card.
-3. For static themes, take `bg.png`, `Recently Played`, and `Tools` and MERGE them onto the root of your SD card.
-4. NOTE: The only files that should be written/overwritten during the merge should be `bg.png` in each subdirectory. Be careful when pasting into the SD card root not to accidentally overwrite full, existing directories that have files in them.
-5. If you are a Mac user, you can use the Option key to click and drag the files over, this should give you the option to "Merge" if you are not fullscreened in the Finder.
+1. Clone or download the repo.
+2. Move the `Theme-Manager.pak` folder into your `Tools/tg5040` directory on your SD card.
+3. Launch it on your Brick and change your theme! Currently this app only supports *global themes* so whichever you select will apply to the entire device.
 
 ## Sources
 
