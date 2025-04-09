@@ -1,30 +1,30 @@
 #!/bin/sh
+# Debug launcher for theme manager
 
-# Get the PAK directory path
+# Get the directory where this script is located
 PAK_DIR="$(dirname "$0")"
-echo "PAK directory: $PAK_DIR" > "$PAK_DIR/launch.log"
-
-# Print environment info for debugging
-echo "Environment variables:" >> "$PAK_DIR/launch.log"
-env >> "$PAK_DIR/launch.log"
-
-# Check file permissions
-echo "Binary permissions:" >> "$PAK_DIR/launch.log"
-ls -la "$PAK_DIR/theme-manager" >> "$PAK_DIR/launch.log"
-ls -la "$PAK_DIR/minui-list" >> "$PAK_DIR/launch.log"
-ls -la "$PAK_DIR/minui-presenter" >> "$PAK_DIR/launch.log"
-
-# Change to the PAK directory
 cd "$PAK_DIR" || exit 1
-echo "Changed to directory: $(pwd)" >> "$PAK_DIR/launch.log"
+
+# Log environment
+echo "PAK directory: $PAK_DIR" > launch.log
+echo "Environment variables:" >> launch.log
+env >> launch.log
+
+# Log binary permissions
+echo "Binary permissions:" >> launch.log
+ls -la theme-manager minui-list minui-presenter >> launch.log 2>&1
+
+echo "Changed to directory: $(pwd)" >> launch.log
 
 # Make sure binaries are executable
-chmod +x "$PAK_DIR/theme-manager"
-chmod +x "$PAK_DIR/minui-list"
-chmod +x "$PAK_DIR/minui-presenter"
-echo "Made binaries executable" >> "$PAK_DIR/launch.log"
+chmod +x theme-manager minui-list minui-presenter 2>/dev/null
+echo "Made binaries executable" >> launch.log
 
-# Launch the theme manager
-echo "Launching theme-manager" >> "$PAK_DIR/launch.log"
-./theme-manager
-echo "theme-manager exited with code: $?" >> "$PAK_DIR/launch.log"
+# Log launch
+echo "Launching theme-manager" >> launch.log
+
+# Launch with output redirection
+./theme-manager 2>>theme-manager-error.log
+
+# Exit code
+echo "Exit code: $?" >> launch.log

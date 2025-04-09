@@ -1,610 +1,512 @@
-// main.go for NextUI Theme Manager
 package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
-// Constants for paths
+// ThemeType represents the type of theme operation
+type ThemeType int
+
 const (
-	THEME_GLOBAL_PATH = "themes/global"
-	THEME_DEFAULT_PATH = "themes/default"
-	DEFAULT_BG = "themes/default/bg.png"
-	LOG_FILE_PATH = "theme-manager.log"
-	DEBUG = true // Set to true for verbose logging
+	GlobalTheme ThemeType = iota + 1 // Changed from StaticTheme
+	DynamicTheme
+	CustomTheme                      // Changed from SystemTheme
+	DefaultTheme
 )
 
-// AppState tracks the current state of the application
+// Screen represents the different UI screens
+type Screen int
+
+const (
+	MainMenu Screen = iota + 1
+	ThemeSelection
+	ConfirmScreen
+)
+
+// AppState holds the current state of the application
 type AppState struct {
-	CurrentScreen string
-	ThemesList    []string
-	Logger        *log.Logger
-	SdCardPath    string
-	DebugMode     bool
+	CurrentScreen     Screen
+	SelectedThemeType ThemeType
+	SelectedTheme     string
 }
 
-// Initialize application state
 var appState AppState
 
-// Screens for navigation
-const (
-	MAIN_MENU = "MAIN_MENU"
-	GLOBAL_THEMES = "GLOBAL_THEMES"
-	THEME_APPLIED = "THEME_APPLIED"
-)
-
-// Initialize the application
 func init() {
-	// Set the working directory to the PAK directory
-	pakDir, err := os.Getwd()
+	// Initialize logger
+	err := InitLogger()
 	if err != nil {
-		fmt.Println("Error getting working directory:", err)
-		os.Exit(1)
-	}
-
-	// Setup logging with timestamp
-	logFile, err := os.OpenFile(filepath.Join(pakDir, LOG_FILE_PATH), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Println("Error opening log file:", err)
-		os.Exit(1)
-	}
-	appState.Logger = log.New(logFile, "", log.LstdFlags)
-	appState.Logger.Println("=== Theme Manager starting ===")
-	appState.Logger.Printf("Pak directory: %s", pakDir)
-
-	// Enable debug mode
-	appState.DebugMode = DEBUG
-	appState.Logger.Printf("Debug mode: %v", appState.DebugMode)
-
-	// Determine the SD card path for NextUI installations
-	// Typically this is "/mnt/SDCARD" on the TrimUI brick
-	appState.SdCardPath = "/mnt/SDCARD"
-	appState.Logger.Printf("Using SD card path: %s", appState.SdCardPath)
-
-	// Verify file system operations by testing write access
-	testFilePath := filepath.Join(pakDir, "test_write_access.tmp")
-	testContent := []byte("Test file write access: " + time.Now().String())
-
-	appState.Logger.Printf("Testing file system write access to: %s", testFilePath)
-	if err := ioutil.WriteFile(testFilePath, testContent, 0644); err != nil {
-		appState.Logger.Printf("WARNING: File write test failed: %v", err)
-	} else {
-		appState.Logger.Printf("File write test successful")
-		os.Remove(testFilePath) // Clean up test file
-	}
-
-	// Check if minui-list exists
-	minuiListPath := filepath.Join(pakDir, "minui-list")
-	if _, err := os.Stat(minuiListPath); err != nil {
-		appState.Logger.Printf("WARNING: minui-list not found at: %s", minuiListPath)
-	} else {
-		appState.Logger.Printf("minui-list found at: %s", minuiListPath)
-	}
-
-	// Check if minui-presenter exists
-	minuiPresenterPath := filepath.Join(pakDir, "minui-presenter")
-	if _, err := os.Stat(minuiPresenterPath); err != nil {
-		appState.Logger.Printf("WARNING: minui-presenter not found at: %s", minuiPresenterPath)
-	} else {
-		appState.Logger.Printf("minui-presenter found at: %s", minuiPresenterPath)
-	}
-
-	// Check if default theme exists
-	defaultBgPath := filepath.Join(pakDir, DEFAULT_BG)
-	if _, err := os.Stat(defaultBgPath); err != nil {
-		appState.Logger.Printf("WARNING: Default background not found at: %s", defaultBgPath)
-	} else {
-		appState.Logger.Printf("Default background found at: %s", defaultBgPath)
-	}
-
-	// Load available themes
-	loadAvailableThemes()
-
-	// Start at the main menu
-	appState.CurrentScreen = MAIN_MENU
-	appState.Logger.Printf("Initial screen set to: %s", appState.CurrentScreen)
-}
-
-// Load available themes from the global themes directory
-func loadAvailableThemes() {
-	appState.Logger.Println("Loading available themes...")
-
-	// Get current directory (should be the pak directory)
-	pakDir, err := os.Getwd()
-	if err != nil {
-		appState.Logger.Printf("Error getting working directory: %v", err)
+		// Can't log yet, but we'll handle this in main
 		return
 	}
 
-	// Get list of directories in the global themes folder
-	themesDir := filepath.Join(pakDir, THEME_GLOBAL_PATH)
-	appState.Logger.Printf("Looking for themes in: %s", themesDir)
+	// Log the initialization
+	LogDebug("Logger initialized")
 
-	if _, err := os.Stat(themesDir); os.IsNotExist(err) {
-		appState.Logger.Printf("Themes directory does not exist: %s", themesDir)
+	// Create absolute paths based on current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		LogDebug("Error getting current directory: %v", err)
 		return
 	}
 
-	entries, err := os.ReadDir(themesDir)
+	// Set up environment variables for the TrimUI brick
+	LogDebug("Setting environment variables")
+
+	_ = os.Setenv("DEVICE", "brick")
+	_ = os.Setenv("PLATFORM", "tg5040")
+
+	// FIX: Add current directory to PATH instead of replacing it
+	existingPath := os.Getenv("PATH")
+	newPath := cwd + ":" + existingPath
+	_ = os.Setenv("PATH", newPath)
+	LogDebug("Updated PATH: %s", newPath)
+
+	_ = os.Setenv("LD_LIBRARY_PATH", "/mnt/SDCARD/.system/tg5040/lib:/usr/trimui/lib")
+
+	// Initialize app state
+	appState.CurrentScreen = MainMenu
+
+	// Create theme directories if they don't exist - UPDATED TO CORRECT DIRECTORIES
+	LogDebug("Creating theme directories")
+
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Global"), 0755)
 	if err != nil {
-		appState.Logger.Printf("Error reading themes directory: %v", err)
-		return
+		LogDebug("Error creating Global themes directory: %v", err)
 	}
 
-	// Clear the current themes list
-	appState.ThemesList = []string{}
-
-	// Add each directory with a bg.png file to the themes list
-	for _, entry := range entries {
-		if entry.IsDir() {
-			themeName := entry.Name()
-			bgPath := filepath.Join(themesDir, themeName, "bg.png")
-			appState.Logger.Printf("Checking for theme file: %s", bgPath)
-
-			if _, err := os.Stat(bgPath); err == nil {
-				appState.ThemesList = append(appState.ThemesList, themeName)
-				appState.Logger.Printf("Found theme: %s", themeName)
-			} else {
-				appState.Logger.Printf("No bg.png found in theme directory: %s", themeName)
-			}
-		}
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Dynamic"), 0755)
+	if err != nil {
+		LogDebug("Error creating Dynamic themes directory: %v", err)
 	}
 
-	appState.Logger.Printf("Loaded %d themes", len(appState.ThemesList))
-	if len(appState.ThemesList) > 0 {
-		appState.Logger.Printf("Available themes: %s", strings.Join(appState.ThemesList, ", "))
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Default"), 0755)
+	if err != nil {
+		LogDebug("Error creating Default themes directory: %v", err)
 	}
+
+	LogDebug("Initialization complete")
 }
 
-// Display a menu using minui-list
-func displayMinUiList(listContent string, format string, title string, extraArgs ...string) (string, int) {
-	appState.Logger.Printf("Displaying menu: %s", title)
-	if appState.DebugMode {
-		appState.Logger.Printf("Menu content: %s", listContent)
-	}
-
-	// Create a temporary file for the list content
-	tempFile, err := ioutil.TempFile("", "minui-list-*")
-	if err != nil {
-		appState.Logger.Printf("ERROR: Failed to create temp file: %v", err)
-		return "", 1
-	}
-	defer os.Remove(tempFile.Name())
-
-	// Write the list content to the temp file
-	if _, err := tempFile.WriteString(listContent); err != nil {
-		appState.Logger.Printf("ERROR: Failed to write to temp file: %v", err)
-		return "", 1
-	}
-	tempFile.Close()
-
-	// Use the temp file as input for minui-list
-	args := []string{"--format", format, "--title", title, "--file", tempFile.Name()}
-
-	if len(extraArgs) > 0 {
-		args = append(args, extraArgs...)
-	}
-
-	// Create a file to write the selection to
-	tmpOutputFile, err := ioutil.TempFile("", "minui-output-*")
-	if err != nil {
-		appState.Logger.Printf("ERROR: Failed to create output temp file: %v", err)
-		return "", 1
-	}
-	outputPath := tmpOutputFile.Name()
-	tmpOutputFile.Close()
-	defer os.Remove(outputPath)
-
-	// Add the --write-location flag to write selection to our temp file
-	args = append(args, "--write-location", outputPath)
-
-	if appState.DebugMode {
-		appState.Logger.Printf("minui-list args: %s", strings.Join(args, " "))
-	}
-
-	cmd := exec.Command("./minui-list", args...)
-
-	var stderrbuf bytes.Buffer
-	cmd.Stderr = &stderrbuf
-
-	appState.Logger.Printf("Executing minui-list command...")
-	err = cmd.Run()
-
-	exitCode := 0
-	if err != nil {
-		exitCode = cmd.ProcessState.ExitCode()
-		appState.Logger.Printf("Command exited with error code: %d, error: %v", exitCode, err)
-	} else {
-		exitCode = 0
-		appState.Logger.Printf("Command completed successfully with code: %d", exitCode)
-	}
-
-	errValue := stderrbuf.String()
-	if errValue != "" {
-		appState.Logger.Printf("minui-list stderr: %s", errValue)
-	}
-
-	// Read the selection from the output file
-	var outValue string
-	if exitCode == 0 {
-		selectionBytes, err := ioutil.ReadFile(outputPath)
-		if err != nil {
-			appState.Logger.Printf("ERROR: Failed to read selection from output file: %v", err)
-		} else {
-			outValue = strings.TrimSpace(string(selectionBytes))
-			appState.Logger.Printf("Selection read from file: [%s]", outValue)
-		}
-	}
-
-	appState.Logger.Printf("Menu selection result: [%s] with exit code: %d", outValue, exitCode)
-	return outValue, exitCode
-}
-
-// Show a message using minui-presenter
-func showMessage(message string, timeout string) {
-	appState.Logger.Printf("Showing message: %s (timeout: %s)", message, timeout)
-
-	// Get the current directory
-	pakDir, _ := os.Getwd()
-
-	// Use explicit path to minui-presenter
-	minuiPresenterPath := filepath.Join(pakDir, "minui-presenter")
-
-	args := []string{"--message", message, "--timeout", timeout}
-	cmd := exec.Command(minuiPresenterPath, args...)
-
-	var stderrbuf bytes.Buffer
-	cmd.Stderr = &stderrbuf
-
-	err := cmd.Run()
-	if err != nil {
-		appState.Logger.Printf("Error showing message: %v", err)
-		if stderrbuf.Len() > 0 {
-			appState.Logger.Printf("minui-presenter stderr: %s", stderrbuf.String())
-		}
-	}
-}
-
-// Show loading message and keep it displayed until canceled
-func showLoadingScreen() (func(), error) {
-	appState.Logger.Printf("Showing loading message")
-
-	// Get the current directory
-	pakDir, _ := os.Getwd()
-
-	// Use explicit path to minui-presenter
-	minuiPresenterPath := filepath.Join(pakDir, "minui-presenter")
-
-	// Create a context with cancel function
-	ctx, cancel := context.WithCancel(context.Background())
-
-	// Start minui-presenter with indefinite timeout
-	cmd := exec.CommandContext(ctx, minuiPresenterPath,
-		"--message", "Applying theme...",
-		"--timeout", "-1", // Indefinite timeout
-	)
-
-	// Start the message in background
-	if err := cmd.Start(); err != nil {
-		appState.Logger.Printf("ERROR: Failed to show loading message: %v", err)
-		cancel()
-		return nil, err
-	}
-
-	appState.Logger.Printf("Loading message displayed with PID: %d", cmd.Process.Pid)
-
-	// Return a function that will stop the loading message
-	cleanup := func() {
-		appState.Logger.Printf("Stopping loading message")
-		cancel()
-		if err := cmd.Wait(); err != nil {
-			appState.Logger.Printf("WARNING: Loading message exited with error: %v", err)
-		}
-		appState.Logger.Printf("Loading message stopped")
-	}
-
-	return cleanup, nil
-}
-
-// Copy a file from source to destination
-func copyFile(src, dst string) error {
-	appState.Logger.Printf("Copying file from %s to %s", src, dst)
-
-	// Verify source file exists
-	if _, err := os.Stat(src); os.IsNotExist(err) {
-		errMsg := fmt.Sprintf("Source file does not exist: %s", src)
-		appState.Logger.Printf("ERROR: %s", errMsg)
-		return fmt.Errorf(errMsg)
-	}
-
-	// Open source file
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error opening source file: %v", err)
-		appState.Logger.Printf("ERROR: %s", errMsg)
-		return fmt.Errorf(errMsg)
-	}
-	defer sourceFile.Close()
-
-	// Create destination directory if it doesn't exist
-	dstDir := filepath.Dir(dst)
-	appState.Logger.Printf("Creating destination directory if needed: %s", dstDir)
-
-	if err := os.MkdirAll(dstDir, 0755); err != nil {
-		errMsg := fmt.Sprintf("Error creating destination directory: %v", err)
-		appState.Logger.Printf("ERROR: %s", errMsg)
-		return fmt.Errorf(errMsg)
-	}
-
-	// Create destination file
-	appState.Logger.Printf("Creating destination file: %s", dst)
-	destFile, err := os.Create(dst)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error creating destination file: %v", err)
-		appState.Logger.Printf("ERROR: %s", errMsg)
-		return fmt.Errorf(errMsg)
-	}
-	defer destFile.Close()
-
-	// Copy the contents
-	bytesWritten, err := io.Copy(destFile, sourceFile)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error copying file content: %v", err)
-		appState.Logger.Printf("ERROR: %s", errMsg)
-		return fmt.Errorf(errMsg)
-	}
-
-	appState.Logger.Printf("Successfully copied %d bytes from %s to %s", bytesWritten, src, dst)
-	return nil
-}
-
-// Apply a theme by copying bg.png to all required locations
-func applyTheme(themeName string) error {
-	appState.Logger.Printf("=== Applying theme: %s ===", themeName)
-
-	// Start loading screen and get cleanup function
-	stopLoading, err := showLoadingScreen()
-	if err != nil {
-		appState.Logger.Printf("WARNING: Could not show loading screen: %v", err)
-		// Continue without loading screen if it fails
-	}
-
-	// Ensure we stop the loading screen when we're done
-	if stopLoading != nil {
-		defer stopLoading()
-	}
-
-	var srcPath string
-	pakDir, _ := os.Getwd()
-
-	if themeName == "Default Theme" {
-		srcPath = filepath.Join(pakDir, DEFAULT_BG)
-	} else {
-		srcPath = filepath.Join(pakDir, THEME_GLOBAL_PATH, themeName, "bg.png")
-	}
-
-	appState.Logger.Printf("Source background path: %s", srcPath)
-
-	// Verify the source file exists
-	if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-		errMsg := fmt.Sprintf("Theme file does not exist: %s", srcPath)
-		appState.Logger.Printf("ERROR: %s", errMsg)
-		return fmt.Errorf(errMsg)
-	}
-
-	// List of standard locations to copy the background to
-	standardLocations := []string{
-		filepath.Join(appState.SdCardPath, "bg.png"),                        // Root
-		filepath.Join(appState.SdCardPath, "Tools", "tg5040", ".media", "bg.png"),   // Tools
-		filepath.Join(appState.SdCardPath, "Recently Played", ".media", "bg.png"),   // Recently Played
-	}
-
-	appState.Logger.Printf("Will copy to %d standard locations", len(standardLocations))
-
-	// Track success/failure counts
-	successCount := 0
-	failureCount := 0
-
-	// Copy to standard locations
-	for _, location := range standardLocations {
-		appState.Logger.Printf("Copying to standard location: %s", location)
-
-		if err := copyFile(srcPath, location); err != nil {
-			appState.Logger.Printf("WARNING: Could not copy to %s: %v", location, err)
-			failureCount++
-		} else {
-			successCount++
-		}
-	}
-
-	// Find all ROM directories and create .media folders with bg.png
-	romsDir := filepath.Join(appState.SdCardPath, "Roms")
-	appState.Logger.Printf("Looking for ROM directories in: %s", romsDir)
-
-	if _, err := os.Stat(romsDir); os.IsNotExist(err) {
-		appState.Logger.Printf("WARNING: Roms directory does not exist: %s", romsDir)
-	} else {
-		if entries, err := os.ReadDir(romsDir); err == nil {
-			appState.Logger.Printf("Found %d entries in Roms directory", len(entries))
-
-			for _, entry := range entries {
-				if entry.IsDir() {
-					romDir := filepath.Join(romsDir, entry.Name())
-					appState.Logger.Printf("Processing ROM directory: %s", romDir)
-
-					// Create .media directory if it doesn't exist
-					mediaDir := filepath.Join(romDir, ".media")
-					appState.Logger.Printf("Creating media directory: %s", mediaDir)
-
-					if err := os.MkdirAll(mediaDir, 0755); err != nil {
-						appState.Logger.Printf("WARNING: Could not create media directory %s: %v", mediaDir, err)
-						failureCount++
-						continue
-					}
-
-					// Copy bg.png to the .media directory
-					dstPath := filepath.Join(mediaDir, "bg.png")
-					appState.Logger.Printf("Copying to ROM media location: %s", dstPath)
-
-					if err := copyFile(srcPath, dstPath); err != nil {
-						appState.Logger.Printf("WARNING: Could not copy to %s: %v", dstPath, err)
-						failureCount++
-					} else {
-						successCount++
-					}
-				}
-			}
-		} else {
-			appState.Logger.Printf("WARNING: Could not access Roms directory: %v", err)
-		}
-	}
-
-	appState.Logger.Printf("Theme application complete: %d successful copies, %d failures", successCount, failureCount)
-
-	if failureCount > 0 {
-		return fmt.Errorf("%d failures occurred during theme application", failureCount)
-	}
-
-	return nil
-}
-
-// Display the main menu
+// mainMenuScreen shows the main menu with theme options
 func mainMenuScreen() (string, int) {
-	appState.Logger.Printf("=== Entering main menu screen ===")
-
-	menuItems := []string{
+	// SIMPLIFIED MENU ITEMS without numbers
+	menu := []string{
 		"Global Themes",
+		"Dynamic Themes",
+		"Custom Themes",
 		"Default Theme",
 	}
 
-	menuText := strings.Join(menuItems, "\n")
-	appState.Logger.Printf("Showing main menu with %d options", len(menuItems))
-
-	result, exitCode := displayMinUiList(menuText, "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
-	appState.Logger.Printf("Main menu selection: [%s] with exit code: %d", result, exitCode)
-
-	return result, exitCode
+	return displayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
 }
 
-// Display the global themes menu
-func globalThemesScreen() (string, int) {
-	appState.Logger.Printf("=== Entering global themes screen ===")
+// handleMainMenu processes the user's selection from the main menu
+func handleMainMenu(selection string, exitCode int) {
+	LogDebug("handleMainMenu called with selection: '%s', exitCode: %d", selection, exitCode)
 
-	if len(appState.ThemesList) == 0 {
-		appState.Logger.Printf("No themes found in themes list")
-		showMessage("No themes found!", "3")
-		return "", 404
+	switch exitCode {
+	case 0:
+		// User selected an option
+		switch selection {
+		case "Global Themes": // Updated from "1. Static Themes"
+			LogDebug("Selected Global Themes")
+			appState.SelectedThemeType = GlobalTheme
+			appState.CurrentScreen = ThemeSelection
+		case "Dynamic Themes": // Updated from "2. Dynamic Themes"
+			LogDebug("Selected Dynamic Themes")
+			appState.SelectedThemeType = DynamicTheme
+			appState.CurrentScreen = ThemeSelection
+		case "Custom Themes": // Updated from "3. System Themes"
+			LogDebug("Selected Custom Themes")
+			appState.SelectedThemeType = CustomTheme
+			appState.CurrentScreen = ThemeSelection
+		case "Default Theme": // Updated from "4. Default MinUI Theme"
+			LogDebug("Selected Default Theme")
+			appState.SelectedThemeType = DefaultTheme
+			appState.CurrentScreen = ConfirmScreen
+		default:
+			LogDebug("Unknown selection: %s", selection)
+		}
+	case 1, 2:
+		// User pressed cancel or back
+		LogDebug("User cancelled/exited")
+		os.Exit(0)
+	}
+}
+
+// themeSelectionScreen displays available themes based on the selected theme type
+func themeSelectionScreen() (string, int) {
+	var title string
+	var themes []string
+	var err error
+
+	// Get current directory for theme paths
+	cwd, err := os.Getwd()
+	if err != nil {
+		LogDebug("Error getting current directory: %v", err)
+		return "", 1
 	}
 
-	appState.Logger.Printf("Showing themes list with %d themes", len(appState.ThemesList))
-	menuText := strings.Join(appState.ThemesList, "\n")
+	switch appState.SelectedThemeType {
+	case GlobalTheme:
+		title = "Select Global Theme"
 
-	result, exitCode := displayMinUiList(menuText, "text", "Available Themes", "--cancel-text", "BACK")
-	appState.Logger.Printf("Theme selection: [%s] with exit code: %d", result, exitCode)
+		// Scan global themes directory
+		globalDir := filepath.Join(cwd, "Themes", "Global")
+		entries, err := os.ReadDir(globalDir)
+		if err != nil {
+			LogDebug("Error reading Global themes directory: %v", err)
+			showMessage(fmt.Sprintf("Error loading global themes: %s", err), "3")
+			themes = []string{"No themes found"}
+		} else {
+			// Find directories that contain a bg.png file
+			for _, entry := range entries {
+				if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+					bgPath := filepath.Join(globalDir, entry.Name(), "bg.png")
+					if _, err := os.Stat(bgPath); err == nil {
+						themes = append(themes, entry.Name())
+					}
+				}
+			}
 
-	return result, exitCode
+			if len(themes) == 0 {
+				LogDebug("No global themes found")
+				showMessage("No global themes found. Create one in Themes/Global/", "3")
+				themes = []string{"No themes found"}
+			}
+		}
+
+	case DynamicTheme:
+		title = "Select Dynamic Theme"
+		// List actual dynamic themes
+		themes, err = ListDynamicThemes()
+		if err != nil {
+			LogDebug("Error loading dynamic themes: %v", err)
+			showMessage(fmt.Sprintf("Error loading dynamic themes: %s", err), "3")
+			themes = []string{"No themes found"}
+		}
+
+		// If no themes found, show a message
+		if len(themes) == 0 {
+			LogDebug("No dynamic themes found")
+			showMessage("No dynamic themes found. Create one in Themes/Dynamic/", "3")
+			themes = []string{"No themes found"}
+		}
+	case CustomTheme:
+		title = "Select System"
+
+		// Get system paths to find all installed systems
+		systemPaths, err := GetSystemPaths()
+		if err != nil {
+			LogDebug("Error getting system paths: %v", err)
+			showMessage(fmt.Sprintf("Error detecting systems: %s", err), "3")
+			return "", 1
+		}
+
+		// Add standard menu items
+		themes = append(themes, "Root")
+		themes = append(themes, "Recently Played")
+		themes = append(themes, "Tools")
+
+		// Add all detected rom systems
+		for _, system := range systemPaths.Systems {
+			themes = append(themes, system.Name)
+		}
+
+		if len(themes) == 0 {
+			LogDebug("No systems found")
+			showMessage("No systems found!", "3")
+			themes = []string{"No systems found"}
+		}
+	}
+
+	LogDebug("Displaying theme selection with %d options", len(themes))
+	return displayMinUiList(strings.Join(themes, "\n"), "text", title)
 }
 
-// Main application loop
-func main() {
-	appState.Logger.Println("=== Theme Manager main loop started ===")
+// handleThemeSelection processes the user's theme selection
+func handleThemeSelection(selection string, exitCode int) {
+	LogDebug("handleThemeSelection called with selection: '%s', exitCode: %d", selection, exitCode)
 
+	switch exitCode {
+	case 0:
+		// User selected a theme
+		appState.SelectedTheme = selection
+		appState.CurrentScreen = ConfirmScreen
+	case 1, 2:
+		// User pressed cancel or back
+		appState.CurrentScreen = MainMenu
+	}
+}
+
+// confirmScreen asks for confirmation before applying a theme
+func confirmScreen() (string, int) {
+	var message string
+
+	switch appState.SelectedThemeType {
+	case GlobalTheme:
+		message = fmt.Sprintf("Apply global theme '%s' to all directories?", appState.SelectedTheme)
+	case DynamicTheme:
+		message = fmt.Sprintf("Apply dynamic theme '%s'?", appState.SelectedTheme)
+	case CustomTheme:
+		message = fmt.Sprintf("Select theme for '%s'?", appState.SelectedTheme)
+	case DefaultTheme:
+		message = "Apply default theme to all directories?"
+	}
+
+	options := []string{
+		"Yes",
+		"No",
+	}
+
+	return displayMinUiList(strings.Join(options, "\n"), "text", message)
+}
+
+// handleConfirmScreen processes the user's confirmation choice
+func handleConfirmScreen(selection string, exitCode int) {
+	LogDebug("handleConfirmScreen called with selection: '%s', exitCode: %d", selection, exitCode)
+
+	switch exitCode {
+	case 0:
+		if selection == "Yes" {
+			// Apply the selected theme
+			LogDebug("User confirmed, applying theme")
+			applyTheme()
+		} else {
+			LogDebug("User selected No, returning to theme selection")
+			appState.CurrentScreen = ThemeSelection
+		}
+	case 1, 2:
+		// User pressed cancel or back
+		LogDebug("User cancelled, returning to previous screen")
+		if appState.SelectedThemeType == DefaultTheme {
+			appState.CurrentScreen = MainMenu
+		} else {
+			appState.CurrentScreen = ThemeSelection
+		}
+	}
+}
+
+// applyTheme applies the selected theme
+func applyTheme() {
+	var message string
+	var err error
+
+	switch appState.SelectedThemeType {
+	case GlobalTheme:
+		// Apply global theme to all directories
+		LogDebug("Applying global theme: %s", appState.SelectedTheme)
+		err = ApplyStaticTheme(appState.SelectedTheme)
+		if err != nil {
+			LogDebug("Error applying global theme: %v", err)
+			message = fmt.Sprintf("Error: %s", err)
+		} else {
+			message = fmt.Sprintf("Applied global theme: %s", appState.SelectedTheme)
+		}
+
+	case DynamicTheme:
+		// Skip if "No themes found" is selected
+		if appState.SelectedTheme == "No themes found" {
+			LogDebug("No theme selected")
+			message = "No theme selected"
+			appState.CurrentScreen = MainMenu
+			showMessage(message, "3")
+			return
+		}
+
+		// Apply dynamic theme pack
+		LogDebug("Applying dynamic theme: %s", appState.SelectedTheme)
+		err = ApplyDynamicTheme(appState.SelectedTheme)
+		if err != nil {
+			LogDebug("Error applying dynamic theme: %v", err)
+			message = fmt.Sprintf("Error: %s", err)
+		} else {
+			message = fmt.Sprintf("Applied dynamic theme: %s", appState.SelectedTheme)
+		}
+
+	case CustomTheme:
+		// Apply custom theme to specific system
+		LogDebug("Applying custom theme to: %s", appState.SelectedTheme)
+		err = CustomThemeSelection(appState.SelectedTheme)
+		if err != nil {
+			LogDebug("Error applying custom theme: %v", err)
+			message = fmt.Sprintf("Error: %s", err)
+		} else {
+			message = fmt.Sprintf("Applied theme to: %s", appState.SelectedTheme)
+		}
+
+	case DefaultTheme:
+		// Apply default theme to all backgrounds
+		LogDebug("Applying default theme")
+		err = RemoveAllBackgrounds()
+		if err != nil {
+			LogDebug("Error applying default theme: %v", err)
+			message = fmt.Sprintf("Error: %s", err)
+		} else {
+			message = "Applied default theme"
+		}
+	}
+
+	showMessage(message, "3")
+	appState.CurrentScreen = MainMenu
+}
+
+// Updated displayMinUiList function that matches the working implementation
+func displayMinUiList(list string, format string, title string, extraArgs ...string) (string, int) {
+    LogDebug("Displaying minui-list with title: %s", title)
+    LogDebug("minui-list content: %s", list)
+
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        LogDebug("Error getting current directory: %v", err)
+        return "", 1
+    }
+
+    // Create a temporary file for the list content
+    tempFile, err := os.CreateTemp("", "minui-list-input-*")
+    if err != nil {
+        LogDebug("ERROR: Failed to create temp input file: %v", err)
+        return "", 1
+    }
+    inputPath := tempFile.Name()
+    defer os.Remove(inputPath)
+
+    // Write the list content to the temp file
+    if _, err := tempFile.WriteString(list); err != nil {
+        LogDebug("ERROR: Failed to write to temp input file: %v", err)
+        tempFile.Close()
+        return "", 1
+    }
+    tempFile.Close()
+
+    // Create a temporary file for the output
+    tempOutFile, err := os.CreateTemp("", "minui-list-output-*")
+    if err != nil {
+        LogDebug("ERROR: Failed to create temp output file: %v", err)
+        return "", 1
+    }
+    outputPath := tempOutFile.Name()
+    tempOutFile.Close()
+    defer os.Remove(outputPath)
+
+    // Build the command arguments
+    args := []string{"--format", format, "--title", title, "--file", inputPath, "--write-location", outputPath}
+
+    if extraArgs != nil {
+        args = append(args, extraArgs...)
+    }
+
+    LogDebug("minui-list args: %v", args)
+
+    // Use explicit path to minui-list
+    minuiListPath := filepath.Join(cwd, "minui-list")
+    cmd := exec.Command(minuiListPath, args...)
+
+    var stderrbuf bytes.Buffer
+    cmd.Stderr = &stderrbuf
+
+    // Run the command
+    err = cmd.Run()
+    exitCode := 0
+    if err != nil {
+        exitCode = cmd.ProcessState.ExitCode()
+        LogDebug("minui-list error: %v", err)
+    }
+
+    errValue := stderrbuf.String()
+    if errValue != "" {
+        LogDebug("stderr: %s", errValue)
+    }
+
+    // Read the selection from the output file
+    var outValue string
+    if exitCode == 0 {
+        selectionBytes, err := os.ReadFile(outputPath)
+        if err != nil {
+            LogDebug("ERROR: Failed to read selection from output file: %v", err)
+        } else {
+            outValue = strings.TrimSpace(string(selectionBytes))
+            LogDebug("Selection read from file: '%s'", outValue)
+        }
+    }
+
+    LogDebug("minui-list output: '%s', exit code: %d", outValue, exitCode)
+    return outValue, exitCode
+}
+
+// Update showMessage with better logging
+func showMessage(message string, timeout string) {
+	LogDebug("Showing message: %s (timeout: %s)", message, timeout)
+
+	args := []string{"--message", message, "--timeout", timeout}
+	cmd := exec.Command("minui-presenter", args...)
+	err := cmd.Run()
+
+	if err != nil {
+		LogDebug("minui-presenter error: %v", err)
+		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 124 {
+			log.Fatalf("failed to run minui-presenter: %v", err)
+		}
+	}
+}
+
+func main() {
+	defer CloseLogger()
+
+	LogDebug("Application started")
+
+	// Check if minui-list is available
+	_, err := exec.LookPath("minui-list")
+	if err != nil {
+		LogDebug("minui-list not found in PATH: %v", err)
+		fmt.Println("Error: minui-list not found in PATH")
+		return
+	}
+
+	// Check if minui-presenter is available
+	_, err = exec.LookPath("minui-presenter")
+	if err != nil {
+		LogDebug("minui-presenter not found in PATH: %v", err)
+		fmt.Println("Error: minui-presenter not found in PATH")
+		return
+	}
+
+	LogDebug("Starting main loop")
+
+	// Main application loop
 	for {
 		var selection string
 		var exitCode int
 
-		appState.Logger.Printf("Current screen: %s", appState.CurrentScreen)
+		// Log current screen
+		LogDebug("Current screen: %d", appState.CurrentScreen)
 
 		switch appState.CurrentScreen {
-		case MAIN_MENU:
-			appState.Logger.Printf("Processing MAIN_MENU screen")
+		case MainMenu:
+			LogDebug("Showing main menu")
 			selection, exitCode = mainMenuScreen()
+			LogDebug("Main menu selection: '%s', exit code: %d", selection, exitCode)
+			handleMainMenu(selection, exitCode)
 
-			switch {
-			case exitCode == 0:
-				appState.Logger.Printf("User selected: [%s]", selection)
+		case ThemeSelection:
+			LogDebug("Showing theme selection")
+			selection, exitCode = themeSelectionScreen()
+			LogDebug("Theme selection: '%s', exit code: %d", selection, exitCode)
+			handleThemeSelection(selection, exitCode)
 
-				// Handle menu selection
-				switch selection {
-				case "Global Themes":
-					appState.Logger.Printf("Transitioning to GLOBAL_THEMES screen")
-					appState.CurrentScreen = GLOBAL_THEMES
-
-				case "Default Theme":
-					appState.Logger.Printf("Applying Default theme")
-					err := applyTheme(selection)
-					if err != nil {
-						errMsg := fmt.Sprintf("Error applying default theme: %v", err)
-						appState.Logger.Printf("ERROR: %s", errMsg)
-						showMessage("Error applying default theme: " + err.Error(), "3")
-					} else {
-						appState.Logger.Printf("Default theme applied successfully")
-						showMessage("Default theme applied successfully!", "2")
-					}
-
-				default:
-					appState.Logger.Printf("WARNING: Unknown selection in main menu: [%s]", selection)
-				}
-
-			case exitCode == 1, exitCode == 2:
-				// User pressed cancel/back/quit
-				appState.Logger.Println("User quit the application")
-				os.Exit(0)
-
-			default:
-				appState.Logger.Printf("WARNING: Unexpected exit code from main menu: %d", exitCode)
-			}
-
-		case GLOBAL_THEMES:
-			appState.Logger.Printf("Processing GLOBAL_THEMES screen")
-			selection, exitCode = globalThemesScreen()
-
-			switch {
-			case exitCode == 0:
-				// User selected a theme
-				appState.Logger.Printf("User selected theme: [%s]", selection)
-
-				err := applyTheme(selection)
-				if err != nil {
-					errMsg := fmt.Sprintf("Error applying theme: %v", err)
-					appState.Logger.Printf("ERROR: %s", errMsg)
-					showMessage("Error applying theme: " + err.Error(), "3")
-				} else {
-					appState.Logger.Printf("Theme [%s] applied successfully", selection)
-					showMessage("Theme applied successfully!", "2")
-				}
-
-				appState.Logger.Printf("Returning to MAIN_MENU screen")
-				appState.CurrentScreen = MAIN_MENU
-
-			case exitCode == 1, exitCode == 2:
-				// User pressed back
-				appState.Logger.Printf("User pressed back from themes list")
-				appState.CurrentScreen = MAIN_MENU
-
-			case exitCode == 404:
-				// No themes found
-				appState.Logger.Printf("No themes found, returning to MAIN_MENU")
-				appState.CurrentScreen = MAIN_MENU
-
-			default:
-				appState.Logger.Printf("WARNING: Unexpected exit code from themes menu: %d", exitCode)
-				appState.CurrentScreen = MAIN_MENU
-			}
-
-		default:
-			appState.Logger.Printf("WARNING: Unknown screen state: %s, resetting to MAIN_MENU", appState.CurrentScreen)
-			appState.CurrentScreen = MAIN_MENU
+		case ConfirmScreen:
+			LogDebug("Showing confirmation screen")
+			selection, exitCode = confirmScreen()
+			LogDebug("Confirmation: '%s', exit code: %d", selection, exitCode)
+			handleConfirmScreen(selection, exitCode)
 		}
 	}
 }

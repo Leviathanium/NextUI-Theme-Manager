@@ -8,12 +8,12 @@ It is also important to note that currently, for dynamic themes, NOT ALL SYSTEMS
 
 ## Gallery
 
-![Arcade-Dark](Theme-Manager.pak/themes/global/Arcade-Dark/bg.png)
-![Blackstreets](Theme-Manager.pak/themes/global/Blackstreets/bg.png)
-![Cozy](Theme-Manager.pak/themes/global/Cozy/bg.png)
-![Firewatch](Theme-Manager.pak/themes/global/Firewatch/bg.png)
-![Retro-Mario-Chill](Theme-Manager.pak/themes/global/Retro-Mario-Chill/bg.png)
-![Sunset-Forest](Theme-Manager.pak/themes/global/Sunset-Forest/bg.png)
+![Arcade-Dark](Theme-Manager.pak/Themes/Global/Arcade-Dark/bg.png)
+![Blackstreets](Theme-Manager.pak/Themes/Global/Blackstreets/bg.png)
+![Cozy](Theme-Manager.pak/Themes/Global/Cozy/bg.png)
+![Firewatch](Theme-Manager.pak/Themes/Global/Firewatch/bg.png)
+![Retro-Mario-Chill](Theme-Manager.pak/Themes/Global/Retro-Mario-Chill/bg.png)
+![Sunset-Forest](Theme-Manager.pak/Themes/Global/Sunset-Forest/bg.png)
 
 ## Installation
 
