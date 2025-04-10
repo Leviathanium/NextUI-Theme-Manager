@@ -4,6 +4,7 @@
 package screens
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,20 +16,44 @@ import (
 
 // LEDSelectionScreen displays available LED themes
 func LEDSelectionScreen() (string, int) {
-	// Get list of available LED themes
-	var themesList []string
+	// Create the items array with proper structure
+	var items []map[string]interface{}
+
 	for _, theme := range leds.PredefinedThemes {
-		themesList = append(themesList, theme.Name)
+		// Convert 0xFFFFFF to #FFFFFF format
+		color := "#" + strings.TrimPrefix(theme.Color, "0x")
+
+		// Create item with name and color option
+		item := map[string]interface{}{
+			"name": theme.Name,
+			"options": []string{color},
+			"selected": 0,
+		}
+
+		items = append(items, item)
 	}
 
-	if len(themesList) == 0 {
+	if len(items) == 0 {
 		logging.LogDebug("No LED themes found")
 		ui.ShowMessage("No LED themes available.", "3")
 		return "", 1
 	}
 
-	logging.LogDebug("Displaying %d LED themes", len(themesList))
-	return ui.DisplayMinUiList(strings.Join(themesList, "\n"), "text", "Select LED Theme")
+	// Create a wrapper object with the items array
+	wrapper := map[string]interface{}{
+		"items": items,
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(wrapper)
+	if err != nil {
+		logging.LogDebug("Error creating JSON: %v", err)
+		ui.ShowMessage("Error creating theme list.", "3")
+		return "", 1
+	}
+
+	logging.LogDebug("Displaying %d LED themes", len(items))
+	return ui.DisplayMinUiList(string(jsonData), "json", "Select LED Theme", "--item-key", "items")
 }
 
 // HandleLEDSelection processes the user's LED theme selection
@@ -37,8 +62,7 @@ func HandleLEDSelection(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		// User selected a theme
-		// Find the selected theme
+		// User selected a theme (selection is just the theme name)
 		var selectedTheme *leds.LEDTheme
 		for _, theme := range leds.PredefinedThemes {
 			if theme.Name == selection {

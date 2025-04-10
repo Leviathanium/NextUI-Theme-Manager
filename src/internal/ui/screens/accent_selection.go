@@ -4,6 +4,7 @@
 package screens
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,20 +16,44 @@ import (
 
 // AccentSelectionScreen displays available accent color themes
 func AccentSelectionScreen() (string, int) {
-	// Get list of available accent themes
-	var themesList []string
+	// Create the items array with proper structure
+	var items []map[string]interface{}
+
 	for _, theme := range accents.PredefinedThemes {
-		themesList = append(themesList, theme.Name)
+		// Convert 0xFFFFFF to #FFFFFF format
+		color := "#" + strings.TrimPrefix(theme.Color2, "0x")
+
+		// Create item with name and color option
+		item := map[string]interface{}{
+			"name": theme.Name,
+			"options": []string{color},
+			"selected": 0,
+		}
+
+		items = append(items, item)
 	}
 
-	if len(themesList) == 0 {
+	if len(items) == 0 {
 		logging.LogDebug("No accent themes found")
 		ui.ShowMessage("No accent themes available.", "3")
 		return "", 1
 	}
 
-	logging.LogDebug("Displaying %d accent themes", len(themesList))
-	return ui.DisplayMinUiList(strings.Join(themesList, "\n"), "text", "Select Accent Theme")
+	// Create a wrapper object with the items array
+	wrapper := map[string]interface{}{
+		"items": items,
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(wrapper)
+	if err != nil {
+		logging.LogDebug("Error creating JSON: %v", err)
+		ui.ShowMessage("Error creating theme list.", "3")
+		return "", 1
+	}
+
+	logging.LogDebug("Displaying %d accent themes", len(items))
+	return ui.DisplayMinUiList(string(jsonData), "json", "Select Accent Theme", "--item-key", "items")
 }
 
 // HandleAccentSelection processes the user's accent theme selection
@@ -37,8 +62,7 @@ func HandleAccentSelection(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		// User selected a theme
-		// Find the selected theme
+		// User selected a theme (selection is just the theme name)
 		var selectedTheme *accents.ThemeColor
 		for _, theme := range accents.PredefinedThemes {
 			if theme.Name == selection {
