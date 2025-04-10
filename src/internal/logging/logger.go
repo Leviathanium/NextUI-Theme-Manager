@@ -1,4 +1,7 @@
-package main
+// src/internal/logging/logger.go
+// Logging functionality for the application
+
+package logging
 
 import (
 	"fmt"
@@ -10,18 +13,20 @@ import (
 var logFile *os.File
 
 // InitLogger initializes the debug log file
-func InitLogger() error {
+func init() {
 	// Get current directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
+		return
 	}
 
 	// Create log file
 	logPath := filepath.Join(cwd, "theme_manager.log")
 	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
+		return
 	}
 
 	logFile = f
@@ -29,8 +34,6 @@ func InitLogger() error {
 	// Log startup information
 	LogDebug("=== Theme Manager Started ===")
 	LogDebug("Current directory: %s", cwd)
-
-	return nil
 }
 
 // CloseLogger closes the log file

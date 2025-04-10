@@ -1,4 +1,7 @@
-package main
+// src/internal/system/detection.go
+// System path detection and utilities
+
+package system
 
 import (
 	"os"
@@ -17,11 +20,11 @@ type SystemInfo struct {
 
 // SystemPaths contains paths for standard system directories
 type SystemPaths struct {
-	Root          string
+	Root           string
 	RecentlyPlayed string
-	Tools         string
-	Roms          string
-	Systems       []SystemInfo
+	Tools          string
+	Roms           string
+	Systems        []SystemInfo
 }
 
 // GetSystemPaths returns the paths to all system directories
@@ -34,11 +37,11 @@ func GetSystemPaths() (*SystemPaths, error) {
 
 	// Create the result structure
 	systemPaths := &SystemPaths{
-		Root:          rootPath,
+		Root:           rootPath,
 		RecentlyPlayed: recentlyPath,
-		Tools:         toolsPath,
-		Roms:          romsPath,
-		Systems:       []SystemInfo{},
+		Tools:          toolsPath,
+		Roms:           romsPath,
+		Systems:        []SystemInfo{},
 	}
 
 	// Scan for ROM system directories
