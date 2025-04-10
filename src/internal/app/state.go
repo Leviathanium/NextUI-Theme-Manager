@@ -47,13 +47,29 @@ const (
 	DeleteAction
 )
 
-// AppState holds the current state of the application
+// ColorSelections holds the currently selected accent color indices
+type colorSelections struct {
+	PrimaryIndex   int
+	SecondaryIndex int
+	TextIndex      int
+}
+
+// LEDSelections holds the currently selected LED settings
+type ledSelections struct {
+	ColorIndex  int
+	EffectIndex int
+}
+
+
+// Update the appState struct definition to add the LED selections
 type appState struct {
 	CurrentScreen      Screen
 	SelectedThemeType  ThemeType
 	SelectedTheme      string
 	DefaultAction      DefaultThemeAction
 	SelectedFont       string
+	ColorSelections    colorSelections
+	LEDSelections      ledSelections // Add this new field
 }
 
 // Global variables
@@ -120,4 +136,29 @@ func GetSelectedFont() string {
 // SetSelectedFont sets the selected font
 func SetSelectedFont(font string) {
 	state.SelectedFont = font
+}
+
+// SetColorSelections stores the selected color indices
+func SetColorSelections(primary, secondary, text int) {
+	state.ColorSelections.PrimaryIndex = primary
+	state.ColorSelections.SecondaryIndex = secondary
+	state.ColorSelections.TextIndex = text
+}
+
+// GetColorSelections retrieves the selected color indices
+func GetColorSelections() (int, int, int) {
+	return state.ColorSelections.PrimaryIndex,
+	       state.ColorSelections.SecondaryIndex,
+	       state.ColorSelections.TextIndex
+}
+
+// SetLEDSelections stores the selected LED color and effect indices
+func SetLEDSelections(color, effect int) {
+	state.LEDSelections.ColorIndex = color
+	state.LEDSelections.EffectIndex = effect
+}
+
+// GetLEDSelections retrieves the selected LED color and effect indices
+func GetLEDSelections() (int, int) {
+	return state.LEDSelections.ColorIndex, state.LEDSelections.EffectIndex
 }
