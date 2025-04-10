@@ -20,9 +20,7 @@ func MainMenuScreen() (string, int) {
 		"Dynamic Themes",
 		"Default Theme",
 		"System Backgrounds",
-		"Fonts",
-		"Accents",
-		"LED Quick Settings",
+		"Quick Settings",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
@@ -56,17 +54,9 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedThemeType(app.DefaultTheme)
 			return app.Screens.DefaultThemeOptions
 
-		case "Fonts":
-			logging.LogDebug("Selected Fonts")
-			return app.Screens.FontSelection
-
-		case "Accents":
-			logging.LogDebug("Selected Accents")
-			return app.Screens.AccentSelection
-
-		case "LED Quick Settings":
-			logging.LogDebug("Selected LED Quick Settings")
-			return app.Screens.LEDSelection
+		case "Quick Settings":
+			logging.LogDebug("Selected Quick Settings")
+			return app.Screens.QuickSettings
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)
@@ -74,7 +64,7 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 		}
 
 	case 1, 2:
-		// User pressed cancel or back
+		// User cancelled/exited
 		logging.LogDebug("User cancelled/exited")
 		os.Exit(0)
 	}

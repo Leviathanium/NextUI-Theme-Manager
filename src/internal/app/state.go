@@ -3,6 +3,11 @@
 
 package app
 
+import (
+	"fmt"
+	"strconv"
+)
+
 // ThemeType represents the type of theme operation
 type ThemeType int
 
@@ -25,18 +30,20 @@ const (
 	FontPreview
 	AccentSelection
 	LEDSelection
+	QuickSettings // Added new screen type
 )
 
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
-	MainMenu          Screen
-	ThemeSelection    Screen
+	MainMenu           Screen
+	ThemeSelection     Screen
 	DefaultThemeOptions Screen
-	ConfirmScreen     Screen
-	FontSelection     Screen
-	FontPreview       Screen
-	AccentSelection   Screen
-	LEDSelection      Screen
+	ConfirmScreen      Screen
+	FontSelection      Screen
+	FontPreview        Screen
+	AccentSelection    Screen
+	LEDSelection       Screen
+	QuickSettings      Screen // Added new screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -47,29 +54,15 @@ const (
 	DeleteAction
 )
 
-// ColorSelections holds the currently selected accent color indices
-type colorSelections struct {
-	PrimaryIndex   int
-	SecondaryIndex int
-	TextIndex      int
-}
-
-// LEDSelections holds the currently selected LED settings
-type ledSelections struct {
-	ColorIndex  int
-	EffectIndex int
-}
-
-
-// Update the appState struct definition to add the LED selections
+// AppState holds the current state of the application
 type appState struct {
 	CurrentScreen      Screen
 	SelectedThemeType  ThemeType
 	SelectedTheme      string
 	DefaultAction      DefaultThemeAction
 	SelectedFont       string
-	ColorSelections    colorSelections
-	LEDSelections      ledSelections // Add this new field
+	ColorSelections    map[string]string // Added for accent color selections
+	LEDSelections      map[string]string // Added for LED settings selections
 }
 
 // Global variables
@@ -83,10 +76,18 @@ var (
 		FontPreview:       FontPreview,
 		AccentSelection:   AccentSelection,
 		LEDSelection:      LEDSelection,
+		QuickSettings:     QuickSettings, // Added new screen
 	}
 
 	state appState
 )
+
+// Initialize appState
+func init() {
+	// Initialize maps
+	state.ColorSelections = make(map[string]string)
+	state.LEDSelections = make(map[string]string)
+}
 
 // GetCurrentScreen returns the current screen
 func GetCurrentScreen() Screen {
@@ -138,27 +139,38 @@ func SetSelectedFont(font string) {
 	state.SelectedFont = font
 }
 
-// SetColorSelections stores the selected color indices
-func SetColorSelections(primary, secondary, text int) {
-	state.ColorSelections.PrimaryIndex = primary
-	state.ColorSelections.SecondaryIndex = secondary
-	state.ColorSelections.TextIndex = text
+// SetColorSelections sets the color selections
+func SetColorSelections(color1, color2, color3 int) {
+	// Store color selections as indices
+	state.ColorSelections = map[string]string{
+		"color1": fmt.Sprintf("%d", color1),
+		"color2": fmt.Sprintf("%d", color2),
+		"color3": fmt.Sprintf("%d", color3),
+	}
 }
 
-// GetColorSelections retrieves the selected color indices
+// GetColorSelections returns the color selections
 func GetColorSelections() (int, int, int) {
-	return state.ColorSelections.PrimaryIndex,
-	       state.ColorSelections.SecondaryIndex,
-	       state.ColorSelections.TextIndex
+	// Get color selections as indices with defaults if not set
+	color1, _ := strconv.Atoi(state.ColorSelections["color1"])
+	color2, _ := strconv.Atoi(state.ColorSelections["color2"])
+	color3, _ := strconv.Atoi(state.ColorSelections["color3"])
+	return color1, color2, color3
 }
 
-// SetLEDSelections stores the selected LED color and effect indices
-func SetLEDSelections(color, effect int) {
-	state.LEDSelections.ColorIndex = color
-	state.LEDSelections.EffectIndex = effect
+// SetLEDSelections sets the LED selections
+func SetLEDSelections(effect, color int) {
+	// Store LED selections
+	state.LEDSelections = map[string]string{
+		"effect": fmt.Sprintf("%d", effect),
+		"color":  fmt.Sprintf("%d", color),
+	}
 }
 
-// GetLEDSelections retrieves the selected LED color and effect indices
+// GetLEDSelections returns the LED selections
 func GetLEDSelections() (int, int) {
-	return state.LEDSelections.ColorIndex, state.LEDSelections.EffectIndex
+	// Get LED selections with defaults if not set
+	effect, _ := strconv.Atoi(state.LEDSelections["effect"])
+	color, _ := strconv.Atoi(state.LEDSelections["color"])
+	return effect, color
 }
