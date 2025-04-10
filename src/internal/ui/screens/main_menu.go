@@ -16,11 +16,13 @@ import (
 func MainMenuScreen() (string, int) {
 	// Menu items without numbers
 	menu := []string{
-		"Global Themes",
+		"Simple Themes",
 		"Dynamic Themes",
-		"Custom Themes",
 		"Default Theme",
+		"System Backgrounds",
 		"Fonts",
+		"Accents",
+		"LED Quick Settings",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
@@ -34,8 +36,8 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Global Themes":
-			logging.LogDebug("Selected Global Themes")
+		case "Simple Themes":
+			logging.LogDebug("Selected Simple Themes")
 			app.SetSelectedThemeType(app.GlobalTheme)
 			return app.Screens.ThemeSelection
 
@@ -44,8 +46,8 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedThemeType(app.DynamicTheme)
 			return app.Screens.ThemeSelection
 
-		case "Custom Themes":
-			logging.LogDebug("Selected Custom Themes")
+		case "System Backgrounds":
+			logging.LogDebug("Selected System Backgrounds")
 			app.SetSelectedThemeType(app.CustomTheme)
 			return app.Screens.ThemeSelection
 
@@ -57,6 +59,14 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 		case "Fonts":
 			logging.LogDebug("Selected Fonts")
 			return app.Screens.FontSelection
+
+		case "Accents":
+			logging.LogDebug("Selected Accents")
+			return app.Screens.AccentSelection
+
+		case "LED Quick Settings":
+			logging.LogDebug("Selected LED Quick Settings")
+			return app.Screens.LEDSelection
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)

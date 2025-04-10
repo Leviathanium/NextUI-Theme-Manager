@@ -11,7 +11,6 @@ import (
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/ui/screens"
 )
-
 func main() {
 	// Initialize the logger
 	defer logging.CloseLogger()
@@ -89,6 +88,16 @@ func main() {
 			logging.LogDebug("Showing font preview")
 			selection, exitCode = screens.FontPreviewScreen()
 			nextScreen = screens.HandleFontPreview(selection, exitCode)
+
+		case app.Screens.AccentSelection:
+			logging.LogDebug("Showing accent selection")
+			selection, exitCode = screens.AccentSelectionScreen()
+			nextScreen = screens.HandleAccentSelection(selection, exitCode)
+
+		case app.Screens.LEDSelection:
+			logging.LogDebug("Showing LED selection")
+			selection, exitCode = screens.LEDSelectionScreen()
+			nextScreen = screens.HandleLEDSelection(selection, exitCode)
 
         }
 

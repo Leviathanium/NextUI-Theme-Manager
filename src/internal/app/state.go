@@ -23,6 +23,8 @@ const (
 	ConfirmScreen
 	FontSelection
 	FontPreview
+	AccentSelection
+	LEDSelection
 )
 
 // ScreenEnum holds all available screens
@@ -33,6 +35,8 @@ type ScreenEnum struct {
 	ConfirmScreen     Screen
 	FontSelection     Screen
 	FontPreview       Screen
+	AccentSelection   Screen
+	LEDSelection      Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -61,6 +65,8 @@ var (
 		ConfirmScreen:     ConfirmScreen,
 		FontSelection:     FontSelection,
 		FontPreview:       FontPreview,
+		AccentSelection:   AccentSelection,
+		LEDSelection:      LEDSelection,
 	}
 
 	state appState
