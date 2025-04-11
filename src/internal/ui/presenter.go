@@ -6,6 +6,7 @@ package ui
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,102 +37,123 @@ func DisplayImageGallery(items []GalleryItem, title string) (string, int) {
 		return "", 1
 	}
 
-	// Create JSON structure with ALL items together
-	// This allows minui-presenter to handle navigation internally
-	jsonItems := []map[string]interface{}{}
+	// Keep track of which item we're showing
+	currentIndex := 0
 
-	for _, item := range items {
-		jsonItems = append(jsonItems, map[string]interface{}{
-			"text":             item.Text,
-			"background_image": item.BackgroundImage,
-			"show_pill":        true,
-			"alignment":        "top",
-		})
-	}
-
-	jsonData := map[string]interface{}{
-		"items":    jsonItems,
-		"selected": 0,
-	}
-
-	// Convert to JSON
-	jsonBytes, err := json.MarshalIndent(jsonData, "", "  ")
-	if err != nil {
-		logging.LogDebug("Error marshaling JSON: %v", err)
-		return "", 1
-	}
-
-	// Create a temporary file for the JSON content
-	tempFile, err := os.CreateTemp("", "gallery-*.json")
-	if err != nil {
-		logging.LogDebug("ERROR: Failed to create temp file: %v", err)
-		return "", 1
-	}
-	jsonPath := tempFile.Name()
-	defer os.Remove(jsonPath)
-
-	// Write JSON content to the file
-	if _, err := tempFile.Write(jsonBytes); err != nil {
-		logging.LogDebug("ERROR: Failed to write to temp file: %v", err)
-		tempFile.Close()
-		return "", 1
-	}
-	tempFile.Close()
-
-	// Execute minui-presenter with the JSON file containing all items
-	args := []string{
-		"--file", jsonPath,
-		"--confirm-text", "SELECT",
-		"--confirm-show",
-		"--cancel-text", "BACK",
-		"--cancel-show",
-	}
-
-	minuiPresenterPath := filepath.Join(cwd, "minui-presenter")
-	cmd := exec.Command(minuiPresenterPath, args...)
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
-
-	// Run minui-presenter
-	err = cmd.Run()
-	exitCode := 0
-	if err != nil {
-		exitCode = cmd.ProcessState.ExitCode()
-	}
-
-	// Log any output
-	stdoutOutput := stdoutBuf.String()
-	stderrOutput := stderrBuf.String()
-
-	if stderrOutput != "" {
-		logging.LogDebug("stderr: %s", stderrOutput)
-	}
-
-	if stdoutOutput != "" {
-		logging.LogDebug("stdout: %s", stdoutOutput)
-	}
-
-	logging.LogDebug("Final exit code: %d", exitCode)
-
-	// Handle exit code
-	if exitCode == 0 {
-		// User selected something
-		// Since we can't get the selected index reliably,
-		// we'll check stdout but default to the first item
-		selectedIndex := 0
-
-		// If the first item was selected, return it
-		if selectedIndex >= 0 && selectedIndex < len(items) {
-			return items[selectedIndex].Text, 0
+	for {
+		// Ensure index is valid
+		if currentIndex < 0 {
+			currentIndex = len(items) - 1
+		} else if currentIndex >= len(items) {
+			currentIndex = 0
 		}
-		return items[0].Text, 0
-	} else if exitCode == 2 {
-		// User cancelled
-		return "", 2
-	}
 
-	// For any other exit code, treat as cancel
-	return "", exitCode
+		// Get current item
+		currentItem := items[currentIndex]
+
+		// Create JSON with single item
+		jsonData := map[string]interface{}{
+			"items": []map[string]interface{}{
+				{
+					"text":             fmt.Sprintf("%s (%d/%d)", currentItem.Text, currentIndex+1, len(items)),
+					"background_image": currentItem.BackgroundImage,
+					"show_pill":        true,
+					"alignment":        "top",
+				},
+			},
+			"selected": 0,
+		}
+
+		// Convert to JSON
+		jsonBytes, err := json.MarshalIndent(jsonData, "", "  ")
+		if err != nil {
+			logging.LogDebug("Error marshaling JSON: %v", err)
+			return "", 1
+		}
+
+		// Create a temporary file for the JSON
+		tempFile, err := os.CreateTemp("", "gallery-item-*.json")
+		if err != nil {
+			logging.LogDebug("ERROR: Failed to create temp file: %v", err)
+			return "", 1
+		}
+		jsonPath := tempFile.Name()
+		defer os.Remove(jsonPath)
+
+		// Write JSON to temporary file
+		if _, err := tempFile.Write(jsonBytes); err != nil {
+			logging.LogDebug("ERROR: Failed to write to temp file: %v", err)
+			tempFile.Close()
+			return "", 1
+		}
+		tempFile.Close()
+
+		// Execute minui-presenter for this item with navigation buttons
+		args := []string{
+			"--file", jsonPath,
+			"--confirm-text", "SELECT",
+			"--confirm-show",
+			"--cancel-text", "BACK",
+			"--cancel-show",
+		}
+
+		// Add action button for "next" navigation
+		args = append(args,
+			"--action-button", "X",
+			"--action-text", "NEXT",
+			"--action-show")
+
+		// Add inaction button for "previous" navigation
+		args = append(args,
+			"--inaction-button", "Y",
+			"--inaction-text", "PREV",
+			"--inaction-show")
+
+		minuiPresenterPath := filepath.Join(cwd, "minui-presenter")
+		cmd := exec.Command(minuiPresenterPath, args...)
+
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
+		// Run minui-presenter
+		err = cmd.Run()
+		exitCode := 0
+		if err != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+		}
+
+		// Log stderr output if any
+		stderrOutput := stderr.String()
+		if stderrOutput != "" {
+			logging.LogDebug("stderr: %s", stderrOutput)
+		}
+
+		logging.LogDebug("Exit code: %d for item %d: %s", exitCode, currentIndex, currentItem.Text)
+
+		// Handle exit code
+		switch exitCode {
+		case 0: // User selected THIS item
+			logging.LogDebug("User selected item: %s (index: %d)", currentItem.Text, currentIndex)
+			return currentItem.Text, 0
+
+		case 2: // User cancelled
+			logging.LogDebug("User cancelled")
+			return "", 2
+
+		case 4: // Action button (X) - next item
+			logging.LogDebug("User pressed NEXT")
+			currentIndex++
+
+		case 5: // Inaction button (Y) - previous item
+			logging.LogDebug("User pressed PREV")
+			currentIndex--
+
+		case 124, 130, 143: // Special exit codes
+			return "", exitCode
+
+		default: // Any other exit code, default to next
+			logging.LogDebug("Unknown exit code: %d, advancing to next item", exitCode)
+			currentIndex++
+		}
+	}
 }
