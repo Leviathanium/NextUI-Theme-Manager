@@ -15,8 +15,10 @@ import (
 func CustomizationMenuScreen() (string, int) {
 	// Menu items
 	menu := []string{
+		"Systems",
 		"Accents",
 		"LED Quick Settings",
+		"Fonts",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Customization")
@@ -30,6 +32,11 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
+		case "Systems":
+			logging.LogDebug("Selected Systems (System Backgrounds)")
+			app.SetSelectedThemeType(app.CustomTheme)
+			return app.Screens.ThemeSelection
+
 		case "Accents":
 			logging.LogDebug("Selected Accents")
 			return app.Screens.AccentSelection
@@ -37,6 +44,10 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 		case "LED Quick Settings":
 			logging.LogDebug("Selected LED Quick Settings")
 			return app.Screens.LEDSelection
+
+		case "Fonts":
+			logging.LogDebug("Selected Fonts")
+			return app.Screens.FontSelection
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)

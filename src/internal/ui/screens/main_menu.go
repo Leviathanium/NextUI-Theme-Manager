@@ -20,8 +20,6 @@ func MainMenuScreen() (string, int) {
 		"Dynamic Themes",
 		"Default Theme",
 		"Customization",
-		"System Backgrounds",
-		"Fonts",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
@@ -45,19 +43,10 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedThemeType(app.DynamicTheme)
 			return app.Screens.ThemeSelection
 
-		case "System Backgrounds":
-			logging.LogDebug("Selected System Backgrounds")
-			app.SetSelectedThemeType(app.CustomTheme)
-			return app.Screens.ThemeSelection
-
 		case "Default Theme":
 			logging.LogDebug("Selected Default Theme")
 			app.SetSelectedThemeType(app.DefaultTheme)
 			return app.Screens.DefaultThemeOptions
-
-		case "Fonts":
-			logging.LogDebug("Selected Fonts")
-			return app.Screens.FontSelection
 
 		case "Customization":
 			logging.LogDebug("Selected Customization")
