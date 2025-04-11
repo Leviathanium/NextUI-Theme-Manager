@@ -25,22 +25,24 @@ const (
 	FontPreview
 	AccentSelection
 	LEDSelection
-	CustomizationMenu // Added for customization menu
-	// QuickSettings screen has been removed
+	AccentConfirm
+	LEDConfirm
+	CustomizationMenu
 )
 
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
-	MainMenu          Screen
-	ThemeSelection    Screen
+	MainMenu           Screen
+	ThemeSelection     Screen
 	DefaultThemeOptions Screen
-	ConfirmScreen     Screen
-	FontSelection     Screen
-	FontPreview       Screen
-	AccentSelection   Screen
-	LEDSelection      Screen
-	CustomizationMenu Screen
-	// QuickSettings field removed
+	ConfirmScreen      Screen
+	FontSelection      Screen
+	FontPreview        Screen
+	AccentSelection    Screen
+	LEDSelection       Screen
+	AccentConfirm      Screen
+	LEDConfirm         Screen
+	CustomizationMenu  Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -53,31 +55,29 @@ const (
 
 // AppState holds the current state of the application
 type appState struct {
-	CurrentScreen        Screen
-	SelectedThemeType    ThemeType
-	SelectedTheme        string
-	DefaultAction        DefaultThemeAction
-	SelectedFont         string
-	ColorR               int // For color selections
-	ColorG               int
-	ColorB               int
-	LEDBrightness        int // For LED selections
-	LEDSpeed             int
+	CurrentScreen      Screen
+	SelectedThemeType  ThemeType
+	SelectedTheme      string
+	DefaultAction      DefaultThemeAction
+	SelectedFont       string
+	SelectedAccentTheme string
+	SelectedLEDTheme    string
 }
 
 // Global variables
 var (
 	Screens  = ScreenEnum{
-		MainMenu:          MainMenu,
-		ThemeSelection:    ThemeSelection,
+		MainMenu:           MainMenu,
+		ThemeSelection:     ThemeSelection,
 		DefaultThemeOptions: DefaultThemeOptions,
-		ConfirmScreen:     ConfirmScreen,
-		FontSelection:     FontSelection,
-		FontPreview:       FontPreview,
-		AccentSelection:   AccentSelection,
-		LEDSelection:      LEDSelection,
-		CustomizationMenu: CustomizationMenu,
-		// QuickSettings initialization removed
+		ConfirmScreen:      ConfirmScreen,
+		FontSelection:      FontSelection,
+		FontPreview:        FontPreview,
+		AccentSelection:    AccentSelection,
+		LEDSelection:       LEDSelection,
+		AccentConfirm:      AccentConfirm,
+		LEDConfirm:         LEDConfirm,
+		CustomizationMenu:  CustomizationMenu,
 	}
 
 	state appState
@@ -133,25 +133,22 @@ func SetSelectedFont(font string) {
 	state.SelectedFont = font
 }
 
-// GetColorSelections returns the color RGB values
-func GetColorSelections() (int, int, int) {
-	return state.ColorR, state.ColorG, state.ColorB
+// GetSelectedAccentTheme returns the selected accent theme
+func GetSelectedAccentTheme() string {
+	return state.SelectedAccentTheme
 }
 
-// SetColorSelections sets the color RGB values
-func SetColorSelections(r int, g int, b int) {
-	state.ColorR = r
-	state.ColorG = g
-	state.ColorB = b
+// SetSelectedAccentTheme sets the selected accent theme
+func SetSelectedAccentTheme(theme string) {
+	state.SelectedAccentTheme = theme
 }
 
-// GetLEDSelections returns the LED brightness and speed
-func GetLEDSelections() (int, int) {
-	return state.LEDBrightness, state.LEDSpeed
+// GetSelectedLEDTheme returns the selected LED theme
+func GetSelectedLEDTheme() string {
+	return state.SelectedLEDTheme
 }
 
-// SetLEDSelections sets the LED brightness and speed
-func SetLEDSelections(brightness int, speed int) {
-	state.LEDBrightness = brightness
-	state.LEDSpeed = speed
+// SetSelectedLEDTheme sets the selected LED theme
+func SetSelectedLEDTheme(theme string) {
+	state.SelectedLEDTheme = theme
 }

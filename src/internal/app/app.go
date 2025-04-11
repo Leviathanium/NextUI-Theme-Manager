@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"nextui-themes/internal/accents"
+	"nextui-themes/internal/leds"
 	"nextui-themes/internal/logging"
 )
 
@@ -52,6 +54,16 @@ func Initialize() error {
 	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Default"), 0755)
 	if err != nil {
 		logging.LogDebug("Error creating Default themes directory: %v", err)
+	}
+
+	// Initialize accent colors
+	if err := accents.InitAccentColors(); err != nil {
+		logging.LogDebug("Error initializing accent colors: %v", err)
+	}
+
+	// Initialize LED settings
+	if err := leds.InitLEDSettings(); err != nil {
+		logging.LogDebug("Error initializing LED settings: %v", err)
 	}
 
 	logging.LogDebug("Initialization complete")

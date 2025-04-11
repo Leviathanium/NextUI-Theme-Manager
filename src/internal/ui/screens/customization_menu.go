@@ -11,18 +11,15 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// CustomizationMenuScreen shows customization options
+// CustomizationMenuScreen displays the customization menu options
 func CustomizationMenuScreen() (string, int) {
-	// Customization submenu options
+	// Menu items
 	menu := []string{
-		"System Backgrounds",
-		"Fonts",
 		"Accents",
 		"LED Quick Settings",
-		// "Quick Settings" option removed
 	}
 
-	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Customization Options")
+	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Customization")
 }
 
 // HandleCustomizationMenu processes the user's selection from the customization menu
@@ -33,15 +30,6 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "System Backgrounds":
-			logging.LogDebug("Selected System Backgrounds")
-			app.SetSelectedThemeType(app.CustomTheme)
-			return app.Screens.ThemeSelection
-
-		case "Fonts":
-			logging.LogDebug("Selected Fonts")
-			return app.Screens.FontSelection
-
 		case "Accents":
 			logging.LogDebug("Selected Accents")
 			return app.Screens.AccentSelection
@@ -49,8 +37,6 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 		case "LED Quick Settings":
 			logging.LogDebug("Selected LED Quick Settings")
 			return app.Screens.LEDSelection
-
-		// "Quick Settings" case removed
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)

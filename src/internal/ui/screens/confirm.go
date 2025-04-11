@@ -65,15 +65,6 @@ func HandleConfirmScreen(selection string, exitCode int) app.Screen {
 		logging.LogDebug("User cancelled, returning to previous screen")
 		if app.GetSelectedThemeType() == app.DefaultTheme {
 			return app.Screens.DefaultThemeOptions
-		} else if app.GetSelectedThemeType() == app.GlobalTheme {
-			// Return to main menu if coming from Global Backgrounds
-			return app.Screens.MainMenu
-		} else if app.GetSelectedThemeType() == app.DynamicTheme {
-			// Return to main menu if coming from Dynamic Themes
-			return app.Screens.MainMenu
-		} else if app.GetSelectedThemeType() == app.CustomTheme {
-			// Return to Customization menu if coming from System Backgrounds
-			return app.Screens.CustomizationMenu
 		} else {
 			return app.Screens.ThemeSelection
 		}

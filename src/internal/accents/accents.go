@@ -33,76 +33,128 @@ const (
 var PredefinedThemes = []ThemeColor{
 	{
 		Name:   "Classic White",
-		Color1: "0xFFFFFF", // White
-		Color2: "0x9B2257", // Pink
-		Color3: "0x1E2329", // Dark Blue
-		Color4: "0xFFFFFF", // White
-		Color5: "0x000000", // Black
-		Color6: "0xFFFFFF", // White
+		Color1: "#FFFFFF", // White
+		Color2: "#9B2257", // Pink
+		Color3: "#1E2329", // Dark Blue
+		Color4: "#FFFFFF", // White
+		Color5: "#000000", // Black
+		Color6: "#FFFFFF", // White
 	},
 	{
 		Name:   "Midnight Blue",
-		Color1: "0x000044", // Dark Blue
-		Color2: "0x3366FF", // Bright Blue
-		Color3: "0x6699FF", // Light Blue
-		Color4: "0xFFFFFF", // White
-		Color5: "0x99CCFF", // Very Light Blue
-		Color6: "0xB3D9FF", // Almost White Blue
+		Color1: "#000044", // Dark Blue
+		Color2: "#3366FF", // Bright Blue
+		Color3: "#6699FF", // Light Blue
+		Color4: "#FFFFFF", // White
+		Color5: "#99CCFF", // Very Light Blue
+		Color6: "#B3D9FF", // Almost White Blue
 	},
 	{
 		Name:   "Forest Green",
-		Color1: "0x004400", // Dark Green
-		Color2: "0x00AA00", // Medium Green
-		Color3: "0x33FF33", // Bright Green
-		Color4: "0xFFFFFF", // White
-		Color5: "0x80FF80", // Light Green
-		Color6: "0xB3FFB3", // Very Light Green
+		Color1: "#004400", // Dark Green
+		Color2: "#00AA00", // Medium Green
+		Color3: "#33FF33", // Bright Green
+		Color4: "#FFFFFF", // White
+		Color5: "#80FF80", // Light Green
+		Color6: "#B3FFB3", // Very Light Green
 	},
 	{
 		Name:   "Ruby Red",
-		Color1: "0x440000", // Dark Red
-		Color2: "0xAA0000", // Medium Red
-		Color3: "0xFF3333", // Bright Red
-		Color4: "0xFFFFFF", // White
-		Color5: "0xFF8080", // Light Red
-		Color6: "0xFFB3B3", // Very Light Red
+		Color1: "#440000", // Dark Red
+		Color2: "#AA0000", // Medium Red
+		Color3: "#FF3333", // Bright Red
+		Color4: "#FFFFFF", // White
+		Color5: "#FF8080", // Light Red
+		Color6: "#FFB3B3", // Very Light Red
 	},
 	{
 		Name:   "Royal Purple",
-		Color1: "0x330066", // Dark Purple
-		Color2: "0x6600CC", // Medium Purple
-		Color3: "0x8833FF", // Bright Purple
-		Color4: "0xFFFFFF", // White
-		Color5: "0xBB80FF", // Light Purple
-		Color6: "0xDDB3FF", // Very Light Purple
+		Color1: "#330066", // Dark Purple
+		Color2: "#6600CC", // Medium Purple
+		Color3: "#8833FF", // Bright Purple
+		Color4: "#FFFFFF", // White
+		Color5: "#BB80FF", // Light Purple
+		Color6: "#DDB3FF", // Very Light Purple
 	},
 	{
 		Name:   "Sunset Orange",
-		Color1: "0x442200", // Dark Orange
-		Color2: "0xAA5500", // Medium Orange
-		Color3: "0xFF8833", // Bright Orange
-		Color4: "0xFFFFFF", // White
-		Color5: "0xFFBB80", // Light Orange
-		Color6: "0xFFDDB3", // Very Light Orange
+		Color1: "#442200", // Dark Orange
+		Color2: "#AA5500", // Medium Orange
+		Color3: "#FF8833", // Bright Orange
+		Color4: "#FFFFFF", // White
+		Color5: "#FFBB80", // Light Orange
+		Color6: "#FFDDB3", // Very Light Orange
 	},
 	{
 		Name:   "Teal Dream",
-		Color1: "0x004444", // Dark Teal
-		Color2: "0x00AAAA", // Medium Teal
-		Color3: "0x33FFFF", // Bright Teal
-		Color4: "0xFFFFFF", // White
-		Color5: "0x80FFFF", // Light Teal
-		Color6: "0xB3FFFF", // Very Light Teal
+		Color1: "#004444", // Dark Teal
+		Color2: "#00AAAA", // Medium Teal
+		Color3: "#33FFFF", // Bright Teal
+		Color4: "#FFFFFF", // White
+		Color5: "#80FFFF", // Light Teal
+		Color6: "#B3FFFF", // Very Light Teal
 	},
 	{
 		Name:   "Monochrome",
-		Color1: "0x0A0A0A", // Almost Black
-		Color2: "0x505050", // Dark Gray
-		Color3: "0x8C8C8C", // Medium Gray
-		Color4: "0xDCDCDC", // Light Gray
-		Color5: "0xFFFFFF", // White
-		Color6: "0xC8C8C8", // Silver
+		Color1: "#0A0A0A", // Almost Black
+		Color2: "#505050", // Dark Gray
+		Color3: "#8C8C8C", // Medium Gray
+		Color4: "#DCDC4C", // Light Gray
+		Color5: "#FFFFFF", // White
+		Color6: "#C8C8C8", // Silver
 	},
+}
+
+// CurrentTheme holds the currently loaded theme settings
+var CurrentTheme ThemeColor
+
+// convertHexFormat converts between display format (#RRGGBB) and storage format (0xRRGGBB)
+func convertHexFormat(color string, toStorage bool) string {
+	if toStorage {
+		// Convert from #RRGGBB to 0xRRGGBB
+		if strings.HasPrefix(color, "#") {
+			return "0x" + color[1:]
+		}
+		return color // Already in storage format
+	} else {
+		// Convert from 0xRRGGBB to #RRGGBB
+		if strings.HasPrefix(color, "0x") {
+			return "#" + color[2:]
+		}
+		return color // Already in display format
+	}
+}
+
+// InitAccentColors loads the current accent colors from disk
+func InitAccentColors() error {
+	logging.LogDebug("Initializing accent colors")
+
+	// Set a default theme name
+	CurrentTheme.Name = "Current"
+
+	// Try to load settings from disk
+	theme, err := GetCurrentColors()
+	if err != nil {
+		logging.LogDebug("Error loading current colors: %v, using defaults", err)
+		// Initialize with default values
+		CurrentTheme.Color1 = "#FFFFFF" // White
+		CurrentTheme.Color2 = "#9B2257" // Pink
+		CurrentTheme.Color3 = "#1E2329" // Dark Blue
+		CurrentTheme.Color4 = "#FFFFFF" // White
+		CurrentTheme.Color5 = "#000000" // Black
+		CurrentTheme.Color6 = "#FFFFFF" // White
+	} else {
+		// Convert from storage format to display format
+		CurrentTheme.Color1 = convertHexFormat(theme.Color1, false)
+		CurrentTheme.Color2 = convertHexFormat(theme.Color2, false)
+		CurrentTheme.Color3 = convertHexFormat(theme.Color3, false)
+		CurrentTheme.Color4 = convertHexFormat(theme.Color4, false)
+		CurrentTheme.Color5 = convertHexFormat(theme.Color5, false)
+		CurrentTheme.Color6 = convertHexFormat(theme.Color6, false)
+	}
+
+	logging.LogDebug("Current accent colors initialized: %+v", CurrentTheme)
+	return nil
 }
 
 // GetCurrentColors reads the current theme colors from the settings file
@@ -164,6 +216,34 @@ func GetCurrentColors() (*ThemeColor, error) {
 	return colors, nil
 }
 
+// UpdateCurrentTheme updates the current theme in memory with new values
+func UpdateCurrentTheme(themeName string) error {
+	logging.LogDebug("Updating current theme to: %s", themeName)
+
+	// Find the selected theme
+	var found bool
+	for _, theme := range PredefinedThemes {
+		if theme.Name == themeName {
+			CurrentTheme.Name = theme.Name
+			CurrentTheme.Color1 = theme.Color1
+			CurrentTheme.Color2 = theme.Color2
+			CurrentTheme.Color3 = theme.Color3
+			CurrentTheme.Color4 = theme.Color4
+			CurrentTheme.Color5 = theme.Color5
+			CurrentTheme.Color6 = theme.Color6
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("theme not found: %s", themeName)
+	}
+
+	logging.LogDebug("Theme updated in memory: %+v", CurrentTheme)
+	return nil
+}
+
 // ApplyThemeColors applies the specified theme colors to the system
 func ApplyThemeColors(theme *ThemeColor) error {
 	logging.LogDebug("Applying theme colors: %s", theme.Name)
@@ -212,13 +292,13 @@ func ApplyThemeColors(theme *ThemeColor) error {
 	}
 	file.Close()
 
-	// Update with new theme colors
-	settings["color1"] = theme.Color1
-	settings["color2"] = theme.Color2
-	settings["color3"] = theme.Color3
-	settings["color4"] = theme.Color4
-	settings["color5"] = theme.Color5
-	settings["color6"] = theme.Color6
+	// Update with new theme colors - convert from display format to storage format
+	settings["color1"] = convertHexFormat(theme.Color1, true)
+	settings["color2"] = convertHexFormat(theme.Color2, true)
+	settings["color3"] = convertHexFormat(theme.Color3, true)
+	settings["color4"] = convertHexFormat(theme.Color4, true)
+	settings["color5"] = convertHexFormat(theme.Color5, true)
+	settings["color6"] = convertHexFormat(theme.Color6, true)
 
 	// Write back to file
 	tempFile := SettingsPath + ".tmp"
@@ -255,4 +335,10 @@ func ApplyThemeColors(theme *ThemeColor) error {
 // GetColorPreviewText formats a color value for display
 func GetColorPreviewText(colorName string, colorValue string) string {
 	return fmt.Sprintf("%s: %s", colorName, colorValue)
+}
+
+// ApplyCurrentTheme applies the current in-memory theme to the system
+func ApplyCurrentTheme() error {
+	logging.LogDebug("Applying current in-memory theme")
+	return ApplyThemeColors(&CurrentTheme)
 }
