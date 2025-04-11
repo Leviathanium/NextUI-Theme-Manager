@@ -26,7 +26,7 @@ const (
 	AccentSelection
 	LEDSelection
 	CustomizationMenu // Added for customization menu
-	QuickSettings     // Added for quick settings screen
+	// QuickSettings screen has been removed
 )
 
 // ScreenEnum holds all available screens
@@ -40,7 +40,7 @@ type ScreenEnum struct {
 	AccentSelection   Screen
 	LEDSelection      Screen
 	CustomizationMenu Screen
-	QuickSettings     Screen // Added for quick settings
+	// QuickSettings field removed
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -77,7 +77,7 @@ var (
 		AccentSelection:   AccentSelection,
 		LEDSelection:      LEDSelection,
 		CustomizationMenu: CustomizationMenu,
-		QuickSettings:     QuickSettings, // Initialize QuickSettings screen
+		// QuickSettings initialization removed
 	}
 
 	state appState

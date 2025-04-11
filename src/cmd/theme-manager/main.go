@@ -104,10 +104,7 @@ func main() {
 			selection, exitCode = screens.CustomizationMenuScreen()
 			nextScreen = screens.HandleCustomizationMenu(selection, exitCode)
 
-		case app.Screens.QuickSettings:
-			logging.LogDebug("Showing quick settings")
-			selection, exitCode = screens.QuickSettingsScreen()
-			nextScreen = screens.HandleQuickSettings(selection, exitCode)
+		// QuickSettings case has been removed
         }
 
 		// Update the current screen

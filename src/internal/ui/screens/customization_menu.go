@@ -19,7 +19,7 @@ func CustomizationMenuScreen() (string, int) {
 		"Fonts",
 		"Accents",
 		"LED Quick Settings",
-		"Quick Settings", // Added for direct access to quick settings
+		// "Quick Settings" option removed
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Customization Options")
@@ -50,9 +50,7 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 			logging.LogDebug("Selected LED Quick Settings")
 			return app.Screens.LEDSelection
 
-		case "Quick Settings":
-			logging.LogDebug("Selected Quick Settings")
-			return app.Screens.QuickSettings
+		// "Quick Settings" case removed
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)
