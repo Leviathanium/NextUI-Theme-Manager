@@ -31,7 +31,7 @@ func ThemeSelectionScreen() (string, int) {
 
 	switch app.GetSelectedThemeType() {
 	case app.GlobalTheme:
-		title = "Select Global Theme"
+		title = "Select Global Background" // Updated title
 
 		// Scan global themes directory
 		globalDir := filepath.Join(cwd, "Themes", "Global")

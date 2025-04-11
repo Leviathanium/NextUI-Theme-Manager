@@ -16,11 +16,10 @@ import (
 func MainMenuScreen() (string, int) {
 	// Menu items without numbers
 	menu := []string{
-		"Simple Themes",
-		"Dynamic Themes",
-		"Default Theme",
-		"System Backgrounds",
-		"Quick Settings",
+		"Dynamic Themes",     // Current dynamic themes implementation
+		"Global Backgrounds", // Current simple themes implementation (renamed)
+		"Customization",      // New menu for various customization options
+		"Reset",              // Current default theme implementation (renamed)
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
@@ -34,8 +33,8 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Simple Themes":
-			logging.LogDebug("Selected Simple Themes")
+		case "Global Backgrounds":
+			logging.LogDebug("Selected Global Backgrounds")
 			app.SetSelectedThemeType(app.GlobalTheme)
 			return app.Screens.ThemeSelection
 
@@ -44,19 +43,14 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedThemeType(app.DynamicTheme)
 			return app.Screens.ThemeSelection
 
-		case "System Backgrounds":
-			logging.LogDebug("Selected System Backgrounds")
-			app.SetSelectedThemeType(app.CustomTheme)
-			return app.Screens.ThemeSelection
+		case "Customization":
+			logging.LogDebug("Selected Customization")
+			return app.Screens.CustomizationMenu
 
-		case "Default Theme":
-			logging.LogDebug("Selected Default Theme")
+		case "Reset":
+			logging.LogDebug("Selected Reset")
 			app.SetSelectedThemeType(app.DefaultTheme)
 			return app.Screens.DefaultThemeOptions
-
-		case "Quick Settings":
-			logging.LogDebug("Selected Quick Settings")
-			return app.Screens.QuickSettings
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)
@@ -64,7 +58,7 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 		}
 
 	case 1, 2:
-		// User cancelled/exited
+		// User pressed cancel or back
 		logging.LogDebug("User cancelled/exited")
 		os.Exit(0)
 	}

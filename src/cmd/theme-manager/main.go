@@ -99,10 +99,15 @@ func main() {
 			selection, exitCode = screens.LEDSelectionScreen()
 			nextScreen = screens.HandleLEDSelection(selection, exitCode)
 
+		case app.Screens.CustomizationMenu:
+			logging.LogDebug("Showing customization menu")
+			selection, exitCode = screens.CustomizationMenuScreen()
+			nextScreen = screens.HandleCustomizationMenu(selection, exitCode)
+
 		case app.Screens.QuickSettings:
-			logging.LogDebug("Showing Quick Settings")
+			logging.LogDebug("Showing quick settings")
 			selection, exitCode = screens.QuickSettingsScreen()
-			nextScreen = screens.HandleQuickSettingsScreen(selection, exitCode)
+			nextScreen = screens.HandleQuickSettings(selection, exitCode)
         }
 
 		// Update the current screen

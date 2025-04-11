@@ -21,7 +21,7 @@ func ConfirmScreen() (string, int) {
 
 	switch app.GetSelectedThemeType() {
 	case app.GlobalTheme:
-		message = fmt.Sprintf("Apply global theme '%s' to all directories?", app.GetSelectedTheme())
+		message = fmt.Sprintf("Apply global background '%s' to all directories?", app.GetSelectedTheme())
 	case app.DynamicTheme:
 		message = fmt.Sprintf("Apply dynamic theme '%s'?", app.GetSelectedTheme())
 	case app.CustomTheme:
@@ -65,6 +65,15 @@ func HandleConfirmScreen(selection string, exitCode int) app.Screen {
 		logging.LogDebug("User cancelled, returning to previous screen")
 		if app.GetSelectedThemeType() == app.DefaultTheme {
 			return app.Screens.DefaultThemeOptions
+		} else if app.GetSelectedThemeType() == app.GlobalTheme {
+			// Return to main menu if coming from Global Backgrounds
+			return app.Screens.MainMenu
+		} else if app.GetSelectedThemeType() == app.DynamicTheme {
+			// Return to main menu if coming from Dynamic Themes
+			return app.Screens.MainMenu
+		} else if app.GetSelectedThemeType() == app.CustomTheme {
+			// Return to Customization menu if coming from System Backgrounds
+			return app.Screens.CustomizationMenu
 		} else {
 			return app.Screens.ThemeSelection
 		}
@@ -87,7 +96,7 @@ func applyTheme() {
 			logging.LogDebug("Error applying global theme: %v", err)
 			message = fmt.Sprintf("Error: %s", err)
 		} else {
-			message = fmt.Sprintf("Applied global theme: %s", app.GetSelectedTheme())
+			message = fmt.Sprintf("Applied global background: %s", app.GetSelectedTheme())
 		}
 
 	case app.DynamicTheme:

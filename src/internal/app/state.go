@@ -3,11 +3,6 @@
 
 package app
 
-import (
-	"fmt"
-	"strconv"
-)
-
 // ThemeType represents the type of theme operation
 type ThemeType int
 
@@ -30,20 +25,22 @@ const (
 	FontPreview
 	AccentSelection
 	LEDSelection
-	QuickSettings // Added new screen type
+	CustomizationMenu // Added for customization menu
+	QuickSettings     // Added for quick settings screen
 )
 
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
-	MainMenu           Screen
-	ThemeSelection     Screen
+	MainMenu          Screen
+	ThemeSelection    Screen
 	DefaultThemeOptions Screen
-	ConfirmScreen      Screen
-	FontSelection      Screen
-	FontPreview        Screen
-	AccentSelection    Screen
-	LEDSelection       Screen
-	QuickSettings      Screen // Added new screen
+	ConfirmScreen     Screen
+	FontSelection     Screen
+	FontPreview       Screen
+	AccentSelection   Screen
+	LEDSelection      Screen
+	CustomizationMenu Screen
+	QuickSettings     Screen // Added for quick settings
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -56,13 +53,16 @@ const (
 
 // AppState holds the current state of the application
 type appState struct {
-	CurrentScreen      Screen
-	SelectedThemeType  ThemeType
-	SelectedTheme      string
-	DefaultAction      DefaultThemeAction
-	SelectedFont       string
-	ColorSelections    map[string]string // Added for accent color selections
-	LEDSelections      map[string]string // Added for LED settings selections
+	CurrentScreen        Screen
+	SelectedThemeType    ThemeType
+	SelectedTheme        string
+	DefaultAction        DefaultThemeAction
+	SelectedFont         string
+	ColorR               int // For color selections
+	ColorG               int
+	ColorB               int
+	LEDBrightness        int // For LED selections
+	LEDSpeed             int
 }
 
 // Global variables
@@ -76,18 +76,12 @@ var (
 		FontPreview:       FontPreview,
 		AccentSelection:   AccentSelection,
 		LEDSelection:      LEDSelection,
-		QuickSettings:     QuickSettings, // Added new screen
+		CustomizationMenu: CustomizationMenu,
+		QuickSettings:     QuickSettings, // Initialize QuickSettings screen
 	}
 
 	state appState
 )
-
-// Initialize appState
-func init() {
-	// Initialize maps
-	state.ColorSelections = make(map[string]string)
-	state.LEDSelections = make(map[string]string)
-}
 
 // GetCurrentScreen returns the current screen
 func GetCurrentScreen() Screen {
@@ -139,38 +133,25 @@ func SetSelectedFont(font string) {
 	state.SelectedFont = font
 }
 
-// SetColorSelections sets the color selections
-func SetColorSelections(color1, color2, color3 int) {
-	// Store color selections as indices
-	state.ColorSelections = map[string]string{
-		"color1": fmt.Sprintf("%d", color1),
-		"color2": fmt.Sprintf("%d", color2),
-		"color3": fmt.Sprintf("%d", color3),
-	}
-}
-
-// GetColorSelections returns the color selections
+// GetColorSelections returns the color RGB values
 func GetColorSelections() (int, int, int) {
-	// Get color selections as indices with defaults if not set
-	color1, _ := strconv.Atoi(state.ColorSelections["color1"])
-	color2, _ := strconv.Atoi(state.ColorSelections["color2"])
-	color3, _ := strconv.Atoi(state.ColorSelections["color3"])
-	return color1, color2, color3
+	return state.ColorR, state.ColorG, state.ColorB
 }
 
-// SetLEDSelections sets the LED selections
-func SetLEDSelections(effect, color int) {
-	// Store LED selections
-	state.LEDSelections = map[string]string{
-		"effect": fmt.Sprintf("%d", effect),
-		"color":  fmt.Sprintf("%d", color),
-	}
+// SetColorSelections sets the color RGB values
+func SetColorSelections(r int, g int, b int) {
+	state.ColorR = r
+	state.ColorG = g
+	state.ColorB = b
 }
 
-// GetLEDSelections returns the LED selections
+// GetLEDSelections returns the LED brightness and speed
 func GetLEDSelections() (int, int) {
-	// Get LED selections with defaults if not set
-	effect, _ := strconv.Atoi(state.LEDSelections["effect"])
-	color, _ := strconv.Atoi(state.LEDSelections["color"])
-	return effect, color
+	return state.LEDBrightness, state.LEDSpeed
+}
+
+// SetLEDSelections sets the LED brightness and speed
+func SetLEDSelections(brightness int, speed int) {
+	state.LEDBrightness = brightness
+	state.LEDSpeed = speed
 }
