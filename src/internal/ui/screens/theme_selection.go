@@ -31,7 +31,7 @@ func ThemeSelectionScreen() (string, int) {
 
 	switch app.GetSelectedThemeType() {
 	case app.GlobalTheme:
-		title = "Select Global Background" // Updated title
+		title = "Select Global Background"
 
 		// Scan global themes directory
 		globalDir := filepath.Join(cwd, "Themes", "Global")
@@ -39,14 +39,17 @@ func ThemeSelectionScreen() (string, int) {
 		if err != nil {
 			logging.LogDebug("Error loading global themes: %v", err)
 			ui.ShowMessage(fmt.Sprintf("Error loading global themes: %s", err), "3")
-			themesList = []string{"No themes found"}
+			return "", 1
 		}
 
 		if len(themesList) == 0 {
 			logging.LogDebug("No global themes found")
 			ui.ShowMessage("No global themes found. Create one in Themes/Global/", "3")
-			themesList = []string{"No themes found"}
+			return "", 1
 		}
+
+		// For Global Backgrounds, display an image gallery instead of a text list
+		return displayGlobalBackgroundsGallery(globalDir, themesList)
 
 	case app.DynamicTheme:
 		title = "Select Dynamic Theme"
@@ -93,8 +96,34 @@ func ThemeSelectionScreen() (string, int) {
 		}
 	}
 
+	// For non-global themes (Dynamic, Custom), use the standard list view
 	logging.LogDebug("Displaying theme selection with %d options", len(themesList))
 	return ui.DisplayMinUiList(strings.Join(themesList, "\n"), "text", title)
+}
+
+// displayGlobalBackgroundsGallery displays available global backgrounds as an image gallery
+func displayGlobalBackgroundsGallery(globalDir string, themeNames []string) (string, int) {
+	logging.LogDebug("Preparing global backgrounds gallery with %d themes", len(themeNames))
+
+	// Create gallery items from theme list
+	var galleryItems []ui.GalleryItem
+	for _, themeName := range themeNames {
+		// Path to bg.png in this theme folder
+		bgPath := filepath.Join(globalDir, themeName, "bg.png")
+
+		// Verify the image exists
+		if _, err := os.Stat(bgPath); err == nil {
+			galleryItems = append(galleryItems, ui.GalleryItem{
+				Text:            themeName,
+				BackgroundImage: bgPath,
+			})
+		} else {
+			logging.LogDebug("Image not found for theme %s: %v", themeName, err)
+		}
+	}
+
+	// Display gallery
+	return ui.DisplayImageGallery(galleryItems, "Select Global Background")
 }
 
 // HandleThemeSelection processes the user's theme selection
@@ -103,7 +132,7 @@ func HandleThemeSelection(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		// User selected a theme
+		// User selected a theme - proceed to confirmation
 		app.SetSelectedTheme(selection)
 		return app.Screens.ConfirmScreen
 	case 1, 2:
