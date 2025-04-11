@@ -25,18 +25,24 @@ const (
 	FontPreview
 	AccentSelection
 	LEDSelection
+	AccentConfirm
+	LEDConfirm
+	CustomizationMenu
 )
 
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
-	MainMenu          Screen
-	ThemeSelection    Screen
+	MainMenu           Screen
+	ThemeSelection     Screen
 	DefaultThemeOptions Screen
-	ConfirmScreen     Screen
-	FontSelection     Screen
-	FontPreview       Screen
-	AccentSelection   Screen
-	LEDSelection      Screen
+	ConfirmScreen      Screen
+	FontSelection      Screen
+	FontPreview        Screen
+	AccentSelection    Screen
+	LEDSelection       Screen
+	AccentConfirm      Screen
+	LEDConfirm         Screen
+	CustomizationMenu  Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -54,19 +60,24 @@ type appState struct {
 	SelectedTheme      string
 	DefaultAction      DefaultThemeAction
 	SelectedFont       string
+	SelectedAccentTheme string
+	SelectedLEDTheme    string
 }
 
 // Global variables
 var (
 	Screens  = ScreenEnum{
-		MainMenu:          MainMenu,
-		ThemeSelection:    ThemeSelection,
+		MainMenu:           MainMenu,
+		ThemeSelection:     ThemeSelection,
 		DefaultThemeOptions: DefaultThemeOptions,
-		ConfirmScreen:     ConfirmScreen,
-		FontSelection:     FontSelection,
-		FontPreview:       FontPreview,
-		AccentSelection:   AccentSelection,
-		LEDSelection:      LEDSelection,
+		ConfirmScreen:      ConfirmScreen,
+		FontSelection:      FontSelection,
+		FontPreview:        FontPreview,
+		AccentSelection:    AccentSelection,
+		LEDSelection:       LEDSelection,
+		AccentConfirm:      AccentConfirm,
+		LEDConfirm:         LEDConfirm,
+		CustomizationMenu:  CustomizationMenu,
 	}
 
 	state appState
@@ -120,4 +131,24 @@ func GetSelectedFont() string {
 // SetSelectedFont sets the selected font
 func SetSelectedFont(font string) {
 	state.SelectedFont = font
+}
+
+// GetSelectedAccentTheme returns the selected accent theme
+func GetSelectedAccentTheme() string {
+	return state.SelectedAccentTheme
+}
+
+// SetSelectedAccentTheme sets the selected accent theme
+func SetSelectedAccentTheme(theme string) {
+	state.SelectedAccentTheme = theme
+}
+
+// GetSelectedLEDTheme returns the selected LED theme
+func GetSelectedLEDTheme() string {
+	return state.SelectedLEDTheme
+}
+
+// SetSelectedLEDTheme sets the selected LED theme
+func SetSelectedLEDTheme(theme string) {
+	state.SelectedLEDTheme = theme
 }

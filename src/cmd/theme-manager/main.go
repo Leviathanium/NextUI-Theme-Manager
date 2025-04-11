@@ -89,6 +89,11 @@ func main() {
 			selection, exitCode = screens.FontPreviewScreen()
 			nextScreen = screens.HandleFontPreview(selection, exitCode)
 
+		case app.Screens.CustomizationMenu:
+			logging.LogDebug("Showing customization menu")
+			selection, exitCode = screens.CustomizationMenuScreen()
+			nextScreen = screens.HandleCustomizationMenu(selection, exitCode)
+
 		case app.Screens.AccentSelection:
 			logging.LogDebug("Showing accent selection")
 			selection, exitCode = screens.AccentSelectionScreen()
@@ -98,7 +103,6 @@ func main() {
 			logging.LogDebug("Showing LED selection")
 			selection, exitCode = screens.LEDSelectionScreen()
 			nextScreen = screens.HandleLEDSelection(selection, exitCode)
-
         }
 
 		// Update the current screen

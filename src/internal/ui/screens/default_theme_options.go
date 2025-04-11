@@ -18,7 +18,7 @@ func DefaultThemeOptionsScreen() (string, int) {
 		"Delete all backgrounds",
 	}
 
-	return ui.DisplayMinUiList(strings.Join(options, "\n"), "text", "Default Theme Options")
+	return ui.DisplayMinUiList(strings.Join(options, "\n"), "text", "Reset Options") // Updated title
 }
 
 // HandleDefaultThemeOptions processes user selection for default theme options

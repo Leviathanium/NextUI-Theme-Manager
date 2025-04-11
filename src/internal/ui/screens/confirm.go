@@ -21,7 +21,7 @@ func ConfirmScreen() (string, int) {
 
 	switch app.GetSelectedThemeType() {
 	case app.GlobalTheme:
-		message = fmt.Sprintf("Apply global theme '%s' to all directories?", app.GetSelectedTheme())
+		message = fmt.Sprintf("Apply global background '%s' to all directories?", app.GetSelectedTheme())
 	case app.DynamicTheme:
 		message = fmt.Sprintf("Apply dynamic theme '%s'?", app.GetSelectedTheme())
 	case app.CustomTheme:
@@ -87,7 +87,7 @@ func applyTheme() {
 			logging.LogDebug("Error applying global theme: %v", err)
 			message = fmt.Sprintf("Error: %s", err)
 		} else {
-			message = fmt.Sprintf("Applied global theme: %s", app.GetSelectedTheme())
+			message = fmt.Sprintf("Applied global background: %s", app.GetSelectedTheme())
 		}
 
 	case app.DynamicTheme:

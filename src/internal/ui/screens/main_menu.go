@@ -19,10 +19,7 @@ func MainMenuScreen() (string, int) {
 		"Simple Themes",
 		"Dynamic Themes",
 		"Default Theme",
-		"System Backgrounds",
-		"Fonts",
-		"Accents",
-		"LED Quick Settings",
+		"Customization",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
@@ -46,27 +43,14 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedThemeType(app.DynamicTheme)
 			return app.Screens.ThemeSelection
 
-		case "System Backgrounds":
-			logging.LogDebug("Selected System Backgrounds")
-			app.SetSelectedThemeType(app.CustomTheme)
-			return app.Screens.ThemeSelection
-
 		case "Default Theme":
 			logging.LogDebug("Selected Default Theme")
 			app.SetSelectedThemeType(app.DefaultTheme)
 			return app.Screens.DefaultThemeOptions
 
-		case "Fonts":
-			logging.LogDebug("Selected Fonts")
-			return app.Screens.FontSelection
-
-		case "Accents":
-			logging.LogDebug("Selected Accents")
-			return app.Screens.AccentSelection
-
-		case "LED Quick Settings":
-			logging.LogDebug("Selected LED Quick Settings")
-			return app.Screens.LEDSelection
+		case "Customization":
+			logging.LogDebug("Selected Customization")
+			return app.Screens.CustomizationMenu
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)

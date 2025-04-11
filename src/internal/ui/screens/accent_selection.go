@@ -21,6 +21,9 @@ func AccentSelectionScreen() (string, int) {
 		themesList = append(themesList, theme.Name)
 	}
 
+	// Add "Apply Changes" option
+	themesList = append(themesList, "Apply Changes")
+
 	if len(themesList) == 0 {
 		logging.LogDebug("No accent themes found")
 		ui.ShowMessage("No accent themes available.", "3")
@@ -37,32 +40,34 @@ func HandleAccentSelection(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		// User selected a theme
-		// Find the selected theme
-		var selectedTheme *accents.ThemeColor
-		for _, theme := range accents.PredefinedThemes {
-			if theme.Name == selection {
-				selectedTheme = &theme
-				break
-			}
-		}
-
-		if selectedTheme != nil {
-			// Apply the selected theme
-			logging.LogDebug("Applying accent theme: %s", selectedTheme.Name)
-			err := accents.ApplyThemeColors(selectedTheme)
+		// Check if "Apply Changes" was selected
+		if selection == "Apply Changes" {
+			// Apply the current theme settings to the system
+			logging.LogDebug("Applying current accent settings")
+			err := accents.ApplyCurrentTheme()
 			if err != nil {
 				logging.LogDebug("Error applying accent theme: %v", err)
 				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 			} else {
-				ui.ShowMessage(fmt.Sprintf("Applied accent theme: %s", selectedTheme.Name), "3")
+				ui.ShowMessage("Accent settings applied successfully!", "3")
 			}
-		} else {
-			logging.LogDebug("Selected theme not found: %s", selection)
-			ui.ShowMessage("Selected theme not found.", "3")
+			return app.Screens.MainMenu
 		}
 
-		return app.Screens.MainMenu
+		// User selected a theme - update in-memory state but don't apply yet
+		app.SetSelectedAccentTheme(selection)
+		logging.LogDebug("Selected accent theme: %s", selection)
+
+		// Update the current theme in memory
+		if err := accents.UpdateCurrentTheme(selection); err != nil {
+			logging.LogDebug("Error updating accent theme in memory: %v", err)
+			ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+		} else {
+			ui.ShowMessage(fmt.Sprintf("Selected theme: %s\nChoose 'Apply Changes' to save", selection), "3")
+		}
+
+		// Return to accent selection screen
+		return app.Screens.AccentSelection
 
 	case 1, 2:
 		// User pressed cancel or back
