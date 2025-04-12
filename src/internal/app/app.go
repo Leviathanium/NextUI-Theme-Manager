@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"nextui-themes/internal/accents"
+	"nextui-themes/internal/icons"
 	"nextui-themes/internal/leds"
 	"nextui-themes/internal/logging"
 )
@@ -54,6 +55,11 @@ func Initialize() error {
 	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Default"), 0755)
 	if err != nil {
 		logging.LogDebug("Error creating Default themes directory: %v", err)
+	}
+
+	// Create Icons directory and placeholder
+	if err := icons.CreatePlaceholderFile(); err != nil {
+		logging.LogDebug("Error creating icons placeholder: %v", err)
 	}
 
 	// Initialize accent colors

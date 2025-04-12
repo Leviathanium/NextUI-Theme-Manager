@@ -13,6 +13,14 @@ const (
 	DefaultTheme
 )
 
+// ThemeSource represents the source of themes (preset vs custom)
+type ThemeSource int
+
+const (
+	PresetSource ThemeSource = iota
+	CustomSource
+)
+
 // Screen represents the different UI screens
 type Screen int
 
@@ -23,11 +31,25 @@ const (
 	ConfirmScreen
 	FontSelection
 	FontPreview
+	AccentMenu
 	AccentSelection
+	AccentExport
+	LEDMenu
 	LEDSelection
-	AccentConfirm
-	LEDConfirm
+	LEDExport
 	CustomizationMenu
+	IconsMenu
+	IconSelection
+	IconConfirm
+	ClearIconsConfirm
+	GlobalOptionsMenu
+	SystemOptionsMenu
+	SystemOptionsForSelectedSystem
+	SystemIconSelection
+	SystemIconConfirm
+	ResetMenu
+	WallpaperSelection
+	WallpaperConfirm
 )
 
 // ScreenEnum holds all available screens
@@ -38,11 +60,25 @@ type ScreenEnum struct {
 	ConfirmScreen      Screen
 	FontSelection      Screen
 	FontPreview        Screen
+	AccentMenu         Screen
 	AccentSelection    Screen
+	AccentExport       Screen
+	LEDMenu            Screen
 	LEDSelection       Screen
-	AccentConfirm      Screen
-	LEDConfirm         Screen
+	LEDExport          Screen
 	CustomizationMenu  Screen
+	IconsMenu          Screen
+	IconSelection      Screen
+	IconConfirm        Screen
+	ClearIconsConfirm  Screen
+	GlobalOptionsMenu  Screen
+	SystemOptionsMenu  Screen
+	SystemOptionsForSelectedSystem Screen
+	SystemIconSelection Screen
+	SystemIconConfirm   Screen
+	ResetMenu          Screen
+	WallpaperSelection Screen
+	WallpaperConfirm   Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -55,13 +91,17 @@ const (
 
 // AppState holds the current state of the application
 type appState struct {
-	CurrentScreen      Screen
-	SelectedThemeType  ThemeType
-	SelectedTheme      string
-	DefaultAction      DefaultThemeAction
-	SelectedFont       string
-	SelectedAccentTheme string
-	SelectedLEDTheme    string
+	CurrentScreen           Screen
+	SelectedThemeType       ThemeType
+	SelectedTheme           string
+	DefaultAction           DefaultThemeAction
+	SelectedFont            string
+	SelectedAccentTheme     string
+	SelectedLEDTheme        string
+	SelectedAccentThemeSource ThemeSource
+	SelectedLEDThemeSource    ThemeSource
+	SelectedIconPack        string
+	SelectedSystem          string // For system-specific options
 }
 
 // Global variables
@@ -73,11 +113,25 @@ var (
 		ConfirmScreen:      ConfirmScreen,
 		FontSelection:      FontSelection,
 		FontPreview:        FontPreview,
+		AccentMenu:         AccentMenu,
 		AccentSelection:    AccentSelection,
+		AccentExport:       AccentExport,
+		LEDMenu:            LEDMenu,
 		LEDSelection:       LEDSelection,
-		AccentConfirm:      AccentConfirm,
-		LEDConfirm:         LEDConfirm,
+		LEDExport:          LEDExport,
 		CustomizationMenu:  CustomizationMenu,
+		IconsMenu:          IconsMenu,
+		IconSelection:      IconSelection,
+		IconConfirm:        IconConfirm,
+		ClearIconsConfirm:  ClearIconsConfirm,
+		GlobalOptionsMenu:  GlobalOptionsMenu,
+		SystemOptionsMenu:  SystemOptionsMenu,
+		SystemOptionsForSelectedSystem: SystemOptionsForSelectedSystem,
+		SystemIconSelection: SystemIconSelection,
+		SystemIconConfirm:   SystemIconConfirm,
+		ResetMenu:          ResetMenu,
+		WallpaperSelection: WallpaperSelection,
+		WallpaperConfirm:   WallpaperConfirm,
 	}
 
 	state appState
@@ -151,4 +205,44 @@ func GetSelectedLEDTheme() string {
 // SetSelectedLEDTheme sets the selected LED theme
 func SetSelectedLEDTheme(theme string) {
 	state.SelectedLEDTheme = theme
+}
+
+// GetSelectedAccentThemeSource returns the selected accent theme source
+func GetSelectedAccentThemeSource() ThemeSource {
+	return state.SelectedAccentThemeSource
+}
+
+// SetSelectedAccentThemeSource sets the selected accent theme source
+func SetSelectedAccentThemeSource(source ThemeSource) {
+	state.SelectedAccentThemeSource = source
+}
+
+// GetSelectedLEDThemeSource returns the selected LED theme source
+func GetSelectedLEDThemeSource() ThemeSource {
+	return state.SelectedLEDThemeSource
+}
+
+// SetSelectedLEDThemeSource sets the selected LED theme source
+func SetSelectedLEDThemeSource(source ThemeSource) {
+	state.SelectedLEDThemeSource = source
+}
+
+// GetSelectedIconPack returns the selected icon pack
+func GetSelectedIconPack() string {
+	return state.SelectedIconPack
+}
+
+// SetSelectedIconPack sets the selected icon pack
+func SetSelectedIconPack(iconPack string) {
+	state.SelectedIconPack = iconPack
+}
+
+// GetSelectedSystem returns the selected system
+func GetSelectedSystem() string {
+	return state.SelectedSystem
+}
+
+// SetSelectedSystem sets the selected system
+func SetSelectedSystem(system string) {
+	state.SelectedSystem = system
 }

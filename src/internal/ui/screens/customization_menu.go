@@ -15,9 +15,10 @@ import (
 func CustomizationMenuScreen() (string, int) {
 	// Menu items
 	menu := []string{
-		"Systems",
+		"Global Options",
+		"System Options",
 		"Accents",
-		"LED Quick Settings",
+		"LEDs",
 		"Fonts",
 	}
 
@@ -32,18 +33,21 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Systems":
-			logging.LogDebug("Selected Systems (System Backgrounds)")
-			app.SetSelectedThemeType(app.CustomTheme)
-			return app.Screens.ThemeSelection
+		case "Global Options":
+			logging.LogDebug("Selected Global Options")
+			return app.Screens.GlobalOptionsMenu
+
+		case "System Options":
+			logging.LogDebug("Selected System Options")
+			return app.Screens.SystemOptionsMenu
 
 		case "Accents":
 			logging.LogDebug("Selected Accents")
-			return app.Screens.AccentSelection
+			return app.Screens.AccentMenu
 
-		case "LED Quick Settings":
-			logging.LogDebug("Selected LED Quick Settings")
-			return app.Screens.LEDSelection
+		case "LEDs":
+			logging.LogDebug("Selected LEDs")
+			return app.Screens.LEDMenu
 
 		case "Fonts":
 			logging.LogDebug("Selected Fonts")

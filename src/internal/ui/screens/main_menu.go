@@ -16,10 +16,9 @@ import (
 func MainMenuScreen() (string, int) {
 	// Menu items without numbers
 	menu := []string{
-		"Simple Themes",
-		"Dynamic Themes",
-		"Default Theme",
+		"Themes",
 		"Customization",
+		"Reset",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
@@ -33,24 +32,18 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Simple Themes":
-			logging.LogDebug("Selected Simple Themes")
-			app.SetSelectedThemeType(app.GlobalTheme)
-			return app.Screens.ThemeSelection
-
-		case "Dynamic Themes":
-			logging.LogDebug("Selected Dynamic Themes")
+		case "Themes":
+			logging.LogDebug("Selected Themes")
 			app.SetSelectedThemeType(app.DynamicTheme)
 			return app.Screens.ThemeSelection
-
-		case "Default Theme":
-			logging.LogDebug("Selected Default Theme")
-			app.SetSelectedThemeType(app.DefaultTheme)
-			return app.Screens.DefaultThemeOptions
 
 		case "Customization":
 			logging.LogDebug("Selected Customization")
 			return app.Screens.CustomizationMenu
+
+		case "Reset":
+			logging.LogDebug("Selected Reset")
+			return app.Screens.ResetMenu
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)

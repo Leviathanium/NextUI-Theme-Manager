@@ -11,6 +11,7 @@ import (
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/ui/screens"
 )
+
 func main() {
 	// Initialize the logger
 	defer logging.CloseLogger()
@@ -69,15 +70,25 @@ func main() {
 			selection, exitCode = screens.ThemeSelectionScreen()
 			nextScreen = screens.HandleThemeSelection(selection, exitCode)
 
-		case app.Screens.DefaultThemeOptions:
-			logging.LogDebug("Showing default theme options")
-			selection, exitCode = screens.DefaultThemeOptionsScreen()
-			nextScreen = screens.HandleDefaultThemeOptions(selection, exitCode)
+		case app.Screens.ResetMenu:
+			logging.LogDebug("Showing reset menu")
+			selection, exitCode = screens.ResetMenuScreen()
+			nextScreen = screens.HandleResetMenu(selection, exitCode)
 
-        case app.Screens.ConfirmScreen:
+		case app.Screens.ConfirmScreen:
 			logging.LogDebug("Showing confirmation screen")
 			selection, exitCode = screens.ConfirmScreen()
 			nextScreen = screens.HandleConfirmScreen(selection, exitCode)
+
+		case app.Screens.WallpaperConfirm:
+			logging.LogDebug("Showing wallpaper confirmation screen")
+			selection, exitCode = screens.WallpaperConfirmScreen()
+			nextScreen = screens.HandleWallpaperConfirm(selection, exitCode)
+
+		case app.Screens.SystemIconConfirm:
+			logging.LogDebug("Showing system icon confirmation screen")
+			selection, exitCode = screens.SystemIconConfirmScreen()
+			nextScreen = screens.HandleSystemIconConfirm(selection, exitCode)
 
 		case app.Screens.FontSelection:
 			logging.LogDebug("Showing font selection")
@@ -94,16 +105,81 @@ func main() {
 			selection, exitCode = screens.CustomizationMenuScreen()
 			nextScreen = screens.HandleCustomizationMenu(selection, exitCode)
 
+		case app.Screens.GlobalOptionsMenu:
+			logging.LogDebug("Showing global options menu")
+			selection, exitCode = screens.GlobalOptionsMenuScreen()
+			nextScreen = screens.HandleGlobalOptionsMenu(selection, exitCode)
+
+		case app.Screens.SystemOptionsMenu:
+			logging.LogDebug("Showing system options menu")
+			selection, exitCode = screens.SystemOptionsMenuScreen()
+			nextScreen = screens.HandleSystemOptionsMenu(selection, exitCode)
+
+		case app.Screens.SystemOptionsForSelectedSystem:
+			logging.LogDebug("Showing options for selected system")
+			selection, exitCode = screens.SystemOptionsForSelectedSystemScreen()
+			nextScreen = screens.HandleSystemOptionsForSelectedSystem(selection, exitCode)
+
+		case app.Screens.WallpaperSelection:
+			logging.LogDebug("Showing wallpaper selection")
+			selection, exitCode = screens.WallpaperSelectionScreen()
+			nextScreen = screens.HandleWallpaperSelection(selection, exitCode)
+
+		case app.Screens.AccentMenu:
+			logging.LogDebug("Showing accent menu")
+			selection, exitCode = screens.AccentMenuScreen()
+			nextScreen = screens.HandleAccentMenu(selection, exitCode)
+
 		case app.Screens.AccentSelection:
 			logging.LogDebug("Showing accent selection")
 			selection, exitCode = screens.AccentSelectionScreen()
 			nextScreen = screens.HandleAccentSelection(selection, exitCode)
 
+		case app.Screens.AccentExport:
+			logging.LogDebug("Handling accent export")
+			selection, exitCode = screens.AccentExportScreen()
+			nextScreen = screens.HandleAccentExport(selection, exitCode)
+
+		case app.Screens.LEDMenu:
+			logging.LogDebug("Showing LED menu")
+			selection, exitCode = screens.LEDMenuScreen()
+			nextScreen = screens.HandleLEDMenu(selection, exitCode)
+
 		case app.Screens.LEDSelection:
 			logging.LogDebug("Showing LED selection")
 			selection, exitCode = screens.LEDSelectionScreen()
 			nextScreen = screens.HandleLEDSelection(selection, exitCode)
-        }
+
+		case app.Screens.LEDExport:
+			logging.LogDebug("Handling LED export")
+			selection, exitCode = screens.LEDExportScreen()
+			nextScreen = screens.HandleLEDExport(selection, exitCode)
+
+		case app.Screens.IconsMenu:
+			logging.LogDebug("Showing icons menu")
+			selection, exitCode = screens.IconsMenuScreen()
+			nextScreen = screens.HandleIconsMenu(selection, exitCode)
+
+		case app.Screens.IconSelection:
+			logging.LogDebug("Showing icon selection")
+			selection, exitCode = screens.IconSelectionScreen()
+			nextScreen = screens.HandleIconSelection(selection, exitCode)
+
+		case app.Screens.SystemIconSelection:
+			logging.LogDebug("Showing system icon selection")
+			selection, exitCode = screens.SystemIconSelectionScreen()
+			nextScreen = screens.HandleSystemIconSelection(selection, exitCode)
+
+		case app.Screens.IconConfirm:
+			logging.LogDebug("Showing icon confirmation")
+			selection, exitCode = screens.IconConfirmScreen()
+			nextScreen = screens.HandleIconConfirm(selection, exitCode)
+
+		case app.Screens.ClearIconsConfirm:
+			logging.LogDebug("Showing clear icons confirmation")
+			selection, exitCode = screens.ClearIconsConfirmScreen()
+			nextScreen = screens.HandleClearIconsConfirm(selection, exitCode)
+		}
 
 		// Update the current screen
 		app.SetCurrentScreen(nextScreen)

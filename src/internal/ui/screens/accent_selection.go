@@ -17,21 +17,29 @@ import (
 func AccentSelectionScreen() (string, int) {
 	// Get list of available accent themes
 	var themesList []string
-	for _, theme := range accents.PredefinedThemes {
-		themesList = append(themesList, theme.Name)
-	}
+	var title string
 
-	// Add "Apply Changes" option
-	themesList = append(themesList, "Apply Changes")
+	// Choose which themes to display based on the selected source
+	if app.GetSelectedAccentThemeSource() == app.PresetSource {
+		title = "Preset Accent Themes"
+		for _, theme := range accents.PresetThemes {
+			themesList = append(themesList, theme.Name)
+		}
+	} else {
+		title = "Custom Accent Themes"
+		for _, theme := range accents.CustomThemes {
+			themesList = append(themesList, theme.Name)
+		}
+	}
 
 	if len(themesList) == 0 {
 		logging.LogDebug("No accent themes found")
-		ui.ShowMessage("No accent themes available.", "3")
+		ui.ShowMessage("No accent themes available in this category.", "3")
 		return "", 1
 	}
 
 	logging.LogDebug("Displaying %d accent themes", len(themesList))
-	return ui.DisplayMinUiList(strings.Join(themesList, "\n"), "text", "Select Accent Theme")
+	return ui.DisplayMinUiList(strings.Join(themesList, "\n"), "text", title)
 }
 
 // HandleAccentSelection processes the user's accent theme selection
@@ -40,21 +48,7 @@ func HandleAccentSelection(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		// Check if "Apply Changes" was selected
-		if selection == "Apply Changes" {
-			// Apply the current theme settings to the system
-			logging.LogDebug("Applying current accent settings")
-			err := accents.ApplyCurrentTheme()
-			if err != nil {
-				logging.LogDebug("Error applying accent theme: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-			} else {
-				ui.ShowMessage("Accent settings applied successfully!", "3")
-			}
-			return app.Screens.MainMenu
-		}
-
-		// User selected a theme - update in-memory state but don't apply yet
+		// User selected a theme - update in-memory state AND apply immediately
 		app.SetSelectedAccentTheme(selection)
 		logging.LogDebug("Selected accent theme: %s", selection)
 
@@ -62,16 +56,24 @@ func HandleAccentSelection(selection string, exitCode int) app.Screen {
 		if err := accents.UpdateCurrentTheme(selection); err != nil {
 			logging.LogDebug("Error updating accent theme in memory: %v", err)
 			ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-		} else {
-			ui.ShowMessage(fmt.Sprintf("Selected theme: %s\nChoose 'Apply Changes' to save", selection), "3")
+			return app.Screens.AccentSelection
 		}
 
-		// Return to accent selection screen
-		return app.Screens.AccentSelection
+		// Apply the theme immediately
+		logging.LogDebug("Applying accent theme immediately")
+		if err := accents.ApplyCurrentTheme(); err != nil {
+			logging.LogDebug("Error applying accent theme: %v", err)
+			ui.ShowMessage(fmt.Sprintf("Error applying theme: %s", err), "3")
+		} else {
+			ui.ShowMessage(fmt.Sprintf("Theme '%s' applied successfully!", selection), "3")
+		}
+
+		// Return to accent menu
+		return app.Screens.AccentMenu
 
 	case 1, 2:
 		// User pressed cancel or back
-		return app.Screens.MainMenu
+		return app.Screens.AccentMenu
 	}
 
 	return app.Screens.AccentSelection
