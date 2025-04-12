@@ -130,8 +130,8 @@ func ApplyGlobalTheme(themeName string) error {
 }
 
 // ApplyCustomTheme applies a custom theme to a specific system
-func ApplyCustomTheme(systemName string) error {
-	logging.LogDebug("Applying custom theme to system: %s", systemName)
+func ApplyCustomTheme(systemName string, themeName string) error {
+	logging.LogDebug("Applying custom theme to system: %s, theme: %s", systemName, themeName)
 
 	// Get current directory for absolute paths
 	cwd, err := os.Getwd()
@@ -146,38 +146,11 @@ func ApplyCustomTheme(systemName string) error {
 		return fmt.Errorf("error getting system paths: %w", err)
 	}
 
-	// Get all available backgrounds from Global themes
-	globalThemesPath := filepath.Join(cwd, "Themes", "Global")
-	logging.LogDebug("Scanning global themes directory: %s", globalThemesPath)
+	// Source background image
+	srcBg := filepath.Join(cwd, "Themes", "Global", themeName, "bg.png")
+	logging.LogDebug("Theme background path: %s", srcBg)
 
-	// List themes is now its own function we can reuse
-	themes, err := ListGlobalThemes(globalThemesPath)
-	if err != nil {
-		logging.LogDebug("Error reading global themes: %v", err)
-		return fmt.Errorf("error reading global themes: %w", err)
-	}
-
-	if len(themes) == 0 {
-		logging.LogDebug("No themes found in global themes directory")
-		return fmt.Errorf("no themes found in Global directory")
-	}
-
-	// Instead of handling UI here, we'll have the UI layer handle theme selection
-	// and just apply the selected theme by name
-
-	// Since our function is called with a specific theme name, we can now apply it directly
-	// This will be managed by the UI layer in theme_selection.go
-	themeName := os.Getenv("SELECTED_THEME")
-	if themeName == "" {
-		logging.LogDebug("No theme selected for system: %s", systemName)
-		return fmt.Errorf("no theme selected for system: %s", systemName)
-	}
-
-	// Source background
-	srcBg := filepath.Join(globalThemesPath, themeName, "bg.png")
-	logging.LogDebug("Selected theme: %s (%s)", themeName, srcBg)
-
-	// Check if the source file exists
+	// Check if the source background exists
 	if _, err := os.Stat(srcBg); err != nil {
 		logging.LogDebug("Theme background file not found: %s, error: %v", srcBg, err)
 		return fmt.Errorf("theme background file not found: %s", srcBg)
@@ -190,17 +163,66 @@ func ApplyCustomTheme(systemName string) error {
 	if systemName == "Root" {
 		targetPath = systemPaths.Root
 		targetMediaPath = filepath.Join(targetPath, ".media")
+
+		// Ensure media directory exists
+		if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
+			logging.LogDebug("Error creating media directory: %v", err)
+			return fmt.Errorf("failed to create media directory: %w", err)
+		}
+
+		// Apply background to .media directory
+		dstBg := filepath.Join(targetMediaPath, "bg.png")
+		if err := CopyFile(srcBg, dstBg); err != nil {
+			logging.LogDebug("Error copying background: %v", err)
+			return fmt.Errorf("failed to copy background: %w", err)
+		}
+
+		// Also copy to the root directory itself
+		rootBg := filepath.Join(targetPath, "bg.png")
+		if err := CopyFile(srcBg, rootBg); err != nil {
+			logging.LogDebug("Error copying to root: %v", err)
+			return fmt.Errorf("failed to copy background to root: %w", err)
+		}
+
 	} else if systemName == "Recently Played" {
 		targetPath = systemPaths.RecentlyPlayed
 		targetMediaPath = filepath.Join(targetPath, ".media")
+
+		// Ensure media directory exists
+		if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
+			logging.LogDebug("Error creating media directory: %v", err)
+			return fmt.Errorf("failed to create media directory: %w", err)
+		}
+
+		// Apply background
+		dstBg := filepath.Join(targetMediaPath, "bg.png")
+		if err := CopyFile(srcBg, dstBg); err != nil {
+			logging.LogDebug("Error copying background: %v", err)
+			return fmt.Errorf("failed to copy background: %w", err)
+		}
+
 	} else if systemName == "Tools" {
 		targetPath = systemPaths.Tools
 		targetMediaPath = filepath.Join(targetPath, ".media")
+
+		// Ensure media directory exists
+		if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
+			logging.LogDebug("Error creating media directory: %v", err)
+			return fmt.Errorf("failed to create media directory: %w", err)
+		}
+
+		// Apply background
+		dstBg := filepath.Join(targetMediaPath, "bg.png")
+		if err := CopyFile(srcBg, dstBg); err != nil {
+			logging.LogDebug("Error copying background: %v", err)
+			return fmt.Errorf("failed to copy background: %w", err)
+		}
+
 	} else {
 		// Find the system in our list
 		found := false
 		for _, system := range systemPaths.Systems {
-			if strings.Contains(system.Name, systemName) {
+			if system.Name == systemName {
 				targetPath = system.Path
 				targetMediaPath = system.MediaPath
 				found = true
@@ -212,27 +234,18 @@ func ApplyCustomTheme(systemName string) error {
 			logging.LogDebug("System not found: %s", systemName)
 			return fmt.Errorf("system not found: %s", systemName)
 		}
-	}
 
-	// Ensure media directory exists
-	if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
-		logging.LogDebug("Error creating media directory: %v", err)
-		return fmt.Errorf("failed to create media directory: %w", err)
-	}
+		// Ensure media directory exists
+		if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
+			logging.LogDebug("Error creating media directory: %v", err)
+			return fmt.Errorf("failed to create media directory: %w", err)
+		}
 
-	// Apply background
-	dstBg := filepath.Join(targetMediaPath, "bg.png")
-	if err := CopyFile(srcBg, dstBg); err != nil {
-		logging.LogDebug("Error copying background: %v", err)
-		return fmt.Errorf("failed to copy background: %w", err)
-	}
-
-	// If applying to root, also copy to the root directory itself
-	if systemName == "Root" {
-		rootBg := filepath.Join(targetPath, "bg.png")
-		if err := CopyFile(srcBg, rootBg); err != nil {
-			logging.LogDebug("Error copying to root: %v", err)
-			return fmt.Errorf("failed to copy background to root: %w", err)
+		// Apply background
+		dstBg := filepath.Join(targetMediaPath, "bg.png")
+		if err := CopyFile(srcBg, dstBg); err != nil {
+			logging.LogDebug("Error copying background: %v", err)
+			return fmt.Errorf("failed to copy background: %w", err)
 		}
 	}
 

@@ -174,14 +174,22 @@ func LoadIconPack(packName string) (*IconPack, error) {
 	return pack, nil
 }
 
-// ApplyIconPack applies the selected icon pack to the system
+// ApplyIconPack applies the selected icon pack to all systems or a specific system
 func ApplyIconPack(packName string) error {
-	logging.LogDebug("Applying icon pack: %s", packName)
+	return ApplyIconPackToSystem(packName, "")
+}
 
-	// First delete all existing icons to ensure clean application
-	if err := DeleteAllIcons(); err != nil {
-		logging.LogDebug("Warning: Failed to delete existing icons: %v", err)
-		// Continue anyway, as we'll overwrite icons
+// ApplyIconPackToSystem applies the selected icon pack to a specific system
+// If systemName is empty, applies to all systems
+func ApplyIconPackToSystem(packName string, systemName string) error {
+	logging.LogDebug("Applying icon pack: %s to system: %s", packName, systemName)
+
+	// If not applying to a specific system, first delete all existing icons to ensure clean application
+	if systemName == "" {
+		if err := DeleteAllIcons(); err != nil {
+			logging.LogDebug("Warning: Failed to delete existing icons: %v", err)
+			// Continue anyway, as we'll overwrite icons
+		}
 	}
 
 	// Load the icon pack
@@ -205,10 +213,67 @@ func ApplyIconPack(packName string) error {
 		return fmt.Errorf("error creating media directory: %w", err)
 	}
 
-	// Apply special icons first
-	if err := applySpecialIcons(pack, systemPaths); err != nil {
-		logging.LogDebug("Error applying special icons: %v", err)
-		// Continue with regular icons
+	// If applying to all systems, apply special icons
+	if systemName == "" {
+		if err := applySpecialIcons(pack, systemPaths); err != nil {
+			logging.LogDebug("Error applying special icons: %v", err)
+			// Continue with regular icons
+		}
+	} else if systemName == "Root" {
+		// Handle special case for Root
+		if collectionsIconPath, exists := pack.SpecialIcons[CollectionsIcon]; exists {
+			rootMediaPath := filepath.Join(systemPaths.Root, MediaDir)
+			if err := os.MkdirAll(rootMediaPath, 0755); err != nil {
+				logging.LogDebug("Error creating root media directory: %v", err)
+				return fmt.Errorf("error creating root media directory: %w", err)
+			}
+
+			destPath := filepath.Join(rootMediaPath, CollectionsIcon)
+			logging.LogDebug("Copying Collections icon: %s -> %s", collectionsIconPath, destPath)
+
+			if err := CopyFile(collectionsIconPath, destPath); err != nil {
+				logging.LogDebug("Error copying Collections icon: %v", err)
+				return fmt.Errorf("error copying Collections icon: %w", err)
+			}
+		}
+	} else if systemName == "Recently Played" {
+		// Handle special case for Recently Played
+		if rpIconPath, exists := pack.SpecialIcons[RecentlyPlayedIcon]; exists {
+			rootMediaPath := filepath.Join(systemPaths.Root, MediaDir)
+			if err := os.MkdirAll(rootMediaPath, 0755); err != nil {
+				logging.LogDebug("Error creating root media directory: %v", err)
+				return fmt.Errorf("error creating root media directory: %w", err)
+			}
+
+			destPath := filepath.Join(rootMediaPath, RecentlyPlayedIcon)
+			logging.LogDebug("Copying Recently Played icon: %s -> %s", rpIconPath, destPath)
+
+			if err := CopyFile(rpIconPath, destPath); err != nil {
+				logging.LogDebug("Error copying Recently Played icon: %v", err)
+				return fmt.Errorf("error copying Recently Played icon: %w", err)
+			}
+		}
+	} else if systemName == "Tools" {
+		// Handle special case for Tools
+		if toolsIconPath, exists := pack.SpecialIcons[ToolsIcon]; exists {
+			// Tools icon goes in Tools/.media/tg5040.png
+			// Need to go up one level from systemPaths.Tools to get base Tools directory
+			toolsBaseDir := filepath.Dir(systemPaths.Tools) // Gets Tools directory without tg5040
+			toolsMediaPath := filepath.Join(toolsBaseDir, MediaDir)
+
+			if err := os.MkdirAll(toolsMediaPath, 0755); err != nil {
+				logging.LogDebug("Error creating Tools media directory: %v", err)
+				return fmt.Errorf("error creating Tools media directory: %w", err)
+			}
+
+			destPath := filepath.Join(toolsMediaPath, ToolsIcon)
+			logging.LogDebug("Copying Tools icon: %s -> %s", toolsIconPath, destPath)
+
+			if err := CopyFile(toolsIconPath, destPath); err != nil {
+				logging.LogDebug("Error copying Tools icon: %v", err)
+				return fmt.Errorf("error copying Tools icon: %w", err)
+			}
+		}
 	}
 
 	// Create a map of system tags to icons for faster lookup
@@ -219,11 +284,16 @@ func ApplyIconPack(packName string) error {
 		}
 	}
 
-	// Apply icons to each system
+	// Apply icons to each system or just the specified system
 	for _, sysInfo := range systemPaths.Systems {
 		// Skip if system has no tag
 		if sysInfo.Tag == "" {
 			logging.LogDebug("Skipping system with no tag: %s", sysInfo.Name)
+			continue
+		}
+
+		// If applying to a specific system, check if this is the one
+		if systemName != "" && systemName != sysInfo.Name {
 			continue
 		}
 

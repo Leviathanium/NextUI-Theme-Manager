@@ -6,8 +6,8 @@ package screens
 import (
 	"fmt"
 	"strings"
-    "nextui-themes/internal/icons"
 	"nextui-themes/internal/app"
+	"nextui-themes/internal/icons"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/system"
 	"nextui-themes/internal/ui"
@@ -136,7 +136,7 @@ func HandleSystemIconSelection(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an icon pack - proceed to confirmation
 		app.SetSelectedIconPack(selection)
-		return app.Screens.IconConfirm
+		return app.Screens.SystemIconConfirm
 
 	case 1, 2:
 		// User pressed cancel or back
@@ -144,4 +144,52 @@ func HandleSystemIconSelection(selection string, exitCode int) app.Screen {
 	}
 
 	return app.Screens.SystemIconSelection
+}
+
+// SystemIconConfirmScreen asks for confirmation before applying an icon pack to a specific system
+func SystemIconConfirmScreen() (string, int) {
+	message := fmt.Sprintf("Apply icon pack '%s' to %s?",
+	                      app.GetSelectedIconPack(), app.GetSelectedSystem())
+
+	options := []string{
+		"Yes",
+		"No",
+	}
+
+	return ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
+}
+
+// HandleSystemIconConfirm processes the user's confirmation choice for system-specific icon pack
+func HandleSystemIconConfirm(selection string, exitCode int) app.Screen {
+	logging.LogDebug("HandleSystemIconConfirm called with selection: '%s', exitCode: %d", selection, exitCode)
+
+	switch exitCode {
+	case 0:
+		if selection == "Yes" {
+			// Apply the selected icon pack to the specific system
+			logging.LogDebug("User confirmed, applying icon pack to specific system")
+
+			// Get the selected icon pack and system name
+			iconPack := app.GetSelectedIconPack()
+			systemName := app.GetSelectedSystem()
+
+			// Apply the icon pack to the specific system
+			err := icons.ApplyIconPackToSystem(iconPack, systemName)
+			if err != nil {
+				logging.LogDebug("Error applying icon pack to system: %v", err)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			} else {
+				ui.ShowMessage(fmt.Sprintf("Applied icon pack '%s' to %s", iconPack, systemName), "3")
+			}
+		}
+		// Return to system options regardless of Yes/No selection
+		return app.Screens.SystemOptionsForSelectedSystem
+
+	case 1, 2:
+		// User pressed cancel or back
+		logging.LogDebug("User cancelled, returning to system icon selection")
+		return app.Screens.SystemIconSelection
+	}
+
+	return app.Screens.SystemOptionsForSelectedSystem
 }

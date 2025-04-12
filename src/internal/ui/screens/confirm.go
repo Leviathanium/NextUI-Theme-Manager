@@ -25,7 +25,13 @@ func ConfirmScreen() (string, int) {
 	case app.DynamicTheme:
 		message = fmt.Sprintf("Apply dynamic theme '%s'?", app.GetSelectedTheme())
 	case app.CustomTheme:
-		message = fmt.Sprintf("Select theme for '%s'?", app.GetSelectedTheme())
+		// This is for system-specific wallpaper application
+		systemName := app.GetSelectedSystem()
+		if systemName != "" {
+			message = fmt.Sprintf("Apply wallpaper '%s' to %s?", app.GetSelectedTheme(), systemName)
+		} else {
+			message = fmt.Sprintf("Select theme for '%s'?", app.GetSelectedTheme())
+		}
 	case app.DefaultTheme:
 		if app.GetDefaultAction() == app.OverwriteAction {
 			message = "Apply default black theme to all directories?"
@@ -55,7 +61,11 @@ func HandleConfirmScreen(selection string, exitCode int) app.Screen {
 		} else {
 			logging.LogDebug("User selected No, returning to previous screen")
 			if app.GetSelectedThemeType() == app.DefaultTheme {
-				return app.Screens.DefaultThemeOptions
+				return app.Screens.ResetMenu
+			} else if app.GetSelectedThemeType() == app.GlobalTheme {
+				return app.Screens.GlobalOptionsMenu
+			} else if app.GetSelectedThemeType() == app.CustomTheme && app.GetSelectedSystem() != "" {
+				return app.Screens.SystemOptionsForSelectedSystem
 			} else {
 				return app.Screens.ThemeSelection
 			}
@@ -64,9 +74,76 @@ func HandleConfirmScreen(selection string, exitCode int) app.Screen {
 		// User pressed cancel or back
 		logging.LogDebug("User cancelled, returning to previous screen")
 		if app.GetSelectedThemeType() == app.DefaultTheme {
-			return app.Screens.DefaultThemeOptions
+			return app.Screens.ResetMenu
+		} else if app.GetSelectedThemeType() == app.GlobalTheme {
+			return app.Screens.GlobalOptionsMenu
+		} else if app.GetSelectedThemeType() == app.CustomTheme && app.GetSelectedSystem() != "" {
+			return app.Screens.SystemOptionsForSelectedSystem
 		} else {
 			return app.Screens.ThemeSelection
+		}
+	}
+
+	// Default return to main menu
+	if app.GetSelectedThemeType() == app.GlobalTheme {
+		return app.Screens.GlobalOptionsMenu
+	} else if app.GetSelectedThemeType() == app.CustomTheme && app.GetSelectedSystem() != "" {
+		return app.Screens.SystemOptionsForSelectedSystem
+	} else {
+		return app.Screens.MainMenu
+	}
+}
+
+// WallpaperConfirmScreen asks for confirmation before applying a wallpaper
+func WallpaperConfirmScreen() (string, int) {
+	var message string
+
+	// Check if we're applying to a specific system
+	if app.GetSelectedSystem() != "" {
+		message = fmt.Sprintf("Apply wallpaper '%s' to %s?",
+		                     app.GetSelectedTheme(), app.GetSelectedSystem())
+	} else {
+		message = fmt.Sprintf("Apply wallpaper '%s' to all directories?",
+		                     app.GetSelectedTheme())
+	}
+
+	options := []string{
+		"Yes",
+		"No",
+	}
+
+	return ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
+}
+
+// HandleWallpaperConfirm processes the user's confirmation for a wallpaper
+func HandleWallpaperConfirm(selection string, exitCode int) app.Screen {
+	logging.LogDebug("HandleWallpaperConfirm called with selection: '%s', exitCode: %d", selection, exitCode)
+
+	switch exitCode {
+	case 0:
+		if selection == "Yes" {
+			// Apply the wallpaper
+			if app.GetSelectedSystem() != "" {
+				// System-specific wallpaper
+				applySystemWallpaper()
+			} else {
+				// Global wallpaper
+				applyGlobalWallpaper()
+			}
+		}
+
+		// Return to appropriate screen based on context
+		if app.GetSelectedSystem() != "" {
+			return app.Screens.SystemOptionsForSelectedSystem
+		} else {
+			return app.Screens.GlobalOptionsMenu
+		}
+	case 1, 2:
+		// User pressed cancel or back
+		if app.GetSelectedSystem() != "" {
+			return app.Screens.SystemOptionsForSelectedSystem
+		} else {
+			return app.Screens.GlobalOptionsMenu
 		}
 	}
 
@@ -134,31 +211,22 @@ func applyTheme() {
 			return
 		}
 
-		// Show theme selection menu
-		logging.LogDebug("Displaying theme selection menu for %s", app.GetSelectedTheme())
-		themeName, exitCode := ui.DisplayMinUiList(
-			strings.Join(themesList, "\n"),
-			"text",
-			fmt.Sprintf("Select Theme for %s", app.GetSelectedTheme()),
-		)
-
-		if exitCode != 0 || themeName == "" {
-			message = "Theme selection cancelled"
-			ui.ShowMessage(message, "3")
-			return
-		}
-
-		// Set the selected theme as an environment variable for the theme package to use
-		os.Setenv("SELECTED_THEME", themeName)
-
-		// Apply custom theme to specific system
-		logging.LogDebug("Applying custom theme to: %s", app.GetSelectedTheme())
-		err = themes.ApplyCustomTheme(app.GetSelectedTheme())
-		if err != nil {
-			logging.LogDebug("Error applying custom theme: %v", err)
-			message = fmt.Sprintf("Error: %s", err)
+		// Apply to specific system if one is selected
+		systemName := app.GetSelectedSystem()
+		if systemName != "" {
+			// Apply custom theme to specific system
+			logging.LogDebug("Applying custom theme to: %s", systemName)
+			err = themes.ApplyCustomTheme(systemName, app.GetSelectedTheme())
+			if err != nil {
+				logging.LogDebug("Error applying custom theme: %v", err)
+				message = fmt.Sprintf("Error: %s", err)
+			} else {
+				message = fmt.Sprintf("Applied theme to: %s", systemName)
+			}
 		} else {
-			message = fmt.Sprintf("Applied theme to: %s", app.GetSelectedTheme())
+			// No system selected - display error
+			logging.LogDebug("No system selected for custom theme")
+			message = "No system selected for custom theme"
 		}
 
 	case app.DefaultTheme:
@@ -185,4 +253,37 @@ func applyTheme() {
 	}
 
 	ui.ShowMessage(message, "3")
+}
+
+// applySystemWallpaper applies a wallpaper to a specific system
+func applySystemWallpaper() {
+	selectedSystem := app.GetSelectedSystem()
+	selectedTheme := app.GetSelectedTheme()
+
+	logging.LogDebug("Applying wallpaper '%s' to system: %s", selectedTheme, selectedSystem)
+
+	// Apply the custom theme to the specific system
+	err := themes.ApplyCustomTheme(selectedSystem, selectedTheme)
+	if err != nil {
+		logging.LogDebug("Error applying wallpaper: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	} else {
+		ui.ShowMessage(fmt.Sprintf("Applied wallpaper '%s' to %s", selectedTheme, selectedSystem), "3")
+	}
+}
+
+// applyGlobalWallpaper applies a wallpaper to all systems
+func applyGlobalWallpaper() {
+	selectedTheme := app.GetSelectedTheme()
+
+	logging.LogDebug("Applying global wallpaper: %s", selectedTheme)
+
+	// Apply the global theme to all directories
+	err := themes.ApplyGlobalTheme(selectedTheme)
+	if err != nil {
+		logging.LogDebug("Error applying global wallpaper: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	} else {
+		ui.ShowMessage(fmt.Sprintf("Applied global wallpaper: %s", selectedTheme), "3")
+	}
 }

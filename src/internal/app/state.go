@@ -44,37 +44,41 @@ const (
 	ClearIconsConfirm
 	GlobalOptionsMenu
 	SystemOptionsMenu
+	SystemOptionsForSelectedSystem
 	SystemIconSelection
+	SystemIconConfirm
 	ResetMenu
 	WallpaperSelection
+	WallpaperConfirm
 )
 
 // ScreenEnum holds all available screens
-// In src/internal/app/state.go
 type ScreenEnum struct {
-    MainMenu           Screen
-    ThemeSelection     Screen
-    DefaultThemeOptions Screen
-    ConfirmScreen      Screen
-    FontSelection      Screen
-    FontPreview        Screen
-    AccentMenu         Screen
-    AccentSelection    Screen
-    AccentExport       Screen
-    LEDMenu            Screen
-    LEDSelection       Screen
-    LEDExport          Screen
-    CustomizationMenu  Screen
-    IconsMenu          Screen
-    IconSelection      Screen
-    IconConfirm        Screen
-    ClearIconsConfirm  Screen
-    GlobalOptionsMenu  Screen
-    SystemOptionsMenu  Screen
-    SystemOptionsForSelectedSystem Screen  // Add this line
-    SystemIconSelection Screen
-    ResetMenu          Screen
-    WallpaperSelection Screen
+	MainMenu           Screen
+	ThemeSelection     Screen
+	DefaultThemeOptions Screen
+	ConfirmScreen      Screen
+	FontSelection      Screen
+	FontPreview        Screen
+	AccentMenu         Screen
+	AccentSelection    Screen
+	AccentExport       Screen
+	LEDMenu            Screen
+	LEDSelection       Screen
+	LEDExport          Screen
+	CustomizationMenu  Screen
+	IconsMenu          Screen
+	IconSelection      Screen
+	IconConfirm        Screen
+	ClearIconsConfirm  Screen
+	GlobalOptionsMenu  Screen
+	SystemOptionsMenu  Screen
+	SystemOptionsForSelectedSystem Screen
+	SystemIconSelection Screen
+	SystemIconConfirm   Screen
+	ResetMenu          Screen
+	WallpaperSelection Screen
+	WallpaperConfirm   Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -122,9 +126,12 @@ var (
 		ClearIconsConfirm:  ClearIconsConfirm,
 		GlobalOptionsMenu:  GlobalOptionsMenu,
 		SystemOptionsMenu:  SystemOptionsMenu,
+		SystemOptionsForSelectedSystem: SystemOptionsForSelectedSystem,
 		SystemIconSelection: SystemIconSelection,
+		SystemIconConfirm:   SystemIconConfirm,
 		ResetMenu:          ResetMenu,
 		WallpaperSelection: WallpaperSelection,
+		WallpaperConfirm:   WallpaperConfirm,
 	}
 
 	state appState

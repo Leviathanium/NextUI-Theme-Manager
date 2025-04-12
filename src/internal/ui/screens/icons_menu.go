@@ -81,15 +81,15 @@ func HandleClearIconsConfirm(selection string, exitCode int) app.Screen {
 			} else {
 				ui.ShowMessage("All system icons have been cleared", "3")
 			}
-		} else {
-			logging.LogDebug("User selected No, canceling icon deletion")
-			return app.Screens.IconsMenu
 		}
+		// Return to reset menu regardless of Yes/No selection
+		return app.Screens.ResetMenu
+
 	case 1, 2:
 		// User pressed cancel or back
-		logging.LogDebug("User cancelled, returning to icons menu")
-		return app.Screens.IconsMenu
+		logging.LogDebug("User cancelled, returning to reset menu")
+		return app.Screens.ResetMenu
 	}
 
-	return app.Screens.IconsMenu
+	return app.Screens.ResetMenu
 }
