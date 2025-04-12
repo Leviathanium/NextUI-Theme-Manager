@@ -35,92 +35,34 @@ type LEDTheme struct {
 
 // LightSettings represents settings for one LED light
 type LightSettings struct {
-	Name        string
-	Effect      int
-	Color1      string
-	Color2      string
-	Speed       int
-	Brightness  int
-	Trigger     int
-	Filename    string
+	Name         string
+	Effect       int
+	Color1       string
+	Color2       string
+	Speed        int
+	Brightness   int
+	Trigger      int
+	Filename     string
 	InBrightness int
 }
 
 // Settings file paths
 const (
-	BrickSettingsPath = "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
+	BrickSettingsPath  = "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
 	NormalSettingsPath = "/mnt/SDCARD/.userdata/shared/ledsettings.txt"
+	LEDsDir            = "LEDs"      // Directory for external LED theme files
+	PresetsDir         = "Presets"   // Subdirectory for preset themes
+	CustomDir          = "Custom"    // Subdirectory for custom themes
+	StaticEffectValue  = 4           // Using Static Color effect (index 4)
 )
 
 // Current LED settings in memory
 var (
 	CurrentLEDSettings []LightSettings
-	CurrentLEDTheme string
+	CurrentLEDTheme    string
+	PresetLEDThemes    []LEDTheme
+	CustomLEDThemes    []LEDTheme
 )
-
-// Predefined LED themes
-var PredefinedThemes = []LEDTheme{
-	{
-		Name:   "White Static",
-		Color:  "#FFFFFF",
-		Effect: Static,
-	},
-	{
-		Name:   "Blue Static",
-		Color:  "#3366FF",
-		Effect: Static,
-	},
-	{
-		Name:   "Green Static",
-		Color:  "#00AA00",
-		Effect: Static,
-	},
-	{
-		Name:   "Red Static",
-		Color:  "#AA0000",
-		Effect: Static,
-	},
-	{
-		Name:   "Purple Static",
-		Color:  "#8833FF",
-		Effect: Static,
-	},
-	{
-		Name:   "Orange Static",
-		Color:  "#FF8833",
-		Effect: Static,
-	},
-	{
-		Name:   "White Breathing",
-		Color:  "#FFFFFF",
-		Effect: Breathe,
-	},
-	{
-		Name:   "Blue Breathing",
-		Color:  "#3366FF",
-		Effect: Breathe,
-	},
-	{
-		Name:   "Green Breathing",
-		Color:  "#00AA00",
-		Effect: Breathe,
-	},
-	{
-		Name:   "Red Breathing",
-		Color:  "#AA0000",
-		Effect: Breathe,
-	},
-	{
-		Name:   "Purple Breathing",
-		Color:  "#8833FF",
-		Effect: Breathe,
-	},
-	{
-		Name:   "Orange Breathing",
-		Color:  "#FF8833",
-		Effect: Breathe,
-	},
-}
 
 // InitLEDSettings initializes the LED settings from disk
 func InitLEDSettings() error {
@@ -137,47 +79,47 @@ func InitLEDSettings() error {
 		// Create default light settings for a brick device
 		CurrentLEDSettings = []LightSettings{
 			{
-				Name:        "F1 key",
-				Effect:      int(Static),
-				Color1:      "#FFFFFF",
-				Color2:      "#000000",
-				Speed:       1000,
-				Brightness:  100,
-				Trigger:     1,
-				Filename:    "",
+				Name:         "F1 key",
+				Effect:       StaticEffectValue,
+				Color1:       "#FFFFFF",
+				Color2:       "#000000",
+				Speed:        1000,
+				Brightness:   100,
+				Trigger:      1,
+				Filename:     "",
 				InBrightness: 100,
 			},
 			{
-				Name:        "F2 key",
-				Effect:      int(Static),
-				Color1:      "#FFFFFF",
-				Color2:      "#000000",
-				Speed:       1000,
-				Brightness:  100,
-				Trigger:     1,
-				Filename:    "",
+				Name:         "F2 key",
+				Effect:       StaticEffectValue,
+				Color1:       "#FFFFFF",
+				Color2:       "#000000",
+				Speed:        1000,
+				Brightness:   100,
+				Trigger:      1,
+				Filename:     "",
 				InBrightness: 100,
 			},
 			{
-				Name:        "Top bar",
-				Effect:      int(Static),
-				Color1:      "#FFFFFF",
-				Color2:      "#000000",
-				Speed:       1000,
-				Brightness:  100,
-				Trigger:     1,
-				Filename:    "",
+				Name:         "Top bar",
+				Effect:       StaticEffectValue,
+				Color1:       "#FFFFFF",
+				Color2:       "#000000",
+				Speed:        1000,
+				Brightness:   100,
+				Trigger:      1,
+				Filename:     "",
 				InBrightness: 100,
 			},
 			{
-				Name:        "L&R triggers",
-				Effect:      int(Static),
-				Color1:      "#FFFFFF",
-				Color2:      "#000000",
-				Speed:       1000,
-				Brightness:  100,
-				Trigger:     1,
-				Filename:    "",
+				Name:         "L&R triggers",
+				Effect:       StaticEffectValue,
+				Color1:       "#FFFFFF",
+				Color2:       "#000000",
+				Speed:        1000,
+				Brightness:   100,
+				Trigger:      1,
+				Filename:     "",
 				InBrightness: 100,
 			},
 		}
@@ -186,8 +128,186 @@ func InitLEDSettings() error {
 		DetermineCurrentTheme()
 	}
 
+	// Load external LED theme files
+	if err := LoadExternalLEDThemes(); err != nil {
+		logging.LogDebug("Warning: Could not load external LED themes: %v", err)
+	}
+
+	// Create placeholder files
+	if err := CreatePlaceholderFiles(); err != nil {
+		logging.LogDebug("Warning: Could not create placeholder files: %v", err)
+	}
+
 	logging.LogDebug("LED settings initialized with theme: %s", CurrentLEDTheme)
 	return nil
+}
+
+// LoadExternalLEDThemes loads LED themes from external files
+func LoadExternalLEDThemes() error {
+	// Clear the current lists of external themes
+	PresetLEDThemes = []LEDTheme{}
+	CustomLEDThemes = []LEDTheme{}
+
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Load preset themes
+	presetsDir := filepath.Join(cwd, LEDsDir, PresetsDir)
+	logging.LogDebug("Loading preset LED themes from: %s", presetsDir)
+	if err := loadThemesFromDir(presetsDir, &PresetLEDThemes); err != nil {
+		logging.LogDebug("Warning: Could not load preset LED themes: %v", err)
+	}
+
+	// Load custom themes
+	customDir := filepath.Join(cwd, LEDsDir, CustomDir)
+	logging.LogDebug("Loading custom LED themes from: %s", customDir)
+	if err := loadThemesFromDir(customDir, &CustomLEDThemes); err != nil {
+		logging.LogDebug("Warning: Could not load custom LED themes: %v", err)
+	}
+
+	logging.LogDebug("Loaded %d preset and %d custom LED themes", len(PresetLEDThemes), len(CustomLEDThemes))
+	return nil
+}
+
+// loadThemesFromDir loads themes from a specific directory
+func loadThemesFromDir(themesDir string, themesList *[]LEDTheme) error {
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(themesDir, 0755); err != nil {
+		logging.LogDebug("Error creating LED themes directory: %v", err)
+		return fmt.Errorf("error creating LED themes directory: %w", err)
+	}
+
+	// Read the directory
+	entries, err := os.ReadDir(themesDir)
+	if err != nil {
+		logging.LogDebug("Error reading LED themes directory: %v", err)
+		return fmt.Errorf("error reading LED themes directory: %w", err)
+	}
+
+	// Process each file in the directory
+	for _, entry := range entries {
+		// Skip directories and hidden files
+		if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+
+		// Skip files that don't have a .txt extension
+		if !strings.HasSuffix(entry.Name(), ".txt") {
+			continue
+		}
+
+		// Skip placeholder files
+		if strings.Contains(entry.Name(), "Place-") && strings.Contains(entry.Name(), "-Here") {
+			continue
+		}
+
+		// Extract theme name (remove .txt extension)
+		themeName := strings.TrimSuffix(entry.Name(), ".txt")
+
+		// Load the LED settings from the file
+		lightSettings, err := ReadLEDSettingsFile(filepath.Join(themesDir, entry.Name()))
+		if err != nil {
+			logging.LogDebug("Error reading LED settings file %s: %v", entry.Name(), err)
+			continue
+		}
+
+		// Create a theme from the settings
+		if len(lightSettings) > 0 {
+			// Use the first light's settings for the theme
+			theme := LEDTheme{
+				Name:   themeName,
+				Color:  lightSettings[0].Color1,
+				Effect: StaticColor, // Always use static color effect (per user request)
+			}
+
+			// Add the theme to the list
+			*themesList = append(*themesList, theme)
+		}
+	}
+
+	return nil
+}
+
+// ReadLEDSettingsFile reads LED settings from a file
+func ReadLEDSettingsFile(filepath string) ([]LightSettings, error) {
+	// Open the file
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open LED settings file: %w", err)
+	}
+	defer file.Close()
+
+	var settings []LightSettings
+	var currentLight *LightSettings
+
+	// Read the file line by line
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines
+		if line == "" {
+			continue
+		}
+
+		// Check for section header
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			// Extract light name
+			lightName := line[1 : len(line)-1]
+
+			// Add the previous light settings if they exist
+			if currentLight != nil {
+				settings = append(settings, *currentLight)
+			}
+
+			// Start a new light settings
+			currentLight = &LightSettings{
+				Name: lightName,
+				// Default values
+				Effect:       StaticEffectValue, // Always use static color effect
+				Speed:        1000,
+				Brightness:   100,
+				Trigger:      1,
+				InBrightness: 100,
+				Color2:       "#000000", // Default black for secondary color
+			}
+			continue
+		}
+
+		// Skip if we're not in a section yet
+		if currentLight == nil {
+			continue
+		}
+
+		// Parse key-value pair
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Set the appropriate field - only care about color1 (as per user request)
+		if key == "color1" {
+			currentLight.Color1 = convertHexFormat(value, false) // Convert to display format
+		}
+	}
+
+	// Add the last light if there is one
+	if currentLight != nil {
+		settings = append(settings, *currentLight)
+	}
+
+	if scanner.Err() != nil {
+		return nil, fmt.Errorf("error reading LED settings file: %w", scanner.Err())
+	}
+
+	return settings, nil
 }
 
 // convertHexFormat converts between display format (#RRGGBB) and storage format (0xRRGGBB)
@@ -339,7 +459,7 @@ func GetCurrentLEDSettings() ([]LightSettings, error) {
 	return settings, nil
 }
 
-// DetermineCurrentTheme tries to determine which predefined theme is closest to the current settings
+// DetermineCurrentTheme tries to determine which theme is closest to the current settings
 func DetermineCurrentTheme() {
 	// Default
 	CurrentLEDTheme = "Custom"
@@ -351,11 +471,10 @@ func DetermineCurrentTheme() {
 	// Use the first light as reference
 	firstLight := CurrentLEDSettings[0]
 
-	// Check if all lights have the same effect and color
+	// Check if all lights have the same color
 	allSame := true
 	for i := 1; i < len(CurrentLEDSettings); i++ {
-		if CurrentLEDSettings[i].Effect != firstLight.Effect ||
-		   CurrentLEDSettings[i].Color1 != firstLight.Color1 {
+		if CurrentLEDSettings[i].Color1 != firstLight.Color1 {
 			allSame = false
 			break
 		}
@@ -365,10 +484,17 @@ func DetermineCurrentTheme() {
 		return
 	}
 
-	// Find matching predefined theme
-	for _, theme := range PredefinedThemes {
-		if int(theme.Effect) == firstLight.Effect &&
-		   convertHexFormat(theme.Color, true) == convertHexFormat(firstLight.Color1, true) {
+	// First try to find a match in preset themes
+	for _, theme := range PresetLEDThemes {
+		if convertHexFormat(theme.Color, true) == convertHexFormat(firstLight.Color1, true) {
+			CurrentLEDTheme = theme.Name
+			return
+		}
+	}
+
+	// Then try to find a match in custom themes
+	for _, theme := range CustomLEDThemes {
+		if convertHexFormat(theme.Color, true) == convertHexFormat(firstLight.Color1, true) {
 			CurrentLEDTheme = theme.Name
 			return
 		}
@@ -379,29 +505,38 @@ func DetermineCurrentTheme() {
 func UpdateCurrentLEDTheme(themeName string) error {
 	logging.LogDebug("Updating current LED theme to: %s", themeName)
 
-	// Find the selected theme
-	var selectedTheme *LEDTheme
-	for _, theme := range PredefinedThemes {
+	// First look in preset themes
+	for _, theme := range PresetLEDThemes {
 		if theme.Name == themeName {
-			selectedTheme = &theme
-			break
+			// Update all light settings with the theme's values
+			for i := range CurrentLEDSettings {
+				CurrentLEDSettings[i].Effect = StaticEffectValue // Always use static color effect
+				CurrentLEDSettings[i].Color1 = theme.Color
+			}
+
+			CurrentLEDTheme = themeName
+			logging.LogDebug("LED theme updated from preset theme: %s", CurrentLEDTheme)
+			return nil
 		}
 	}
 
-	if selectedTheme == nil {
-		return fmt.Errorf("LED theme not found: %s", themeName)
+	// Then look in custom themes
+	for _, theme := range CustomLEDThemes {
+		if theme.Name == themeName {
+			// Update all light settings with the theme's values
+			for i := range CurrentLEDSettings {
+				CurrentLEDSettings[i].Effect = StaticEffectValue // Always use static color effect
+				CurrentLEDSettings[i].Color1 = theme.Color
+			}
+
+			CurrentLEDTheme = themeName
+			logging.LogDebug("LED theme updated from custom theme: %s", CurrentLEDTheme)
+			return nil
+		}
 	}
 
-	// Update all light settings with the theme's values
-	for i := range CurrentLEDSettings {
-		CurrentLEDSettings[i].Effect = int(selectedTheme.Effect)
-		CurrentLEDSettings[i].Color1 = selectedTheme.Color
-	}
-
-	CurrentLEDTheme = themeName
-
-	logging.LogDebug("LED theme updated in memory: %s", CurrentLEDTheme)
-	return nil
+	logging.LogDebug("LED theme not found: %s", themeName)
+	return fmt.Errorf("LED theme not found: %s", themeName)
 }
 
 // ApplyLEDTheme applies the LED theme to all lights
@@ -467,4 +602,136 @@ func ApplyCurrentLEDSettings() error {
 
 	logging.LogDebug("Successfully applied LED settings")
 	return nil
+}
+
+// SaveLEDThemeToFile saves the current LED settings to an external file
+func SaveLEDThemeToFile(fileName string, isCustom bool) error {
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Path to themes directory
+	var themesDir string
+	if isCustom {
+		themesDir = filepath.Join(cwd, LEDsDir, CustomDir)
+	} else {
+		themesDir = filepath.Join(cwd, LEDsDir, PresetsDir)
+	}
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(themesDir, 0755); err != nil {
+		logging.LogDebug("Error creating LED themes directory: %v", err)
+		return fmt.Errorf("error creating LED themes directory: %w", err)
+	}
+
+	// Full path to the file
+	filePath := filepath.Join(themesDir, fileName)
+
+	// Create the file
+	file, err := os.Create(filePath)
+	if err != nil {
+		logging.LogDebug("Error creating LED theme file: %v", err)
+		return fmt.Errorf("error creating LED theme file: %w", err)
+	}
+	defer file.Close()
+
+	// Get the color from the first light - we only care about color (as per user request)
+	if len(CurrentLEDSettings) == 0 {
+		return fmt.Errorf("no current LED settings to save")
+	}
+
+	color1 := convertHexFormat(CurrentLEDSettings[0].Color1, true)
+
+	// Write just enough information to allow loading the color
+	for _, light := range CurrentLEDSettings {
+		fmt.Fprintf(file, "[%s]\n", light.Name)
+		fmt.Fprintf(file, "color1=%s\n", color1)
+		fmt.Fprintf(file, "\n")
+	}
+
+	logging.LogDebug("Successfully saved LED theme to file: %s", filePath)
+	return nil
+}
+
+// CreatePlaceholderFiles creates placeholder files in the theme directories
+func CreatePlaceholderFiles() error {
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Create directories
+	presetsDir := filepath.Join(cwd, LEDsDir, PresetsDir)
+	customDir := filepath.Join(cwd, LEDsDir, CustomDir)
+
+	if err := os.MkdirAll(presetsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create presets directory: %w", err)
+	}
+
+	if err := os.MkdirAll(customDir, 0755); err != nil {
+		return fmt.Errorf("failed to create custom directory: %w", err)
+	}
+
+	// Create placeholder file in custom directory if empty
+	entries, err := os.ReadDir(customDir)
+	if err != nil {
+		return fmt.Errorf("failed to read custom directory: %w", err)
+	}
+
+	if len(entries) == 0 {
+		placeholderPath := filepath.Join(customDir, "Place-LED-Files-Here.txt")
+		file, err := os.Create(placeholderPath)
+		if err != nil {
+			return fmt.Errorf("failed to create placeholder file: %w", err)
+		}
+
+		_, err = file.WriteString("# Place custom LED theme files in this directory\n\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		_, err = file.WriteString("# Format should be:\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		_, err = file.WriteString("[F1 key]\ncolor1=0xRRGGBB\n\n[F2 key]\ncolor1=0xRRGGBB\n\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		_, err = file.WriteString("[Top bar]\ncolor1=0xRRGGBB\n\n[L&R triggers]\ncolor1=0xRRGGBB\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		file.Close()
+	}
+
+	return nil
+}
+
+// Static LED colors for preset themes
+var StaticLEDColors = []struct {
+	Name  string
+	Color string
+}{
+	{Name: "White", Color: "#FFFFFF"},
+	{Name: "Blue", Color: "#3366FF"},
+	{Name: "Green", Color: "#00AA00"},
+	{Name: "Red", Color: "#AA0000"},
+	{Name: "Purple", Color: "#8833FF"},
+	{Name: "Orange", Color: "#FF8833"},
+	{Name: "Teal", Color: "#00AAAA"},
+	{Name: "Pink", Color: "#FF66FF"},
+	{Name: "Yellow", Color: "#FFFF33"},
 }

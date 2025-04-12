@@ -13,6 +13,14 @@ const (
 	DefaultTheme
 )
 
+// ThemeSource represents the source of themes (preset vs custom)
+type ThemeSource int
+
+const (
+	PresetSource ThemeSource = iota
+	CustomSource
+)
+
 // Screen represents the different UI screens
 type Screen int
 
@@ -23,10 +31,12 @@ const (
 	ConfirmScreen
 	FontSelection
 	FontPreview
+	AccentMenu
 	AccentSelection
+	AccentExport
+	LEDMenu
 	LEDSelection
-	AccentConfirm
-	LEDConfirm
+	LEDExport
 	CustomizationMenu
 )
 
@@ -38,10 +48,12 @@ type ScreenEnum struct {
 	ConfirmScreen      Screen
 	FontSelection      Screen
 	FontPreview        Screen
+	AccentMenu         Screen
 	AccentSelection    Screen
+	AccentExport       Screen
+	LEDMenu            Screen
 	LEDSelection       Screen
-	AccentConfirm      Screen
-	LEDConfirm         Screen
+	LEDExport          Screen
 	CustomizationMenu  Screen
 }
 
@@ -55,13 +67,15 @@ const (
 
 // AppState holds the current state of the application
 type appState struct {
-	CurrentScreen      Screen
-	SelectedThemeType  ThemeType
-	SelectedTheme      string
-	DefaultAction      DefaultThemeAction
-	SelectedFont       string
-	SelectedAccentTheme string
-	SelectedLEDTheme    string
+	CurrentScreen           Screen
+	SelectedThemeType       ThemeType
+	SelectedTheme           string
+	DefaultAction           DefaultThemeAction
+	SelectedFont            string
+	SelectedAccentTheme     string
+	SelectedLEDTheme        string
+	SelectedAccentThemeSource ThemeSource
+	SelectedLEDThemeSource    ThemeSource
 }
 
 // Global variables
@@ -73,10 +87,12 @@ var (
 		ConfirmScreen:      ConfirmScreen,
 		FontSelection:      FontSelection,
 		FontPreview:        FontPreview,
+		AccentMenu:         AccentMenu,
 		AccentSelection:    AccentSelection,
+		AccentExport:       AccentExport,
+		LEDMenu:            LEDMenu,
 		LEDSelection:       LEDSelection,
-		AccentConfirm:      AccentConfirm,
-		LEDConfirm:         LEDConfirm,
+		LEDExport:          LEDExport,
 		CustomizationMenu:  CustomizationMenu,
 	}
 
@@ -151,4 +167,24 @@ func GetSelectedLEDTheme() string {
 // SetSelectedLEDTheme sets the selected LED theme
 func SetSelectedLEDTheme(theme string) {
 	state.SelectedLEDTheme = theme
+}
+
+// GetSelectedAccentThemeSource returns the selected accent theme source
+func GetSelectedAccentThemeSource() ThemeSource {
+	return state.SelectedAccentThemeSource
+}
+
+// SetSelectedAccentThemeSource sets the selected accent theme source
+func SetSelectedAccentThemeSource(source ThemeSource) {
+	state.SelectedAccentThemeSource = source
+}
+
+// GetSelectedLEDThemeSource returns the selected LED theme source
+func GetSelectedLEDThemeSource() ThemeSource {
+	return state.SelectedLEDThemeSource
+}
+
+// SetSelectedLEDThemeSource sets the selected LED theme source
+func SetSelectedLEDThemeSource(source ThemeSource) {
+	state.SelectedLEDThemeSource = source
 }

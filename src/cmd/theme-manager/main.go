@@ -11,6 +11,7 @@ import (
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/ui/screens"
 )
+
 func main() {
 	// Initialize the logger
 	defer logging.CloseLogger()
@@ -74,7 +75,7 @@ func main() {
 			selection, exitCode = screens.DefaultThemeOptionsScreen()
 			nextScreen = screens.HandleDefaultThemeOptions(selection, exitCode)
 
-        case app.Screens.ConfirmScreen:
+		case app.Screens.ConfirmScreen:
 			logging.LogDebug("Showing confirmation screen")
 			selection, exitCode = screens.ConfirmScreen()
 			nextScreen = screens.HandleConfirmScreen(selection, exitCode)
@@ -94,16 +95,36 @@ func main() {
 			selection, exitCode = screens.CustomizationMenuScreen()
 			nextScreen = screens.HandleCustomizationMenu(selection, exitCode)
 
+		case app.Screens.AccentMenu:
+			logging.LogDebug("Showing accent menu")
+			selection, exitCode = screens.AccentMenuScreen()
+			nextScreen = screens.HandleAccentMenu(selection, exitCode)
+
 		case app.Screens.AccentSelection:
 			logging.LogDebug("Showing accent selection")
 			selection, exitCode = screens.AccentSelectionScreen()
 			nextScreen = screens.HandleAccentSelection(selection, exitCode)
 
+		case app.Screens.AccentExport:
+			logging.LogDebug("Showing accent export")
+			selection, exitCode = screens.AccentExportScreen()
+			nextScreen = screens.HandleAccentExport(selection, exitCode)
+
+		case app.Screens.LEDMenu:
+			logging.LogDebug("Showing LED menu")
+			selection, exitCode = screens.LEDMenuScreen()
+			nextScreen = screens.HandleLEDMenu(selection, exitCode)
+
 		case app.Screens.LEDSelection:
 			logging.LogDebug("Showing LED selection")
 			selection, exitCode = screens.LEDSelectionScreen()
 			nextScreen = screens.HandleLEDSelection(selection, exitCode)
-        }
+
+		case app.Screens.LEDExport:
+			logging.LogDebug("Showing LED export")
+			selection, exitCode = screens.LEDExportScreen()
+			nextScreen = screens.HandleLEDExport(selection, exitCode)
+		}
 
 		// Update the current screen
 		app.SetCurrentScreen(nextScreen)

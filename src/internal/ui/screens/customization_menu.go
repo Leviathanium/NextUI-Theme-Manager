@@ -39,11 +39,11 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 
 		case "Accents":
 			logging.LogDebug("Selected Accents")
-			return app.Screens.AccentSelection
+			return app.Screens.AccentMenu
 
 		case "LED Quick Settings":
 			logging.LogDebug("Selected LED Quick Settings")
-			return app.Screens.LEDSelection
+			return app.Screens.LEDMenu
 
 		case "Fonts":
 			logging.LogDebug("Selected Fonts")

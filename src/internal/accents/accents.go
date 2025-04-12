@@ -27,86 +27,19 @@ type ThemeColor struct {
 // Settings file path
 const (
 	SettingsPath = "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
+	AccentsDir   = "Accents" // Directory for external accent theme files
+	PresetsDir   = "Presets" // Subdirectory for preset themes
+	CustomDir    = "Custom"  // Subdirectory for custom themes
 )
-
-// Predefined color themes
-var PredefinedThemes = []ThemeColor{
-	{
-		Name:   "Classic White",
-		Color1: "#FFFFFF", // White
-		Color2: "#9B2257", // Pink
-		Color3: "#1E2329", // Dark Blue
-		Color4: "#FFFFFF", // White
-		Color5: "#000000", // Black
-		Color6: "#FFFFFF", // White
-	},
-	{
-		Name:   "Midnight Blue",
-		Color1: "#000044", // Dark Blue
-		Color2: "#3366FF", // Bright Blue
-		Color3: "#6699FF", // Light Blue
-		Color4: "#FFFFFF", // White
-		Color5: "#99CCFF", // Very Light Blue
-		Color6: "#B3D9FF", // Almost White Blue
-	},
-	{
-		Name:   "Forest Green",
-		Color1: "#004400", // Dark Green
-		Color2: "#00AA00", // Medium Green
-		Color3: "#33FF33", // Bright Green
-		Color4: "#FFFFFF", // White
-		Color5: "#80FF80", // Light Green
-		Color6: "#B3FFB3", // Very Light Green
-	},
-	{
-		Name:   "Ruby Red",
-		Color1: "#440000", // Dark Red
-		Color2: "#AA0000", // Medium Red
-		Color3: "#FF3333", // Bright Red
-		Color4: "#FFFFFF", // White
-		Color5: "#FF8080", // Light Red
-		Color6: "#FFB3B3", // Very Light Red
-	},
-	{
-		Name:   "Royal Purple",
-		Color1: "#330066", // Dark Purple
-		Color2: "#6600CC", // Medium Purple
-		Color3: "#8833FF", // Bright Purple
-		Color4: "#FFFFFF", // White
-		Color5: "#BB80FF", // Light Purple
-		Color6: "#DDB3FF", // Very Light Purple
-	},
-	{
-		Name:   "Sunset Orange",
-		Color1: "#442200", // Dark Orange
-		Color2: "#AA5500", // Medium Orange
-		Color3: "#FF8833", // Bright Orange
-		Color4: "#FFFFFF", // White
-		Color5: "#FFBB80", // Light Orange
-		Color6: "#FFDDB3", // Very Light Orange
-	},
-	{
-		Name:   "Teal Dream",
-		Color1: "#004444", // Dark Teal
-		Color2: "#00AAAA", // Medium Teal
-		Color3: "#33FFFF", // Bright Teal
-		Color4: "#FFFFFF", // White
-		Color5: "#80FFFF", // Light Teal
-		Color6: "#B3FFFF", // Very Light Teal
-	},
-	{
-		Name:   "Monochrome",
-		Color1: "#0A0A0A", // Almost Black
-		Color2: "#505050", // Dark Gray
-		Color3: "#8C8C8C", // Medium Gray
-		Color4: "#DCDC4C", // Light Gray
-		Color5: "#FFFFFF", // White
-		Color6: "#C8C8C8", // Silver
-	},
-}
 
 // CurrentTheme holds the currently loaded theme settings
 var CurrentTheme ThemeColor
+
+// External themes loaded from files
+var (
+	PresetThemes []ThemeColor
+	CustomThemes []ThemeColor
+)
 
 // convertHexFormat converts between display format (#RRGGBB) and storage format (0xRRGGBB)
 func convertHexFormat(color string, toStorage bool) string {
@@ -153,8 +86,153 @@ func InitAccentColors() error {
 		CurrentTheme.Color6 = convertHexFormat(theme.Color6, false)
 	}
 
+	// Load external theme files
+	if err := LoadExternalAccentThemes(); err != nil {
+		logging.LogDebug("Warning: Could not load external themes: %v", err)
+	}
+
 	logging.LogDebug("Current accent colors initialized: %+v", CurrentTheme)
 	return nil
+}
+
+// LoadExternalAccentThemes loads accent themes from external files
+func LoadExternalAccentThemes() error {
+	// Clear the current lists of external themes
+	PresetThemes = []ThemeColor{}
+	CustomThemes = []ThemeColor{}
+
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Load preset themes
+	presetsDir := filepath.Join(cwd, AccentsDir, PresetsDir)
+	logging.LogDebug("Loading preset accent themes from: %s", presetsDir)
+	if err := loadThemesFromDir(presetsDir, &PresetThemes); err != nil {
+		logging.LogDebug("Warning: Could not load preset themes: %v", err)
+	}
+
+	// Load custom themes
+	customDir := filepath.Join(cwd, AccentsDir, CustomDir)
+	logging.LogDebug("Loading custom accent themes from: %s", customDir)
+	if err := loadThemesFromDir(customDir, &CustomThemes); err != nil {
+		logging.LogDebug("Warning: Could not load custom themes: %v", err)
+	}
+
+	logging.LogDebug("Loaded %d preset and %d custom accent themes", len(PresetThemes), len(CustomThemes))
+	return nil
+}
+
+// loadThemesFromDir loads themes from a specific directory
+func loadThemesFromDir(themesDir string, themesList *[]ThemeColor) error {
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(themesDir, 0755); err != nil {
+		logging.LogDebug("Error creating themes directory: %v", err)
+		return fmt.Errorf("error creating themes directory: %w", err)
+	}
+
+	// Read the directory
+	entries, err := os.ReadDir(themesDir)
+	if err != nil {
+		logging.LogDebug("Error reading themes directory: %v", err)
+		return fmt.Errorf("error reading themes directory: %w", err)
+	}
+
+	// Process each file in the directory
+	for _, entry := range entries {
+		// Skip directories and hidden files
+		if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+
+		// Skip files that don't have a .txt extension
+		if !strings.HasSuffix(entry.Name(), ".txt") {
+			continue
+		}
+
+		// Skip placeholder files
+		if strings.Contains(entry.Name(), "Place-") && strings.Contains(entry.Name(), "-Here") {
+			continue
+		}
+
+		// Extract theme name (remove .txt extension)
+		themeName := strings.TrimSuffix(entry.Name(), ".txt")
+
+		// Read the theme file
+		theme, err := ReadThemeFile(filepath.Join(themesDir, entry.Name()))
+		if err != nil {
+			logging.LogDebug("Error reading theme file %s: %v", entry.Name(), err)
+			continue
+		}
+
+		// Set the theme name
+		theme.Name = themeName
+
+		// Add the theme to the list
+		*themesList = append(*themesList, *theme)
+	}
+
+	return nil
+}
+
+// ReadThemeFile reads an accent theme from a file
+func ReadThemeFile(filepath string) (*ThemeColor, error) {
+	// Open the file
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open theme file: %w", err)
+	}
+	defer file.Close()
+
+	// Create a new theme
+	theme := &ThemeColor{
+		Name: "External Theme", // Default name, will be replaced
+	}
+
+	// Read the file line by line
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Skip empty lines
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		// Parse key=value pairs
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Assign values to the theme
+		switch key {
+		case "color1":
+			theme.Color1 = convertHexFormat(value, false)
+		case "color2":
+			theme.Color2 = convertHexFormat(value, false)
+		case "color3":
+			theme.Color3 = convertHexFormat(value, false)
+		case "color4":
+			theme.Color4 = convertHexFormat(value, false)
+		case "color5":
+			theme.Color5 = convertHexFormat(value, false)
+		case "color6":
+			theme.Color6 = convertHexFormat(value, false)
+		}
+	}
+
+	if scanner.Err() != nil {
+		return nil, fmt.Errorf("error reading theme file: %w", scanner.Err())
+	}
+
+	return theme, nil
 }
 
 // GetCurrentColors reads the current theme colors from the settings file
@@ -220,9 +298,8 @@ func GetCurrentColors() (*ThemeColor, error) {
 func UpdateCurrentTheme(themeName string) error {
 	logging.LogDebug("Updating current theme to: %s", themeName)
 
-	// Find the selected theme
-	var found bool
-	for _, theme := range PredefinedThemes {
+	// First look in preset themes
+	for _, theme := range PresetThemes {
 		if theme.Name == themeName {
 			CurrentTheme.Name = theme.Name
 			CurrentTheme.Color1 = theme.Color1
@@ -231,17 +308,30 @@ func UpdateCurrentTheme(themeName string) error {
 			CurrentTheme.Color4 = theme.Color4
 			CurrentTheme.Color5 = theme.Color5
 			CurrentTheme.Color6 = theme.Color6
-			found = true
-			break
+
+			logging.LogDebug("Theme updated from preset theme: %+v", CurrentTheme)
+			return nil
 		}
 	}
 
-	if !found {
-		return fmt.Errorf("theme not found: %s", themeName)
+	// Then look in custom themes
+	for _, theme := range CustomThemes {
+		if theme.Name == themeName {
+			CurrentTheme.Name = theme.Name
+			CurrentTheme.Color1 = theme.Color1
+			CurrentTheme.Color2 = theme.Color2
+			CurrentTheme.Color3 = theme.Color3
+			CurrentTheme.Color4 = theme.Color4
+			CurrentTheme.Color5 = theme.Color5
+			CurrentTheme.Color6 = theme.Color6
+
+			logging.LogDebug("Theme updated from custom theme: %+v", CurrentTheme)
+			return nil
+		}
 	}
 
-	logging.LogDebug("Theme updated in memory: %+v", CurrentTheme)
-	return nil
+	logging.LogDebug("Theme not found: %s", themeName)
+	return fmt.Errorf("theme not found: %s", themeName)
 }
 
 // ApplyThemeColors applies the specified theme colors to the system
@@ -341,4 +431,131 @@ func GetColorPreviewText(colorName string, colorValue string) string {
 func ApplyCurrentTheme() error {
 	logging.LogDebug("Applying current in-memory theme")
 	return ApplyThemeColors(&CurrentTheme)
+}
+
+// SaveThemeToFile saves a theme to an external file
+func SaveThemeToFile(theme *ThemeColor, fileName string, isCustom bool) error {
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Path to themes directory
+	var themesDir string
+	if isCustom {
+		themesDir = filepath.Join(cwd, AccentsDir, CustomDir)
+	} else {
+		themesDir = filepath.Join(cwd, AccentsDir, PresetsDir)
+	}
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(themesDir, 0755); err != nil {
+		logging.LogDebug("Error creating themes directory: %v", err)
+		return fmt.Errorf("error creating themes directory: %w", err)
+	}
+
+	// Full path to the file
+	filePath := filepath.Join(themesDir, fileName)
+
+	// Create the file
+	file, err := os.Create(filePath)
+	if err != nil {
+		logging.LogDebug("Error creating theme file: %v", err)
+		return fmt.Errorf("error creating theme file: %w", err)
+	}
+	defer file.Close()
+
+	// Write theme colors to the file
+	_, err = fmt.Fprintf(file, "color1=%s\n", convertHexFormat(theme.Color1, true))
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(file, "color2=%s\n", convertHexFormat(theme.Color2, true))
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(file, "color3=%s\n", convertHexFormat(theme.Color3, true))
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(file, "color4=%s\n", convertHexFormat(theme.Color4, true))
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(file, "color5=%s\n", convertHexFormat(theme.Color5, true))
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintf(file, "color6=%s\n", convertHexFormat(theme.Color6, true))
+	if err != nil {
+		return err
+	}
+
+	logging.LogDebug("Successfully saved theme to file: %s", filePath)
+	return nil
+}
+
+// CreatePlaceholderFiles creates placeholder files in the theme directories
+func CreatePlaceholderFiles() error {
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Create directories
+	presetsDir := filepath.Join(cwd, AccentsDir, PresetsDir)
+	customDir := filepath.Join(cwd, AccentsDir, CustomDir)
+
+	if err := os.MkdirAll(presetsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create presets directory: %w", err)
+	}
+
+	if err := os.MkdirAll(customDir, 0755); err != nil {
+		return fmt.Errorf("failed to create custom directory: %w", err)
+	}
+
+	// Create placeholder file in custom directory if empty
+	entries, err := os.ReadDir(customDir)
+	if err != nil {
+		return fmt.Errorf("failed to read custom directory: %w", err)
+	}
+
+	if len(entries) == 0 {
+		placeholderPath := filepath.Join(customDir, "Place-Accent-Files-Here.txt")
+		file, err := os.Create(placeholderPath)
+		if err != nil {
+			return fmt.Errorf("failed to create placeholder file: %w", err)
+		}
+
+		_, err = file.WriteString("# Place custom accent theme files in this directory\n\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		_, err = file.WriteString("# Format should be:\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		_, err = file.WriteString("color1=0xRRGGBB\ncolor2=0xRRGGBB\ncolor3=0xRRGGBB\ncolor4=0xRRGGBB\ncolor5=0xRRGGBB\ncolor6=0xRRGGBB\n")
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write placeholder content: %w", err)
+		}
+
+		file.Close()
+	}
+
+	return nil
 }
