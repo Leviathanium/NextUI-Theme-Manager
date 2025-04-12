@@ -58,6 +58,11 @@ func convertHexFormat(color string, toStorage bool) string {
 	}
 }
 
+// ConvertHexFormat is the exported version of convertHexFormat
+func ConvertHexFormat(color string, toStorage bool) string {
+	return convertHexFormat(color, toStorage)
+}
+
 // InitAccentColors loads the current accent colors from disk
 func InitAccentColors() error {
 	logging.LogDebug("Initializing accent colors")

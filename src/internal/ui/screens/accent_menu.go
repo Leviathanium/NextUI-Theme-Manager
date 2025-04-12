@@ -41,8 +41,8 @@ func HandleAccentMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedAccentThemeSource(app.CustomSource)
 			return app.Screens.AccentSelection
 
-		case "Export Current Theme":
-			logging.LogDebug("Selected Export Current Theme")
+		case "Export Current Accents":
+			logging.LogDebug("Selected Export Current Accents")
 			return app.Screens.AccentExport
 
 		default:

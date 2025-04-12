@@ -41,8 +41,8 @@ func HandleLEDMenu(selection string, exitCode int) app.Screen {
 			app.SetSelectedLEDThemeSource(app.CustomSource)
 			return app.Screens.LEDSelection
 
-		case "Export Current Settings":
-			logging.LogDebug("Selected Export Current LED Settings")
+		case "Export Current LEDs":
+			logging.LogDebug("Selected Export Current LEDs")
 			return app.Screens.LEDExport
 
 		default:
