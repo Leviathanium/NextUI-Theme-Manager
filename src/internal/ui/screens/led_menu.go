@@ -5,7 +5,6 @@ package screens
 
 import (
 	"strings"
-
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/ui"

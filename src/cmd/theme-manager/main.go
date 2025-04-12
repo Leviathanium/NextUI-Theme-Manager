@@ -70,10 +70,10 @@ func main() {
 			selection, exitCode = screens.ThemeSelectionScreen()
 			nextScreen = screens.HandleThemeSelection(selection, exitCode)
 
-		case app.Screens.DefaultThemeOptions:
-			logging.LogDebug("Showing default theme options")
-			selection, exitCode = screens.DefaultThemeOptionsScreen()
-			nextScreen = screens.HandleDefaultThemeOptions(selection, exitCode)
+		case app.Screens.ResetMenu:
+			logging.LogDebug("Showing reset menu")
+			selection, exitCode = screens.ResetMenuScreen()
+			nextScreen = screens.HandleResetMenu(selection, exitCode)
 
 		case app.Screens.ConfirmScreen:
 			logging.LogDebug("Showing confirmation screen")
@@ -95,6 +95,26 @@ func main() {
 			selection, exitCode = screens.CustomizationMenuScreen()
 			nextScreen = screens.HandleCustomizationMenu(selection, exitCode)
 
+		case app.Screens.GlobalOptionsMenu:
+			logging.LogDebug("Showing global options menu")
+			selection, exitCode = screens.GlobalOptionsMenuScreen()
+			nextScreen = screens.HandleGlobalOptionsMenu(selection, exitCode)
+
+		case app.Screens.SystemOptionsMenu:
+			logging.LogDebug("Showing system options menu")
+			selection, exitCode = screens.SystemOptionsMenuScreen()
+			nextScreen = screens.HandleSystemOptionsMenu(selection, exitCode)
+
+		case app.Screens.SystemOptionsForSelectedSystem:
+			logging.LogDebug("Showing options for selected system")
+			selection, exitCode = screens.SystemOptionsForSelectedSystemScreen()
+			nextScreen = screens.HandleSystemOptionsForSelectedSystem(selection, exitCode)
+
+		case app.Screens.WallpaperSelection:
+			logging.LogDebug("Showing wallpaper selection")
+			selection, exitCode = screens.WallpaperSelectionScreen()
+			nextScreen = screens.HandleWallpaperSelection(selection, exitCode)
+
 		case app.Screens.AccentMenu:
 			logging.LogDebug("Showing accent menu")
 			selection, exitCode = screens.AccentMenuScreen()
@@ -106,7 +126,7 @@ func main() {
 			nextScreen = screens.HandleAccentSelection(selection, exitCode)
 
 		case app.Screens.AccentExport:
-			logging.LogDebug("Showing accent export")
+			logging.LogDebug("Handling accent export")
 			selection, exitCode = screens.AccentExportScreen()
 			nextScreen = screens.HandleAccentExport(selection, exitCode)
 
@@ -121,7 +141,7 @@ func main() {
 			nextScreen = screens.HandleLEDSelection(selection, exitCode)
 
 		case app.Screens.LEDExport:
-			logging.LogDebug("Showing LED export")
+			logging.LogDebug("Handling LED export")
 			selection, exitCode = screens.LEDExportScreen()
 			nextScreen = screens.HandleLEDExport(selection, exitCode)
 
@@ -134,6 +154,11 @@ func main() {
 			logging.LogDebug("Showing icon selection")
 			selection, exitCode = screens.IconSelectionScreen()
 			nextScreen = screens.HandleIconSelection(selection, exitCode)
+
+		case app.Screens.SystemIconSelection:
+			logging.LogDebug("Showing system icon selection")
+			selection, exitCode = screens.SystemIconSelectionScreen()
+			nextScreen = screens.HandleSystemIconSelection(selection, exitCode)
 
 		case app.Screens.IconConfirm:
 			logging.LogDebug("Showing icon confirmation")

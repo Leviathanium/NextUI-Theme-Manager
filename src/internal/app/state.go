@@ -42,27 +42,39 @@ const (
 	IconSelection
 	IconConfirm
 	ClearIconsConfirm
+	GlobalOptionsMenu
+	SystemOptionsMenu
+	SystemIconSelection
+	ResetMenu
+	WallpaperSelection
 )
 
 // ScreenEnum holds all available screens
+// In src/internal/app/state.go
 type ScreenEnum struct {
-	MainMenu           Screen
-	ThemeSelection     Screen
-	DefaultThemeOptions Screen
-	ConfirmScreen      Screen
-	FontSelection      Screen
-	FontPreview        Screen
-	AccentMenu         Screen
-	AccentSelection    Screen
-	AccentExport       Screen
-	LEDMenu            Screen
-	LEDSelection       Screen
-	LEDExport          Screen
-	CustomizationMenu  Screen
-	IconsMenu          Screen
-	IconSelection      Screen
-	IconConfirm        Screen
-	ClearIconsConfirm  Screen
+    MainMenu           Screen
+    ThemeSelection     Screen
+    DefaultThemeOptions Screen
+    ConfirmScreen      Screen
+    FontSelection      Screen
+    FontPreview        Screen
+    AccentMenu         Screen
+    AccentSelection    Screen
+    AccentExport       Screen
+    LEDMenu            Screen
+    LEDSelection       Screen
+    LEDExport          Screen
+    CustomizationMenu  Screen
+    IconsMenu          Screen
+    IconSelection      Screen
+    IconConfirm        Screen
+    ClearIconsConfirm  Screen
+    GlobalOptionsMenu  Screen
+    SystemOptionsMenu  Screen
+    SystemOptionsForSelectedSystem Screen  // Add this line
+    SystemIconSelection Screen
+    ResetMenu          Screen
+    WallpaperSelection Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -85,6 +97,7 @@ type appState struct {
 	SelectedAccentThemeSource ThemeSource
 	SelectedLEDThemeSource    ThemeSource
 	SelectedIconPack        string
+	SelectedSystem          string // For system-specific options
 }
 
 // Global variables
@@ -107,6 +120,11 @@ var (
 		IconSelection:      IconSelection,
 		IconConfirm:        IconConfirm,
 		ClearIconsConfirm:  ClearIconsConfirm,
+		GlobalOptionsMenu:  GlobalOptionsMenu,
+		SystemOptionsMenu:  SystemOptionsMenu,
+		SystemIconSelection: SystemIconSelection,
+		ResetMenu:          ResetMenu,
+		WallpaperSelection: WallpaperSelection,
 	}
 
 	state appState
@@ -210,4 +228,14 @@ func GetSelectedIconPack() string {
 // SetSelectedIconPack sets the selected icon pack
 func SetSelectedIconPack(iconPack string) {
 	state.SelectedIconPack = iconPack
+}
+
+// GetSelectedSystem returns the selected system
+func GetSelectedSystem() string {
+	return state.SelectedSystem
+}
+
+// SetSelectedSystem sets the selected system
+func SetSelectedSystem(system string) {
+	state.SelectedSystem = system
 }

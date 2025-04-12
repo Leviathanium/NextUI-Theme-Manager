@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"bufio"
 	"strings"
+	"regexp"
+	"strconv"
 
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/accents"
@@ -16,50 +18,83 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// AccentExportScreen displays the accent theme export screen
+// AccentExportScreen exports the current accent settings with a sequential name
 func AccentExportScreen() (string, int) {
-	// Prompt for a theme name
-	return ui.DisplayMinUiList("Enter a name for the theme", "text", "Export Current Accents")
-}
+	// Generate sequential file name (Accents_1, Accents_2, etc.)
+	fileName := generateSequentialAccentFileName()
 
-// HandleAccentExport processes the user's accent theme export
-func HandleAccentExport(themeName string, exitCode int) app.Screen {
-	logging.LogDebug("HandleAccentExport called with theme name: '%s', exitCode: %d", themeName, exitCode)
+	// Export directly using the generated file name
+	err := exportAccentSettings(fileName)
+	if err != nil {
+		logging.LogDebug("Error exporting accent settings: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	} else {
+		ui.ShowMessage(fmt.Sprintf("Accent settings exported as: %s", fileName), "3")
 
-	switch exitCode {
-	case 0:
-		if themeName != "" {
-			// Create a filename with .txt extension
-			fileName := themeName + ".txt"
-
-			// Export directly from system settings file to custom themes directory
-			err := exportAccentSettings(fileName)
-			if err != nil {
-				logging.LogDebug("Error exporting accent settings: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-			} else {
-				ui.ShowMessage(fmt.Sprintf("Accent settings exported as: %s", themeName), "3")
-
-				// Refresh the themes list
-				err = accents.LoadExternalAccentThemes()
-				if err != nil {
-					logging.LogDebug("Error refreshing themes: %v", err)
-				}
-			}
-		} else {
-			ui.ShowMessage("Export cancelled: No name provided", "3")
+		// Refresh the themes list
+		err = accents.LoadExternalAccentThemes()
+		if err != nil {
+			logging.LogDebug("Error refreshing themes: %v", err)
 		}
-		return app.Screens.AccentMenu
-
-	case 1, 2:
-		// User pressed cancel or back
-		return app.Screens.AccentMenu
 	}
 
+	return "", 0 // Return to accent menu after exporting
+}
+
+// HandleAccentExport processes the accent theme export
+func HandleAccentExport(selection string, exitCode int) app.Screen {
+	// Simply return to the accent menu after export
 	return app.Screens.AccentMenu
 }
 
-// exportAccentSettings exports accent settings directly from system settings file to a theme file
+// generateSequentialAccentFileName generates a sequential file name (Accents_1, Accents_2, etc.)
+func generateSequentialAccentFileName() string {
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return "Accents_1.txt"
+	}
+
+	// Custom accents directory path
+	customDir := filepath.Join(cwd, accents.AccentsDir, accents.CustomDir)
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(customDir, 0755); err != nil {
+		logging.LogDebug("Error creating custom accents directory: %v", err)
+		return "Accents_1.txt"
+	}
+
+	// Read the directory
+	entries, err := os.ReadDir(customDir)
+	if err != nil {
+		logging.LogDebug("Error reading custom accents directory: %v", err)
+		return "Accents_1.txt"
+	}
+
+	// Find the highest number in existing "Accents_X.txt" files
+	highestNum := 0
+	regex := regexp.MustCompile(`^Accents_(\d+)\.txt$`)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		matches := regex.FindStringSubmatch(entry.Name())
+		if len(matches) == 2 {
+			num, err := strconv.Atoi(matches[1])
+			if err == nil && num > highestNum {
+				highestNum = num
+			}
+		}
+	}
+
+	// Generate new file name with the next number
+	return fmt.Sprintf("Accents_%d.txt", highestNum+1)
+}
+
+// exportAccentSettings exports accent settings to a file
 func exportAccentSettings(fileName string) error {
 	// System settings file path
 	settingsPath := accents.SettingsPath

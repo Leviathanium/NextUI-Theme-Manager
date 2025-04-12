@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"bufio"
 	"strings"
+	"regexp"
+	"strconv"
 
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/leds"
@@ -16,50 +18,83 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// LEDExportScreen displays the LED theme export screen
+// LEDExportScreen exports the current LED settings with a sequential name
 func LEDExportScreen() (string, int) {
-	// Prompt for a theme name
-	return ui.DisplayMinUiList("Enter a name for the LED theme", "text", "Export Current LEDs")
-}
+	// Generate sequential file name (LEDs_1, LEDs_2, etc.)
+	fileName := generateSequentialLEDFileName()
 
-// HandleLEDExport processes the user's LED theme export
-func HandleLEDExport(themeName string, exitCode int) app.Screen {
-	logging.LogDebug("HandleLEDExport called with theme name: '%s', exitCode: %d", themeName, exitCode)
+	// Export directly using the generated file name
+	err := exportLEDSettings(fileName)
+	if err != nil {
+		logging.LogDebug("Error exporting LED settings: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	} else {
+		ui.ShowMessage(fmt.Sprintf("LED settings exported as: %s", fileName), "3")
 
-	switch exitCode {
-	case 0:
-		if themeName != "" {
-			// Create a filename with .txt extension
-			fileName := themeName + ".txt"
-
-			// Export directly from system LED settings file to custom themes directory
-			err := exportLEDSettings(fileName)
-			if err != nil {
-				logging.LogDebug("Error exporting LED settings: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-			} else {
-				ui.ShowMessage(fmt.Sprintf("LED settings exported as: %s", themeName), "3")
-
-				// Refresh the LED themes list
-				err = leds.LoadExternalLEDThemes()
-				if err != nil {
-					logging.LogDebug("Error refreshing LED themes: %v", err)
-				}
-			}
-		} else {
-			ui.ShowMessage("Export cancelled: No name provided", "3")
+		// Refresh the LED themes list
+		err = leds.LoadExternalLEDThemes()
+		if err != nil {
+			logging.LogDebug("Error refreshing LED themes: %v", err)
 		}
-		return app.Screens.LEDMenu
-
-	case 1, 2:
-		// User pressed cancel or back
-		return app.Screens.LEDMenu
 	}
 
+	return "", 0 // Return to LED menu after exporting
+}
+
+// HandleLEDExport processes the LED theme export
+func HandleLEDExport(selection string, exitCode int) app.Screen {
+	// Simply return to the LED menu after export
 	return app.Screens.LEDMenu
 }
 
-// exportLEDSettings exports LED settings directly from system settings file to a theme file
+// generateSequentialLEDFileName generates a sequential file name (LEDs_1, LEDs_2, etc.)
+func generateSequentialLEDFileName() string {
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return "LEDs_1.txt"
+	}
+
+	// Custom LEDs directory path
+	customDir := filepath.Join(cwd, leds.LEDsDir, leds.CustomDir)
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(customDir, 0755); err != nil {
+		logging.LogDebug("Error creating custom LEDs directory: %v", err)
+		return "LEDs_1.txt"
+	}
+
+	// Read the directory
+	entries, err := os.ReadDir(customDir)
+	if err != nil {
+		logging.LogDebug("Error reading custom LEDs directory: %v", err)
+		return "LEDs_1.txt"
+	}
+
+	// Find the highest number in existing "LEDs_X.txt" files
+	highestNum := 0
+	regex := regexp.MustCompile(`^LEDs_(\d+)\.txt$`)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		matches := regex.FindStringSubmatch(entry.Name())
+		if len(matches) == 2 {
+			num, err := strconv.Atoi(matches[1])
+			if err == nil && num > highestNum {
+				highestNum = num
+			}
+		}
+	}
+
+	// Generate new file name with the next number
+	return fmt.Sprintf("LEDs_%d.txt", highestNum+1)
+}
+
+// exportLEDSettings exports LED settings to a file
 func exportLEDSettings(fileName string) error {
 	// System LED settings file path
 	settingsPath := leds.GetSettingsPath()
@@ -71,7 +106,7 @@ func exportLEDSettings(fileName string) error {
 		return fmt.Errorf("error getting current directory: %w", err)
 	}
 
-	// Target file path in custom themes directory
+	// Target file path in custom LEDs directory
 	customDir := filepath.Join(cwd, leds.LEDsDir, leds.CustomDir)
 	if err := os.MkdirAll(customDir, 0755); err != nil {
 		logging.LogDebug("Error creating custom LED themes directory: %v", err)
