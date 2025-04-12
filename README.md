@@ -33,6 +33,7 @@ _Theme Management_
 3. **Reset:** This offers the ability to either _remove or replace with black_ ALL `bg.png` files across NextUI if you want to start over fresh.
 ---
 _Customization_
+---
 1. **Global Options:** Apply global icons/wallpapers to the entire device from `Theme-Manager.pak/Themes/Global` and `Theme-Manager.pak/Icons`. There are a few presets to mess around with, or if you create your own, you can apply them from here.
 2. **System Options:** Apply system-specific icons/wallpapers if you want to get really technical. This also includes `Recently Played`, `Tools`, and `Collections` as well!
 3. **Accents:** Choose from several preset options, or export your custom-built options! They are exported as `.txt` files in `Theme-Manager.pak/Accents/Custom`.
