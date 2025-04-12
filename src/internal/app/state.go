@@ -38,6 +38,8 @@ const (
 	LEDSelection
 	LEDExport
 	CustomizationMenu
+	IconSelection
+	IconConfirm
 )
 
 // ScreenEnum holds all available screens
@@ -55,6 +57,8 @@ type ScreenEnum struct {
 	LEDSelection       Screen
 	LEDExport          Screen
 	CustomizationMenu  Screen
+	IconSelection      Screen
+	IconConfirm        Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -76,6 +80,7 @@ type appState struct {
 	SelectedLEDTheme        string
 	SelectedAccentThemeSource ThemeSource
 	SelectedLEDThemeSource    ThemeSource
+	SelectedIconPack        string
 }
 
 // Global variables
@@ -94,6 +99,8 @@ var (
 		LEDSelection:       LEDSelection,
 		LEDExport:          LEDExport,
 		CustomizationMenu:  CustomizationMenu,
+		IconSelection:      IconSelection,
+		IconConfirm:        IconConfirm,
 	}
 
 	state appState
@@ -187,4 +194,14 @@ func GetSelectedLEDThemeSource() ThemeSource {
 // SetSelectedLEDThemeSource sets the selected LED theme source
 func SetSelectedLEDThemeSource(source ThemeSource) {
 	state.SelectedLEDThemeSource = source
+}
+
+// GetSelectedIconPack returns the selected icon pack
+func GetSelectedIconPack() string {
+	return state.SelectedIconPack
+}
+
+// SetSelectedIconPack sets the selected icon pack
+func SetSelectedIconPack(iconPack string) {
+	state.SelectedIconPack = iconPack
 }

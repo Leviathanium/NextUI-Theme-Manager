@@ -18,6 +18,7 @@ func CustomizationMenuScreen() (string, int) {
 		"Systems",
 		"Accents",
 		"LED Quick Settings",
+		"Icons",
 		"Fonts",
 	}
 
@@ -44,6 +45,10 @@ func HandleCustomizationMenu(selection string, exitCode int) app.Screen {
 		case "LED Quick Settings":
 			logging.LogDebug("Selected LED Quick Settings")
 			return app.Screens.LEDMenu
+
+		case "Icons":
+			logging.LogDebug("Selected Icons")
+			return app.Screens.IconSelection
 
 		case "Fonts":
 			logging.LogDebug("Selected Fonts")
