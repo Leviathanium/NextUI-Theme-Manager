@@ -38,8 +38,10 @@ const (
 	LEDSelection
 	LEDExport
 	CustomizationMenu
+	IconsMenu
 	IconSelection
 	IconConfirm
+	ClearIconsConfirm
 )
 
 // ScreenEnum holds all available screens
@@ -57,8 +59,10 @@ type ScreenEnum struct {
 	LEDSelection       Screen
 	LEDExport          Screen
 	CustomizationMenu  Screen
+	IconsMenu          Screen
 	IconSelection      Screen
 	IconConfirm        Screen
+	ClearIconsConfirm  Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -99,8 +103,10 @@ var (
 		LEDSelection:       LEDSelection,
 		LEDExport:          LEDExport,
 		CustomizationMenu:  CustomizationMenu,
+		IconsMenu:          IconsMenu,
 		IconSelection:      IconSelection,
 		IconConfirm:        IconConfirm,
+		ClearIconsConfirm:  ClearIconsConfirm,
 	}
 
 	state appState

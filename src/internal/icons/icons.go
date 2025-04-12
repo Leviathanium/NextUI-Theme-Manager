@@ -21,11 +21,19 @@ const (
 	MediaDir = ".media"       // Media directory for ROM systems
 )
 
+// Special icon filenames
+const (
+	ToolsIcon = "tg5040.png"
+	RecentlyPlayedIcon = "Recently Played.png"
+	CollectionsIcon = "Collections.png"
+)
+
 // IconPack represents an icon pack
 type IconPack struct {
-	Name  string
-	Path  string
-	Icons []Icon
+	Name        string
+	Path        string
+	Icons       []Icon
+	SpecialIcons map[string]string // Map of special icon names to file paths
 }
 
 // Icon represents an individual icon file
@@ -113,6 +121,7 @@ func LoadIconPack(packName string) (*IconPack, error) {
 	pack := &IconPack{
 		Name: packName,
 		Path: packPath,
+		SpecialIcons: make(map[string]string),
 	}
 
 	// Read the directory
@@ -130,29 +139,50 @@ func LoadIconPack(packName string) (*IconPack, error) {
 		if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
 			iconPath := filepath.Join(packPath, entry.Name())
 
-			// Extract system tag if present
-			tag := ""
-			matches := re.FindStringSubmatch(entry.Name())
-			if len(matches) >= 2 {
-				tag = matches[1]
-			}
+			// Check if this is a special icon
+			lowercaseName := strings.ToLower(entry.Name())
+			switch lowercaseName {
+			case strings.ToLower(ToolsIcon):
+				pack.SpecialIcons[ToolsIcon] = iconPath
+				logging.LogDebug("Found special Tools icon: %s", iconPath)
+			case strings.ToLower(RecentlyPlayedIcon):
+				pack.SpecialIcons[RecentlyPlayedIcon] = iconPath
+				logging.LogDebug("Found special Recently Played icon: %s", iconPath)
+			case strings.ToLower(CollectionsIcon):
+				pack.SpecialIcons[CollectionsIcon] = iconPath
+				logging.LogDebug("Found special Collections icon: %s", iconPath)
+			default:
+				// Extract system tag if present
+				tag := ""
+				matches := re.FindStringSubmatch(entry.Name())
+				if len(matches) >= 2 {
+					tag = matches[1]
+				}
 
-			// Add to the list of icons
-			pack.Icons = append(pack.Icons, Icon{
-				Path:      iconPath,
-				Name:      entry.Name(),
-				SystemTag: tag,
-			})
+				// Add to the list of icons
+				pack.Icons = append(pack.Icons, Icon{
+					Path:      iconPath,
+					Name:      entry.Name(),
+					SystemTag: tag,
+				})
+			}
 		}
 	}
 
-	logging.LogDebug("Loaded %d icons from pack %s", len(pack.Icons), packName)
+	logging.LogDebug("Loaded %d regular icons and %d special icons from pack %s",
+		len(pack.Icons), len(pack.SpecialIcons), packName)
 	return pack, nil
 }
 
 // ApplyIconPack applies the selected icon pack to the system
 func ApplyIconPack(packName string) error {
 	logging.LogDebug("Applying icon pack: %s", packName)
+
+	// First delete all existing icons to ensure clean application
+	if err := DeleteAllIcons(); err != nil {
+		logging.LogDebug("Warning: Failed to delete existing icons: %v", err)
+		// Continue anyway, as we'll overwrite icons
+	}
 
 	// Load the icon pack
 	pack, err := LoadIconPack(packName)
@@ -173,6 +203,12 @@ func ApplyIconPack(packName string) error {
 	if err := os.MkdirAll(mediaPath, 0755); err != nil {
 		logging.LogDebug("Error creating media directory: %v", err)
 		return fmt.Errorf("error creating media directory: %w", err)
+	}
+
+	// Apply special icons first
+	if err := applySpecialIcons(pack, systemPaths); err != nil {
+		logging.LogDebug("Error applying special icons: %v", err)
+		// Continue with regular icons
 	}
 
 	// Create a map of system tags to icons for faster lookup
@@ -210,6 +246,65 @@ func ApplyIconPack(packName string) error {
 	}
 
 	logging.LogDebug("Icon pack applied successfully")
+	return nil
+}
+
+// applySpecialIcons applies the special icons (Tools, Recently Played, Collections)
+func applySpecialIcons(pack *IconPack, systemPaths *system.SystemPaths) error {
+	// Get root media directory for Collections and Recently Played icons
+	rootMediaPath := filepath.Join(systemPaths.Root, MediaDir)
+	if err := os.MkdirAll(rootMediaPath, 0755); err != nil {
+		logging.LogDebug("Error creating root media directory: %v", err)
+		return fmt.Errorf("error creating root media directory: %w", err)
+	}
+
+	// Apply Tools icon if available
+	if toolsIconPath, exists := pack.SpecialIcons[ToolsIcon]; exists {
+		// Tools icon goes in Tools/.media/tg5040.png
+		// Need to go up one level from systemPaths.Tools to get base Tools directory
+		// since systemPaths.Tools is actually Tools/tg5040
+		toolsBaseDir := filepath.Dir(systemPaths.Tools) // Gets Tools directory without tg5040
+		toolsMediaPath := filepath.Join(toolsBaseDir, MediaDir)
+
+		if err := os.MkdirAll(toolsMediaPath, 0755); err != nil {
+			logging.LogDebug("Error creating Tools media directory: %v", err)
+			return fmt.Errorf("error creating Tools media directory: %w", err)
+		}
+
+		// Copy the icon
+		destPath := filepath.Join(toolsMediaPath, ToolsIcon)
+		logging.LogDebug("Copying Tools icon: %s -> %s", toolsIconPath, destPath)
+
+		if err := CopyFile(toolsIconPath, destPath); err != nil {
+			logging.LogDebug("Error copying Tools icon: %v", err)
+			return fmt.Errorf("error copying Tools icon: %w", err)
+		}
+	}
+
+	// Apply Recently Played icon if available
+	if rpIconPath, exists := pack.SpecialIcons[RecentlyPlayedIcon]; exists {
+		// Recently Played icon goes in root/.media/Recently Played.png
+		destPath := filepath.Join(rootMediaPath, RecentlyPlayedIcon)
+		logging.LogDebug("Copying Recently Played icon: %s -> %s", rpIconPath, destPath)
+
+		if err := CopyFile(rpIconPath, destPath); err != nil {
+			logging.LogDebug("Error copying Recently Played icon: %v", err)
+			return fmt.Errorf("error copying Recently Played icon: %w", err)
+		}
+	}
+
+	// Apply Collections icon if available
+	if collectionsIconPath, exists := pack.SpecialIcons[CollectionsIcon]; exists {
+		// Collections icon goes in root/.media/Collections.png
+		destPath := filepath.Join(rootMediaPath, CollectionsIcon)
+		logging.LogDebug("Copying Collections icon: %s -> %s", collectionsIconPath, destPath)
+
+		if err := CopyFile(collectionsIconPath, destPath); err != nil {
+			logging.LogDebug("Error copying Collections icon: %v", err)
+			return fmt.Errorf("error copying Collections icon: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -292,5 +387,123 @@ func CreatePlaceholderFile() error {
 		file.Close()
 	}
 
+	return nil
+}
+
+// DeleteAllIcons removes all icons from the Roms/.media directory
+func DeleteAllIcons() error {
+	logging.LogDebug("Deleting all system icons")
+
+	// Get system paths
+	systemPaths, err := system.GetSystemPaths()
+	if err != nil {
+		logging.LogDebug("Error getting system paths: %v", err)
+		return fmt.Errorf("error getting system paths: %w", err)
+	}
+
+	// Delete regular system icons
+	count := 0
+
+	// Path to media directory where system icons are stored
+	mediaPath := filepath.Join(systemPaths.Roms, MediaDir)
+
+	// Check if the directory exists
+	if _, err := os.Stat(mediaPath); os.IsNotExist(err) {
+		logging.LogDebug("Media directory doesn't exist, nothing to delete: %s", mediaPath)
+	} else {
+		// Read directory contents
+		entries, err := os.ReadDir(mediaPath)
+		if err != nil {
+			logging.LogDebug("Error reading media directory: %v", err)
+			return fmt.Errorf("error reading media directory: %w", err)
+		}
+
+		// Delete all PNG files (icons) except special ones
+		for _, entry := range entries {
+			// Skip directories and non-PNG files
+			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+				continue
+			}
+
+			// Skip special files that aren't system icons
+			if entry.Name() == "bg.png" {
+				logging.LogDebug("Skipping background file: %s", entry.Name())
+				continue
+			}
+
+			// Delete the file
+			filePath := filepath.Join(mediaPath, entry.Name())
+			logging.LogDebug("Deleting icon: %s", filePath)
+
+			if err := os.Remove(filePath); err != nil {
+				logging.LogDebug("Error deleting icon: %v", err)
+				// Continue anyway to delete as many as possible
+			} else {
+				count++
+			}
+		}
+	}
+
+	// Delete special icons too
+	if err := DeleteSpecialIcons(systemPaths); err != nil {
+		logging.LogDebug("Error deleting special icons: %v", err)
+		// Continue anyway
+	} else {
+		// Count will be incremented in DeleteSpecialIcons
+	}
+
+	logging.LogDebug("Successfully deleted %d icons", count)
+	return nil
+}
+
+// DeleteSpecialIcons removes the special icons (Tools, Recently Played, Collections)
+func DeleteSpecialIcons(systemPaths *system.SystemPaths) error {
+	count := 0
+
+	// Delete Collections and Recently Played icons from root/.media
+	rootMediaPath := filepath.Join(systemPaths.Root, MediaDir)
+	if _, err := os.Stat(rootMediaPath); !os.IsNotExist(err) {
+		// Delete Collections icon
+		collectionsPath := filepath.Join(rootMediaPath, CollectionsIcon)
+		if _, err := os.Stat(collectionsPath); !os.IsNotExist(err) {
+			logging.LogDebug("Deleting Collections icon: %s", collectionsPath)
+			if err := os.Remove(collectionsPath); err != nil {
+				logging.LogDebug("Error deleting Collections icon: %v", err)
+				// Continue with other deletions
+			} else {
+				count++
+			}
+		}
+
+		// Delete Recently Played icon
+		rpPath := filepath.Join(rootMediaPath, RecentlyPlayedIcon)
+		if _, err := os.Stat(rpPath); !os.IsNotExist(err) {
+			logging.LogDebug("Deleting Recently Played icon: %s", rpPath)
+			if err := os.Remove(rpPath); err != nil {
+				logging.LogDebug("Error deleting Recently Played icon: %v", err)
+				// Continue with other deletions
+			} else {
+				count++
+			}
+		}
+	}
+
+	// Delete Tools icon from Tools/.media
+	toolsBaseDir := filepath.Dir(systemPaths.Tools) // Get Tools directory without tg5040
+	toolsMediaPath := filepath.Join(toolsBaseDir, MediaDir)
+	if _, err := os.Stat(toolsMediaPath); !os.IsNotExist(err) {
+		toolsIconPath := filepath.Join(toolsMediaPath, ToolsIcon)
+		if _, err := os.Stat(toolsIconPath); !os.IsNotExist(err) {
+			logging.LogDebug("Deleting Tools icon: %s", toolsIconPath)
+			if err := os.Remove(toolsIconPath); err != nil {
+				logging.LogDebug("Error deleting Tools icon: %v", err)
+				// Continue with other deletions
+			} else {
+				count++
+			}
+		}
+	}
+
+	logging.LogDebug("Successfully deleted %d special icons", count)
 	return nil
 }

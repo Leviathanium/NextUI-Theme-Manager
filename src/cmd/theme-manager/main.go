@@ -125,6 +125,11 @@ func main() {
 			selection, exitCode = screens.LEDExportScreen()
 			nextScreen = screens.HandleLEDExport(selection, exitCode)
 
+		case app.Screens.IconsMenu:
+			logging.LogDebug("Showing icons menu")
+			selection, exitCode = screens.IconsMenuScreen()
+			nextScreen = screens.HandleIconsMenu(selection, exitCode)
+
 		case app.Screens.IconSelection:
 			logging.LogDebug("Showing icon selection")
 			selection, exitCode = screens.IconSelectionScreen()
@@ -134,6 +139,11 @@ func main() {
 			logging.LogDebug("Showing icon confirmation")
 			selection, exitCode = screens.IconConfirmScreen()
 			nextScreen = screens.HandleIconConfirm(selection, exitCode)
+
+		case app.Screens.ClearIconsConfirm:
+			logging.LogDebug("Showing clear icons confirmation")
+			selection, exitCode = screens.ClearIconsConfirmScreen()
+			nextScreen = screens.HandleClearIconsConfirm(selection, exitCode)
 		}
 
 		// Update the current screen
