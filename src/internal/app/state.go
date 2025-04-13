@@ -30,6 +30,7 @@ const (
 	DefaultThemeOptions
 	ConfirmScreen
 	FontSelection
+	FontList
 	FontPreview
 	AccentMenu
 	AccentSelection
@@ -59,6 +60,7 @@ type ScreenEnum struct {
 	DefaultThemeOptions Screen
 	ConfirmScreen      Screen
 	FontSelection      Screen
+	FontList           Screen
 	FontPreview        Screen
 	AccentMenu         Screen
 	AccentSelection    Screen
@@ -96,6 +98,7 @@ type appState struct {
 	SelectedTheme           string
 	DefaultAction           DefaultThemeAction
 	SelectedFont            string
+	SelectedFontSlot        string // Which font slot to modify (OG, Next, Legacy)
 	SelectedAccentTheme     string
 	SelectedLEDTheme        string
 	SelectedAccentThemeSource ThemeSource
@@ -106,12 +109,13 @@ type appState struct {
 
 // Global variables
 var (
-	Screens  = ScreenEnum{
+    Screens  = ScreenEnum{
 		MainMenu:           MainMenu,
 		ThemeSelection:     ThemeSelection,
 		DefaultThemeOptions: DefaultThemeOptions,
 		ConfirmScreen:      ConfirmScreen,
 		FontSelection:      FontSelection,
+		FontList:           FontList,
 		FontPreview:        FontPreview,
 		AccentMenu:         AccentMenu,
 		AccentSelection:    AccentSelection,
@@ -185,6 +189,16 @@ func GetSelectedFont() string {
 // SetSelectedFont sets the selected font
 func SetSelectedFont(font string) {
 	state.SelectedFont = font
+}
+
+// GetSelectedFontSlot returns the selected font slot
+func GetSelectedFontSlot() string {
+	return state.SelectedFontSlot
+}
+
+// SetSelectedFontSlot sets the selected font slot
+func SetSelectedFontSlot(slot string) {
+	state.SelectedFontSlot = slot
 }
 
 // GetSelectedAccentTheme returns the selected accent theme

@@ -80,20 +80,15 @@ func main() {
 			selection, exitCode = screens.ConfirmScreen()
 			nextScreen = screens.HandleConfirmScreen(selection, exitCode)
 
-		case app.Screens.WallpaperConfirm:
-			logging.LogDebug("Showing wallpaper confirmation screen")
-			selection, exitCode = screens.WallpaperConfirmScreen()
-			nextScreen = screens.HandleWallpaperConfirm(selection, exitCode)
-
-		case app.Screens.SystemIconConfirm:
-			logging.LogDebug("Showing system icon confirmation screen")
-			selection, exitCode = screens.SystemIconConfirmScreen()
-			nextScreen = screens.HandleSystemIconConfirm(selection, exitCode)
-
 		case app.Screens.FontSelection:
-			logging.LogDebug("Showing font selection")
+			logging.LogDebug("Showing font slot selection")
 			selection, exitCode = screens.FontSelectionScreen()
 			nextScreen = screens.HandleFontSelection(selection, exitCode)
+
+		case app.Screens.FontList:
+			logging.LogDebug("Showing font list")
+			selection, exitCode = screens.FontListScreen()
+			nextScreen = screens.HandleFontList(selection, exitCode)
 
 		case app.Screens.FontPreview:
 			logging.LogDebug("Showing font preview")
