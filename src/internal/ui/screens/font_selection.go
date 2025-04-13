@@ -15,23 +15,26 @@ import (
 
 // FontSelectionScreen displays the font target selection screen with clearer options
 func FontSelectionScreen() (string, int) {
-	// Create menu with replace and restore options
-	var menu []string
+    // Create menu with replace and restore options
+    var menu []string
 
-	// Add replace options
-	menu = append(menu, "Replace OG Font")
-	menu = append(menu, "Replace Next Font")
+    // Add Next font options first
+    menu = append(menu, "Replace Next Font")
 
-	// Add restore options, if available
-	if fonts.BackupExists(fonts.OGFont) {
-		menu = append(menu, "Restore OG Font")
-	}
+    // Add Next font restore option if available
+    if fonts.BackupExists(fonts.NextFont) {
+        menu = append(menu, "Restore Next Font")
+    }
 
-	if fonts.BackupExists(fonts.NextFont) {
-		menu = append(menu, "Restore Next Font")
-	}
+    // Add OG font options
+    menu = append(menu, "Replace OG Font")
 
-	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Font Options")
+    // Add OG font restore option if available
+    if fonts.BackupExists(fonts.OGFont) {
+        menu = append(menu, "Restore OG Font")
+    }
+
+    return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Font Options")
 }
 
 // HandleFontSelection processes the user's font action selection

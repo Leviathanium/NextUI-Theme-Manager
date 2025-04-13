@@ -72,8 +72,8 @@ func ApplyGlobalTheme(themeName string) error {
 		return fmt.Errorf("error ensuring media directories: %w", err)
 	}
 
-	// Source background image
-	srcBg := filepath.Join(cwd, "Themes", "Global", themeName, "bg.png")
+	// Source background image - updated to use Wallpapers directory
+	srcBg := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
 	logging.LogDebug("Theme background path: %s", srcBg)
 
 	// Check if the source background exists
@@ -146,8 +146,8 @@ func ApplyCustomTheme(systemName string, themeName string) error {
 		return fmt.Errorf("error getting system paths: %w", err)
 	}
 
-	// Source background image
-	srcBg := filepath.Join(cwd, "Themes", "Global", themeName, "bg.png")
+	// Source background image - updated to use Wallpapers directory
+	srcBg := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
 	logging.LogDebug("Theme background path: %s", srcBg)
 
 	// Check if the source background exists

@@ -64,23 +64,23 @@ func WallpaperSelectionScreen() (string, int) {
 		return "", 1
 	}
 
-	// Scan global themes directory for wallpapers
-	globalDir := filepath.Join(cwd, "Themes", "Global")
-	themesList, err := themes.ListGlobalThemes(globalDir)
+	// Scan wallpapers directory for wallpapers - updated to new path
+	wallpapersDir := filepath.Join(cwd, "Wallpapers")
+	themesList, err := themes.ListGlobalThemes(wallpapersDir)
 	if err != nil {
-		logging.LogDebug("Error loading global themes: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error loading global themes: %s", err), "3")
+		logging.LogDebug("Error loading wallpapers: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error loading wallpapers: %s", err), "3")
 		return "", 1
 	}
 
 	if len(themesList) == 0 {
-		logging.LogDebug("No global themes found")
-		ui.ShowMessage("No global themes found. Create one in Themes/Global/", "3")
+		logging.LogDebug("No wallpapers found")
+		ui.ShowMessage("No wallpapers found. Create one in Wallpapers/", "3")
 		return "", 1
 	}
 
 	// For wallpapers, display an image gallery
-	return displayGlobalBackgroundsGallery(globalDir, themesList)
+	return displayGlobalBackgroundsGallery(wallpapersDir, themesList)
 }
 
 // HandleWallpaperSelection processes the user's wallpaper selection

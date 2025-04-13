@@ -22,8 +22,8 @@ func OverwriteWithDefaultTheme() error {
 		return fmt.Errorf("error getting current directory: %w", err)
 	}
 
-	// Default black background path
-	defaultBg := filepath.Join(cwd, "Themes", "Default", "bg.png")
+	// Default black background path - updated to new Wallpapers directory
+	defaultBg := filepath.Join(cwd, "Wallpapers", "Default", "bg.png")
 	logging.LogDebug("Default theme background path: %s", defaultBg)
 
 	// Check if the default background exists

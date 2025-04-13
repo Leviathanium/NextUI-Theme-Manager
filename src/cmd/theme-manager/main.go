@@ -49,14 +49,22 @@ func main() {
 
 	logging.LogDebug("Starting main loop")
 
-	// Main application loop
-	for {
-		var selection string
-		var exitCode int
-		var nextScreen app.Screen
+    // Main application loop
+    for {
+        var selection string
+        var exitCode int
+        var nextScreen app.Screen
 
-		// Log current screen
-		logging.LogDebug("Current screen: %d", app.GetCurrentScreen())
+        // Log current screen
+        currentScreen := app.GetCurrentScreen()
+        logging.LogDebug("Current screen: %d", currentScreen)
+
+        // Ensure screen value is valid
+        if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.WallpaperConfirm {
+            logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
+            app.SetCurrentScreen(app.Screens.MainMenu)
+            continue
+        }
 
 		// Process current screen
 		switch app.GetCurrentScreen() {
@@ -160,10 +168,17 @@ func main() {
 			selection, exitCode = screens.IconSelectionScreen()
 			nextScreen = screens.HandleIconSelection(selection, exitCode)
 
-		case app.Screens.SystemIconSelection:
-			logging.LogDebug("Showing system icon selection")
-			selection, exitCode = screens.SystemIconSelectionScreen()
-			nextScreen = screens.HandleSystemIconSelection(selection, exitCode)
+        case app.Screens.SystemIconSelection:
+            logging.LogDebug("Showing system icon selection")
+            selection, exitCode = screens.SystemIconSelectionScreen()
+            nextScreen = screens.HandleSystemIconSelection(selection, exitCode)
+            logging.LogDebug("System icon selection returned next screen: %d", nextScreen)
+
+        case app.Screens.SystemIconConfirm:
+            logging.LogDebug("Showing system icon confirmation")
+            selection, exitCode = screens.SystemIconConfirmScreen()
+            nextScreen = screens.HandleSystemIconConfirm(selection, exitCode)
+            logging.LogDebug("System icon confirmation returned next screen: %d", nextScreen)
 
 		case app.Screens.IconConfirm:
 			logging.LogDebug("Showing icon confirmation")
@@ -174,9 +189,22 @@ func main() {
 			logging.LogDebug("Showing clear icons confirmation")
 			selection, exitCode = screens.ClearIconsConfirmScreen()
 			nextScreen = screens.HandleClearIconsConfirm(selection, exitCode)
-		}
 
-		// Update the current screen
-		app.SetCurrentScreen(nextScreen)
+
+        default:
+            logging.LogDebug("Unhandled screen type: %d, defaulting to MainMenu", currentScreen)
+            nextScreen = app.Screens.MainMenu
+        }
+
+        // Verify next screen is valid before setting
+        if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.WallpaperConfirm {
+            logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
+            nextScreen = app.Screens.MainMenu
+        }
+
+        // Update the current screen
+        logging.LogDebug("Setting next screen to: %d", nextScreen)
+        app.SetCurrentScreen(nextScreen)
+
 	}
 }

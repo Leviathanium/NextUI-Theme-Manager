@@ -196,9 +196,9 @@ func applyTheme() {
 			return
 		}
 
-		// Get available themes
-		globalThemesPath := filepath.Join(cwd, "Themes", "Global")
-		themesList, err := themes.ListGlobalThemes(globalThemesPath)
+		// Get available themes from Wallpapers directory
+		wallpapersDir := filepath.Join(cwd, "Wallpapers")
+		themesList, err := themes.ListGlobalThemes(wallpapersDir)
 		if err != nil {
 			message = fmt.Sprintf("Error: %s", err)
 			ui.ShowMessage(message, "3")
@@ -206,7 +206,7 @@ func applyTheme() {
 		}
 
 		if len(themesList) == 0 {
-			message = "No themes found in Global directory"
+			message = "No themes found in Wallpapers directory"
 			ui.ShowMessage(message, "3")
 			return
 		}
@@ -230,25 +230,14 @@ func applyTheme() {
 		}
 
 	case app.DefaultTheme:
-		// Apply default theme based on selected action
-		if app.GetDefaultAction() == app.OverwriteAction {
-			logging.LogDebug("Applying default theme - overwriting backgrounds")
-			err = themes.OverwriteWithDefaultTheme()
-			if err != nil {
-				logging.LogDebug("Error applying default theme: %v", err)
-				message = fmt.Sprintf("Error: %s", err)
-			} else {
-				message = "Applied default theme"
-			}
+		// Only delete option now, as overwrite option has been removed
+		logging.LogDebug("Applying default theme - deleting backgrounds")
+		err = themes.DeleteAllBackgrounds()
+		if err != nil {
+			logging.LogDebug("Error deleting backgrounds: %v", err)
+			message = fmt.Sprintf("Error: %s", err)
 		} else {
-			logging.LogDebug("Applying default theme - deleting backgrounds")
-			err = themes.DeleteAllBackgrounds()
-			if err != nil {
-				logging.LogDebug("Error deleting backgrounds: %v", err)
-				message = fmt.Sprintf("Error: %s", err)
-			} else {
-				message = "Deleted all backgrounds"
-			}
+			message = "Deleted all backgrounds"
 		}
 	}
 

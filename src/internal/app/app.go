@@ -39,22 +39,29 @@ func Initialize() error {
 
 	_ = os.Setenv("LD_LIBRARY_PATH", "/mnt/SDCARD/.system/tg5040/lib:/usr/trimui/lib")
 
-	// Create theme directories if they don't exist
+	// Create new directory structure
 	logging.LogDebug("Creating theme directories")
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Global"), 0755)
+	// Create new Wallpapers directory structure
+	err = os.MkdirAll(filepath.Join(cwd, "Wallpapers"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Global themes directory: %v", err)
+		logging.LogDebug("Error creating Wallpapers directory: %v", err)
 	}
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Dynamic"), 0755)
+	err = os.MkdirAll(filepath.Join(cwd, "Wallpapers", "Default"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Dynamic themes directory: %v", err)
+		logging.LogDebug("Error creating Wallpapers/Default directory: %v", err)
 	}
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Default"), 0755)
+	// Create new Themes directory structure
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Imports"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Default themes directory: %v", err)
+		logging.LogDebug("Error creating Themes/Imports directory: %v", err)
+	}
+
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Exports"), 0755)
+	if err != nil {
+		logging.LogDebug("Error creating Themes/Exports directory: %v", err)
 	}
 
 	// Create Icons directory and placeholder

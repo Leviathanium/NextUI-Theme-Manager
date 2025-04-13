@@ -14,7 +14,6 @@ import (
 // ResetMenuScreen displays options for resetting various aspects of the UI
 func ResetMenuScreen() (string, int) {
 	options := []string{
-		"Overwrite all backgrounds with black",
 		"Delete all backgrounds",
 		"Delete all icons",
 	}
@@ -28,12 +27,7 @@ func HandleResetMenu(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		if selection == "Overwrite all backgrounds with black" {
-			logging.LogDebug("Selected to overwrite backgrounds with black")
-			app.SetSelectedThemeType(app.DefaultTheme)
-			app.SetDefaultAction(app.OverwriteAction)
-			return app.Screens.ConfirmScreen
-		} else if selection == "Delete all backgrounds" {
+		if selection == "Delete all backgrounds" {
 			logging.LogDebug("Selected to delete all backgrounds")
 			app.SetSelectedThemeType(app.DefaultTheme)
 			app.SetDefaultAction(app.DeleteAction)

@@ -3,6 +3,12 @@
 
 package app
 
+import (
+
+	"nextui-themes/internal/logging"
+
+)
+
 // ThemeType represents the type of theme operation
 type ThemeType int
 
@@ -143,11 +149,23 @@ var (
 
 // GetCurrentScreen returns the current screen
 func GetCurrentScreen() Screen {
+	// Ensure we never return an invalid screen value
+	if state.CurrentScreen < MainMenu || state.CurrentScreen > WallpaperConfirm {
+		logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
+		state.CurrentScreen = MainMenu
+	}
 	return state.CurrentScreen
 }
 
 // SetCurrentScreen sets the current screen
 func SetCurrentScreen(screen Screen) {
+	// Validate screen value before setting
+	if screen < MainMenu || screen > WallpaperConfirm {
+		logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
+		screen = MainMenu
+	} else {
+		logging.LogDebug("Setting screen to: %d", screen)
+	}
 	state.CurrentScreen = screen
 }
 
