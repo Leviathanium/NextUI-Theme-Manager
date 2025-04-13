@@ -14,26 +14,33 @@ var logFile *os.File
 
 // InitLogger initializes the debug log file
 func init() {
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
-		return
-	}
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
+        return
+    }
 
-	// Create log file
-	logPath := filepath.Join(cwd, "theme_manager.log")
-	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
-		return
-	}
+    // Create Logs directory if it doesn't exist
+    logsDir := filepath.Join(cwd, "Logs")
+    if err := os.MkdirAll(logsDir, 0755); err != nil {
+        fmt.Fprintf(os.Stderr, "Error creating Logs directory: %v\n", err)
+        return
+    }
 
-	logFile = f
+    // Create log file in the Logs directory
+    logPath := filepath.Join(logsDir, "theme_manager.log")
+    f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
+        return
+    }
 
-	// Log startup information
-	LogDebug("=== Theme Manager Started ===")
-	LogDebug("Current directory: %s", cwd)
+    logFile = f
+
+    // Log startup information
+    LogDebug("=== Theme Manager Started ===")
+    LogDebug("Current directory: %s", cwd)
 }
 
 // CloseLogger closes the log file

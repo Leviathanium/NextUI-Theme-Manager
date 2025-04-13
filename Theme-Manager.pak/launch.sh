@@ -5,26 +5,29 @@
 PAK_DIR="$(dirname "$0")"
 cd "$PAK_DIR" || exit 1
 
+# Create Logs directory if it doesn't exist
+mkdir -p "$PAK_DIR/Logs"
+
 # Log environment
-echo "PAK directory: $PAK_DIR" > launch.log
-echo "Environment variables:" >> launch.log
-env >> launch.log
+echo "PAK directory: $PAK_DIR" > "$PAK_DIR/Logs/launch.log"
+echo "Environment variables:" >> "$PAK_DIR/Logs/launch.log"
+env >> "$PAK_DIR/Logs/launch.log"
 
 # Log binary permissions
-echo "Binary permissions:" >> launch.log
-ls -la theme-manager minui-list minui-presenter >> launch.log 2>&1
+echo "Binary permissions:" >> "$PAK_DIR/Logs/launch.log"
+ls -la theme-manager minui-list minui-presenter >> "$PAK_DIR/Logs/launch.log" 2>&1
 
-echo "Changed to directory: $(pwd)" >> launch.log
+echo "Changed to directory: $(pwd)" >> "$PAK_DIR/Logs/launch.log"
 
 # Make sure binaries are executable
 chmod +x theme-manager minui-list minui-presenter 2>/dev/null
-echo "Made binaries executable" >> launch.log
+echo "Made binaries executable" >> "$PAK_DIR/Logs/launch.log"
 
 # Log launch
-echo "Launching theme-manager" >> launch.log
+echo "Launching theme-manager" >> "$PAK_DIR/Logs/launch.log"
 
 # Launch with output redirection
-./theme-manager 2>>theme-manager-error.log
+./theme-manager 2>>"$PAK_DIR/Logs/theme-manager-error.log"
 
 # Exit code
-echo "Exit code: $?" >> launch.log
+echo "Exit code: $?" >> "$PAK_DIR/Logs/launch.log"

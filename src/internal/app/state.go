@@ -164,12 +164,12 @@ var (
 
 // GetCurrentScreen returns the current screen
 func GetCurrentScreen() Screen {
-	// Ensure we never return an invalid screen value
-	if state.CurrentScreen < MainMenu || state.CurrentScreen > WallpaperConfirm {
-		logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
-		state.CurrentScreen = MainMenu
-	}
-	return state.CurrentScreen
+    // Ensure we never return an invalid screen value
+    if state.CurrentScreen < MainMenu || state.CurrentScreen > ThemeExport {
+        logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
+        state.CurrentScreen = MainMenu
+    }
+    return state.CurrentScreen
 }
 
 // SetCurrentScreen sets the current screen
