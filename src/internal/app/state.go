@@ -30,33 +30,39 @@ const (
 // Screen represents the different UI screens
 type Screen int
 
+// The Screen constants should be defined like this:
 const (
-	MainMenu Screen = iota + 1
-	ThemeSelection
-	DefaultThemeOptions
-	ConfirmScreen
-	FontSelection
-	FontList
-	FontPreview
-	AccentMenu
-	AccentSelection
-	AccentExport
-	LEDMenu
-	LEDSelection
-	LEDExport
-	CustomizationMenu
-	IconsMenu
-	IconSelection
-	IconConfirm
-	ClearIconsConfirm
-	GlobalOptionsMenu
-	SystemOptionsMenu
-	SystemOptionsForSelectedSystem
-	SystemIconSelection
-	SystemIconConfirm
-	ResetMenu
-	WallpaperSelection
-	WallpaperConfirm
+    MainMenu Screen = iota + 1
+    ThemeSelection
+    DefaultThemeOptions
+    ConfirmScreen
+    FontSelection
+    FontList
+    FontPreview
+    AccentMenu
+    AccentSelection
+    AccentExport
+    LEDMenu
+    LEDSelection
+    LEDExport
+    CustomizationMenu
+    IconsMenu
+    IconSelection
+    IconConfirm
+    ClearIconsConfirm
+    GlobalOptionsMenu
+    SystemOptionsMenu
+    SystemOptionsForSelectedSystem
+    SystemIconSelection
+    SystemIconConfirm
+    ResetMenu
+    WallpaperSelection
+    WallpaperConfirm
+    // New screens for theme management
+    ThemesMenu          // This should be 27
+    ThemeImport         // This should be 28
+    ThemeImportConfirm  // This should be 29
+    ThemeExport         // This should be 30
 )
 
 // ScreenEnum holds all available screens
@@ -87,6 +93,11 @@ type ScreenEnum struct {
 	ResetMenu          Screen
 	WallpaperSelection Screen
 	WallpaperConfirm   Screen
+	// New screen fields for theme management
+	ThemesMenu         Screen
+	ThemeImport        Screen
+	ThemeImportConfirm Screen
+	ThemeExport        Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -142,6 +153,10 @@ var (
 		ResetMenu:          ResetMenu,
 		WallpaperSelection: WallpaperSelection,
 		WallpaperConfirm:   WallpaperConfirm,
+        ThemesMenu:         ThemesMenu,
+        ThemeImport:        ThemeImport,
+        ThemeImportConfirm: ThemeImportConfirm,
+        ThemeExport:        ThemeExport,
 	}
 
 	state appState
@@ -159,14 +174,20 @@ func GetCurrentScreen() Screen {
 
 // SetCurrentScreen sets the current screen
 func SetCurrentScreen(screen Screen) {
-	// Validate screen value before setting
-	if screen < MainMenu || screen > WallpaperConfirm {
-		logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
-		screen = MainMenu
-	} else {
-		logging.LogDebug("Setting screen to: %d", screen)
-	}
-	state.CurrentScreen = screen
+    // Validate screen value before setting
+    if screen < MainMenu || screen > ThemeExport {
+        logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
+        screen = MainMenu
+    }
+
+    // Add explicit debug logging
+    logging.LogDebug("Setting current screen from %d to %d", state.CurrentScreen, screen)
+
+    // Set the screen
+    state.CurrentScreen = screen
+
+    // Verify the screen was set correctly
+    logging.LogDebug("Current screen is now: %d", state.CurrentScreen)
 }
 
 // GetSelectedThemeType returns the selected theme type

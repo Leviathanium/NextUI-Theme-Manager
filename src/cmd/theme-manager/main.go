@@ -60,18 +60,43 @@ func main() {
         logging.LogDebug("Current screen: %d", currentScreen)
 
         // Ensure screen value is valid
-        if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.WallpaperConfirm {
+        if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.ThemeExport {
             logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
             app.SetCurrentScreen(app.Screens.MainMenu)
             continue
         }
 
-		// Process current screen
-		switch app.GetCurrentScreen() {
-		case app.Screens.MainMenu:
-			logging.LogDebug("Showing main menu")
-			selection, exitCode = screens.MainMenuScreen()
-			nextScreen = screens.HandleMainMenu(selection, exitCode)
+        // Process current screen
+        switch currentScreen {
+        case app.Screens.MainMenu:
+            logging.LogDebug("Showing main menu")
+            selection, exitCode = screens.MainMenuScreen()
+            nextScreen = screens.HandleMainMenu(selection, exitCode)
+            logging.LogDebug("Main menu returned next screen: %d", nextScreen)
+
+        case app.Screens.ThemesMenu:
+            logging.LogDebug("Showing themes menu")
+            selection, exitCode = screens.ThemesMenuScreen()
+            nextScreen = screens.HandleThemesMenu(selection, exitCode)
+            logging.LogDebug("Themes menu returned next screen: %d", nextScreen)
+
+        case app.Screens.ThemeImport:
+            logging.LogDebug("Showing theme import selection")
+            selection, exitCode = screens.ThemeImportScreen()
+            nextScreen = screens.HandleThemeImport(selection, exitCode)
+            logging.LogDebug("Theme import returned next screen: %d", nextScreen)
+
+        case app.Screens.ThemeImportConfirm:
+            logging.LogDebug("Showing theme import confirmation")
+            selection, exitCode = screens.ThemeImportConfirmScreen()
+            nextScreen = screens.HandleThemeImportConfirm(selection, exitCode)
+            logging.LogDebug("Theme import confirmation returned next screen: %d", nextScreen)
+
+        case app.Screens.ThemeExport:
+            logging.LogDebug("Showing theme export screen")
+            selection, exitCode = screens.ThemeExportScreen()
+            nextScreen = screens.HandleThemeExport(selection, exitCode)
+            logging.LogDebug("Theme export returned next screen: %d", nextScreen)
 
 		case app.Screens.ThemeSelection:
 			logging.LogDebug("Showing theme selection")
@@ -190,21 +215,25 @@ func main() {
 			selection, exitCode = screens.ClearIconsConfirmScreen()
 			nextScreen = screens.HandleClearIconsConfirm(selection, exitCode)
 
-
         default:
-            logging.LogDebug("Unhandled screen type: %d, defaulting to MainMenu", currentScreen)
+            logging.LogDebug("Unknown screen type: %d, defaulting to MainMenu", currentScreen)
             nextScreen = app.Screens.MainMenu
         }
 
+        // Add extra debug logging
+        logging.LogDebug("Current screen: %d, Next screen: %d", currentScreen, nextScreen)
+
+
+        // Also update the range check for valid screen values
         // Verify next screen is valid before setting
-        if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.WallpaperConfirm {
+        if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.ThemeExport {
             logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
             nextScreen = app.Screens.MainMenu
         }
 
-        // Update the current screen
+        // Update the current screen - add extra debugging
         logging.LogDebug("Setting next screen to: %d", nextScreen)
         app.SetCurrentScreen(nextScreen)
-
+        logging.LogDebug("Screen set to: %d", app.GetCurrentScreen())
 	}
 }

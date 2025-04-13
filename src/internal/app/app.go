@@ -11,6 +11,7 @@ import (
 	"nextui-themes/internal/icons"
 	"nextui-themes/internal/leds"
 	"nextui-themes/internal/logging"
+	"nextui-themes/internal/themes" // Added this import
 )
 
 // Initialize sets up the application
@@ -78,6 +79,19 @@ func Initialize() error {
 	if err := leds.InitLEDSettings(); err != nil {
 		logging.LogDebug("Error initializing LED settings: %v", err)
 	}
+
+    // Initialize the theme directory structure
+    if err := themes.EnsureThemeDirectoryStructure(); err != nil {
+        logging.LogDebug("Warning: Could not create theme directories: %v", err)
+    }
+
+    // Create placeholder files for guidance
+    if err := themes.CreatePlaceholderFiles(); err != nil {
+        logging.LogDebug("Warning: Could not create placeholder files: %v", err)
+    }
+
+    // Log about theme functionality
+    logging.LogDebug("Theme import/export functionality initialized")
 
 	logging.LogDebug("Initialization complete")
 	return nil
