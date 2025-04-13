@@ -171,11 +171,16 @@ func GetFontTypeFromName(fontName string) (FontType, bool) {
 
 // ApplyFont applies a font to the specified system font slot
 func ApplyFont(fontName string, fontType FontType) error {
-	logging.LogDebug("Applying font: %s to slot: %d", fontName, fontType)
+	logging.LogDebug("===== START ApplyFont =====")
+	logging.LogDebug("Applying font: %s to slot type: %d", fontName, fontType)
+
+	// Store the original font type to ensure consistency throughout the function
+	originalFontType := fontType
 
 	// Check if this is a restoration
 	isRestore := false
 	if fontType, isRestore = GetFontTypeFromName(fontName); isRestore {
+		logging.LogDebug("This is a restore operation, calling RestoreFont")
 		return RestoreFont(fontType)
 	}
 
@@ -186,51 +191,81 @@ func ApplyFont(fontName string, fontType FontType) error {
 		return fmt.Errorf("error getting font path: %w", err)
 	}
 
+	logging.LogDebug("Font file path: %s", fontPath)
+	logging.LogDebug("Using font type: %d (0=OG, 1=Next)", originalFontType)
+
 	// Determine target path based on font type
 	var targetPath string
-	switch fontType {
+	var backupPath string
+	var fontTypeName string
+
+	// Set paths based on font type - explicitly log each branch
+	switch originalFontType {
 	case OGFont:
 		targetPath = OGFontPath
+		backupPath = filepath.Join(filepath.Dir(OGFontPath), OGFontBackupName)
+		fontTypeName = "OG"
+		logging.LogDebug("OG Font case: targetPath=%s, backupPath=%s", targetPath, backupPath)
+
 		// Create backup of OG font if it doesn't exist
-		backupPath := filepath.Join(filepath.Dir(OGFontPath), OGFontBackupName)
 		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 			logging.LogDebug("Creating backup of OG font: %s -> %s", OGFontPath, backupPath)
 			if err := CopyFile(OGFontPath, backupPath); err != nil {
-				logging.LogDebug("Error creating backup: %v", err)
+				logging.LogDebug("Error creating OG font backup: %v", err)
 				return fmt.Errorf("error creating backup: %w", err)
 			}
+			logging.LogDebug("OG font backup created successfully")
+		} else {
+			logging.LogDebug("OG font backup already exists at: %s", backupPath)
 		}
+
 	case NextFont:
 		targetPath = NextFontPath
+		backupPath = filepath.Join(filepath.Dir(NextFontPath), NextFontBackupName)
+		fontTypeName = "Next"
+		logging.LogDebug("Next Font case: targetPath=%s, backupPath=%s", targetPath, backupPath)
+
 		// Create backup of Next font if it doesn't exist
-		backupPath := filepath.Join(filepath.Dir(NextFontPath), NextFontBackupName)
 		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 			logging.LogDebug("Creating backup of Next font: %s -> %s", NextFontPath, backupPath)
 			if err := CopyFile(NextFontPath, backupPath); err != nil {
-				logging.LogDebug("Error creating backup: %v", err)
+				logging.LogDebug("Error creating Next font backup: %v", err)
 				return fmt.Errorf("error creating backup: %w", err)
 			}
+			logging.LogDebug("Next font backup created successfully")
+		} else {
+			logging.LogDebug("Next font backup already exists at: %s", backupPath)
 		}
-	case LegacyFont:
-		targetPath = LegacyFontPath
-		// Create backup of Legacy font if it doesn't exist
-		backupPath := filepath.Join(filepath.Dir(LegacyFontPath), LegacyFontBackupName)
-		if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-			logging.LogDebug("Creating backup of Legacy font: %s -> %s", LegacyFontPath, backupPath)
-			if err := CopyFile(LegacyFontPath, backupPath); err != nil {
-				logging.LogDebug("Error creating backup: %v", err)
-				return fmt.Errorf("error creating backup: %w", err)
-			}
-		}
+
+	default:
+		logging.LogDebug("Unsupported font type: %d", originalFontType)
+		return fmt.Errorf("unsupported font type: %d", originalFontType)
 	}
 
-	// Copy the font to the system
-	if err := CopyFile(fontPath, targetPath); err != nil {
+	// Verify paths right before copying
+	logging.LogDebug("FINAL CHECK - About to copy font:")
+	logging.LogDebug("  From: %s", fontPath)
+	logging.LogDebug("  To: %s", targetPath)
+	logging.LogDebug("  Font Type: %s (%d)", fontTypeName, originalFontType)
+
+	// Copy the font to the system - use explicit paths for maximum clarity
+	var destPath string
+	if originalFontType == OGFont {
+		destPath = OGFontPath
+	} else if originalFontType == NextFont {
+		destPath = NextFontPath
+	}
+
+	logging.LogDebug("Using explicit destPath: %s", destPath)
+
+	if err := CopyFile(fontPath, destPath); err != nil {
 		logging.LogDebug("Error copying font to system: %v", err)
 		return fmt.Errorf("error copying font to system: %w", err)
 	}
 
-	logging.LogDebug("Font '%s' applied successfully to slot: %d", fontName, fontType)
+	logging.LogDebug("Font '%s' applied successfully to %s font (type: %d)",
+		fontName, fontTypeName, originalFontType)
+	logging.LogDebug("===== END ApplyFont =====")
 	return nil
 }
 
