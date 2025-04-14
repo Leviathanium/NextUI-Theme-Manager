@@ -132,6 +132,7 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 	// 1. FIRST CHECK PREFERRED STRUCTURE: SystemWallpapers directory
 	sysWallDir := filepath.Join(themePath, "Wallpapers", "SystemWallpapers")
 	if entries, err := os.ReadDir(sysWallDir); err == nil {
+		logging.LogDebug("Found SystemWallpapers directory, checking for wallpapers")
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
 				continue
@@ -148,31 +149,31 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 			if baseName == "Root" {
 				systemPath = filepath.Join(systemPaths.Root, "bg.png")
 				metadata = map[string]string{
-					"SystemName": "Root",
+					"SystemName":    "Root",
 					"WallpaperType": "Main",
 				}
 			} else if baseName == "Root-Media" {
 				systemPath = filepath.Join(systemPaths.Root, ".media", "bg.png")
 				metadata = map[string]string{
-					"SystemName": "Root",
+					"SystemName":    "Root",
 					"WallpaperType": "Media",
 				}
 			} else if baseName == "Recently Played" {
 				systemPath = filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
 				metadata = map[string]string{
-					"SystemName": "Recently Played",
+					"SystemName":    "Recently Played",
 					"WallpaperType": "Media",
 				}
 			} else if baseName == "Tools" {
 				systemPath = filepath.Join(systemPaths.Tools, ".media", "bg.png")
 				metadata = map[string]string{
-					"SystemName": "Tools",
+					"SystemName":    "Tools",
 					"WallpaperType": "Media",
 				}
 			} else if baseName == "Collections" {
 				systemPath = filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
 				metadata = map[string]string{
-					"SystemName": "Collections",
+					"SystemName":    "Collections",
 					"WallpaperType": "Media",
 				}
 			} else {
@@ -186,8 +187,8 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 						if sys.Tag == systemTag {
 							systemPath = filepath.Join(sys.MediaPath, "bg.png")
 							metadata = map[string]string{
-								"SystemName": sys.Name,
-								"SystemTag":  systemTag,
+								"SystemName":    sys.Name,
+								"SystemTag":     systemTag,
 								"WallpaperType": "System",
 							}
 							break
@@ -214,11 +215,14 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				}
 			}
 		}
+	} else {
+		logging.LogDebug("SystemWallpapers directory not found or error reading it: %v", err)
 	}
 
 	// 2. CHECK COLLECTION WALLPAPERS (preferred structure)
 	collWallDir := filepath.Join(themePath, "Wallpapers", "CollectionWallpapers")
 	if entries, err := os.ReadDir(collWallDir); err == nil {
+		logging.LogDebug("Found CollectionWallpapers directory, checking for wallpapers")
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
 				continue
@@ -248,6 +252,8 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				logging.LogDebug("Found collection wallpaper: %s -> %s", themeRelPath, systemPath)
 			}
 		}
+	} else {
+		logging.LogDebug("CollectionWallpapers directory not found or error reading it: %v", err)
 	}
 
 	// 3. LEGACY STRUCTURE CHECK - for backward compatibility
@@ -264,7 +270,7 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				themeSubPath: "Wallpapers/Root/bg.png",
 				systemPath:   filepath.Join(systemPaths.Root, "bg.png"),
 				metadata: map[string]string{
-					"SystemName": "Root",
+					"SystemName":    "Root",
 					"WallpaperType": "Main",
 				},
 			},
@@ -273,7 +279,7 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				themeSubPath: "Wallpapers/Root/.media/bg.png",
 				systemPath:   filepath.Join(systemPaths.Root, ".media", "bg.png"),
 				metadata: map[string]string{
-					"SystemName": "Root",
+					"SystemName":    "Root",
 					"WallpaperType": "Media",
 				},
 			},
@@ -282,7 +288,7 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				themeSubPath: "Wallpapers/Recently Played/bg.png",
 				systemPath:   filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png"),
 				metadata: map[string]string{
-					"SystemName": "Recently Played",
+					"SystemName":    "Recently Played",
 					"WallpaperType": "Media",
 				},
 			},
@@ -291,7 +297,7 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				themeSubPath: "Wallpapers/Tools/bg.png",
 				systemPath:   filepath.Join(systemPaths.Tools, ".media", "bg.png"),
 				metadata: map[string]string{
-					"SystemName": "Tools",
+					"SystemName":    "Tools",
 					"WallpaperType": "Media",
 				},
 			},
@@ -300,7 +306,7 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 				themeSubPath: "Wallpapers/Collections/bg.png",
 				systemPath:   filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png"),
 				metadata: map[string]string{
-					"SystemName": "Collections",
+					"SystemName":    "Collections",
 					"WallpaperType": "Media",
 				},
 			},
@@ -368,8 +374,8 @@ func updateWallpapersInManifest(themePath string, manifest *ThemeManifest) error
 						ThemePath:  themeRelPath,
 						SystemPath: systemPath,
 						Metadata: map[string]string{
-							"SystemName": systemName,
-							"SystemTag":  systemTag,
+							"SystemName":    systemName,
+							"SystemTag":     systemTag,
 							"WallpaperType": "System",
 						},
 					})
@@ -412,6 +418,7 @@ func updateIconsInManifest(themePath string, manifest *ThemeManifest) error {
 	// 1. Check SystemIcons directory
 	sysIconsDir := filepath.Join(themePath, "Icons", "SystemIcons")
 	if entries, err := os.ReadDir(sysIconsDir); err == nil {
+		logging.LogDebug("Found SystemIcons directory, checking for icons")
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
 				continue
@@ -454,7 +461,7 @@ func updateIconsInManifest(themePath string, manifest *ThemeManifest) error {
 					for _, sys := range systemPaths.Systems {
 						if sys.Tag == systemTag {
 							// System icon goes in Roms/.media directory with system's name
-							systemPath = filepath.Join(systemPaths.Roms, ".media", sys.Name + ".png")
+							systemPath = filepath.Join(systemPaths.Roms, ".media", sys.Name+".png")
 							metadata["SystemName"] = sys.Name
 							break
 						}
@@ -463,7 +470,7 @@ func updateIconsInManifest(themePath string, manifest *ThemeManifest) error {
 					// No tag found, try matching by name directly
 					for _, sys := range systemPaths.Systems {
 						if sys.Name == baseName {
-							systemPath = filepath.Join(systemPaths.Roms, ".media", sys.Name + ".png")
+							systemPath = filepath.Join(systemPaths.Roms, ".media", sys.Name+".png")
 							metadata["SystemName"] = sys.Name
 							if sys.Tag != "" {
 								metadata["SystemTag"] = sys.Tag
@@ -490,11 +497,14 @@ func updateIconsInManifest(themePath string, manifest *ThemeManifest) error {
 				logging.LogDebug("Could not determine system path for icon: %s", fileName)
 			}
 		}
+	} else {
+		logging.LogDebug("SystemIcons directory not found or error reading it: %v", err)
 	}
 
 	// 2. Check ToolIcons directory
 	toolIconsDir := filepath.Join(themePath, "Icons", "ToolIcons")
 	if entries, err := os.ReadDir(toolIconsDir); err == nil {
+		logging.LogDebug("Found ToolIcons directory, checking for icons")
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
 				continue
@@ -519,11 +529,14 @@ func updateIconsInManifest(themePath string, manifest *ThemeManifest) error {
 			toolIconCount++
 			logging.LogDebug("Found tool icon: %s -> %s", themeRelPath, systemPath)
 		}
+	} else {
+		logging.LogDebug("ToolIcons directory not found or error reading it: %v", err)
 	}
 
 	// 3. Check CollectionIcons directory
 	collIconsDir := filepath.Join(themePath, "Icons", "CollectionIcons")
 	if entries, err := os.ReadDir(collIconsDir); err == nil {
+		logging.LogDebug("Found CollectionIcons directory, checking for icons")
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
 				continue
@@ -548,11 +561,13 @@ func updateIconsInManifest(themePath string, manifest *ThemeManifest) error {
 			collectionIconCount++
 			logging.LogDebug("Found collection icon: %s -> %s", themeRelPath, systemPath)
 		}
+	} else {
+		logging.LogDebug("CollectionIcons directory not found or error reading it: %v", err)
 	}
 
 	// Update the manifest
 	manifest.PathMappings.Icons = newIconMappings
-	manifest.Content.Icons.Present = (systemIconCount + toolIconCount + collectionIconCount > 0)
+	manifest.Content.Icons.Present = (systemIconCount+toolIconCount+collectionIconCount > 0)
 	manifest.Content.Icons.SystemCount = systemIconCount
 	manifest.Content.Icons.ToolCount = toolIconCount
 	manifest.Content.Icons.CollectionCount = collectionIconCount
