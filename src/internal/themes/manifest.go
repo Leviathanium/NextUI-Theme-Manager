@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"bytes"
 )
 
 // ThemeManifest represents the manifest.json file structure
