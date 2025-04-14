@@ -718,21 +718,28 @@ func ExportSettings(themePath string, manifest *ThemeManifest, logger *Logger) e
 		}
 	}
 
-	// Export LED settings
-	ledSettingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
-	if _, err := os.Stat(ledSettingsPath); err == nil {
-		targetPath := filepath.Join(themePath, "Settings", "ledsettings_brick.txt")
-		if err := CopyFile(ledSettingsPath, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy LED settings: %v", err)
-		} else {
-			manifest.Content.Settings.LEDsIncluded = true
-			manifest.PathMappings.Settings["leds"] = PathMapping{
-				ThemePath:  "Settings/ledsettings_brick.txt",
-				SystemPath: ledSettingsPath,
-			}
-			logger.Printf("Exported LED settings: %s", ledSettingsPath)
-		}
-	}
+    // Export LED settings
+    ledSettingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
+    if _, err := os.Stat(ledSettingsPath); err == nil {
+        targetPath := filepath.Join(themePath, "Settings", "ledsettings_brick.txt")
+        if err := CopyFile(ledSettingsPath, targetPath); err != nil {
+            logger.Printf("Warning: Could not copy LED settings: %v", err)
+        } else {
+            manifest.Content.Settings.LEDsIncluded = true
+            manifest.PathMappings.Settings["leds"] = PathMapping{
+                ThemePath:  "Settings/ledsettings_brick.txt",
+                SystemPath: ledSettingsPath,
+            }
+            logger.Printf("Exported LED settings: %s", ledSettingsPath)
+
+            // Extract LED settings for the manifest
+            if err := ExtractLEDSettings(ledSettingsPath, manifest); err != nil {
+                logger.Printf("Warning: Could not extract LED settings: %v", err)
+            } else {
+                logger.Printf("LED settings extracted and added to manifest")
+            }
+        }
+    }
 
 	return nil
 }
@@ -770,6 +777,61 @@ func ExtractAccentColors(settingsPath string, manifest *ThemeManifest) error {
 	}
 
 	return scanner.Err()
+}
+
+// ExtractLEDSettings extracts LED settings from the LED settings file
+func ExtractLEDSettings(settingsPath string, manifest *ThemeManifest) error {
+    // Initialize LED settings map
+    manifest.LEDSettings = make(map[string]map[string]string)
+
+    // Read the settings file
+    file, err := os.Open(settingsPath)
+    if err != nil {
+        return fmt.Errorf("failed to open LED settings file: %w", err)
+    }
+    defer file.Close()
+
+    // Read each line and extract settings
+    scanner := bufio.NewScanner(file)
+    var currentSection string
+
+    for scanner.Scan() {
+        line := scanner.Text()
+        line = strings.TrimSpace(line)
+
+        // Skip empty lines
+        if line == "" {
+            continue
+        }
+
+        // Check if this is a section header
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            // Extract section name (LED name)
+            currentSection = line[1 : len(line)-1]
+            // Initialize the map for this section
+            manifest.LEDSettings[currentSection] = make(map[string]string)
+            continue
+        }
+
+        // If we have a current section and this is a key-value pair
+        if currentSection != "" && strings.Contains(line, "=") {
+            parts := strings.SplitN(line, "=", 2)
+            if len(parts) == 2 {
+                key := strings.TrimSpace(parts[0])
+                value := strings.TrimSpace(parts[1])
+
+                // Convert color values to display format (#RRGGBB) if needed
+                if (key == "color1" || key == "color2") && strings.HasPrefix(value, "0x") {
+                    value = "#" + value[2:]
+                }
+
+                // Add to the current section's map
+                manifest.LEDSettings[currentSection][key] = value
+            }
+        }
+    }
+
+    return scanner.Err()
 }
 
 // GeneratePreview generates a preview image for the theme

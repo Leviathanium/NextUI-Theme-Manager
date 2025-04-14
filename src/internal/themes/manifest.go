@@ -54,6 +54,7 @@ type ThemeManifest struct {
 		Settings   map[string]PathMapping  `json:"settings"`
 	} `json:"path_mappings"`
 	AccentColors map[string]string         `json:"accent_colors"`
+	LEDSettings  map[string]map[string]string      `json:"led_settings"` // New field for LED settings
 }
 
 // PathMapping represents a mapping between theme and system paths
