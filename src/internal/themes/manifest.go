@@ -87,32 +87,36 @@ func GetVersionString() string {
 
 // WriteManifest writes the manifest to a file in the theme directory
 func WriteManifest(themePath string, manifest *ThemeManifest, logger *Logger) error {
-	// Set creation date, version, author and exported_by
-	manifest.ThemeInfo.CreationDate = time.Now()
-	manifest.ThemeInfo.Version = "1.0.0"
-	manifest.ThemeInfo.Author = "AuthorName" // Default author name as requested
-	manifest.ThemeInfo.ExportedBy = GetVersionString()
+    // Set creation date, version, author and exported_by
+    manifest.ThemeInfo.CreationDate = time.Now()
+    manifest.ThemeInfo.Version = "1.0.0"
+    manifest.ThemeInfo.Author = "AuthorName" // Default author name as requested
+    manifest.ThemeInfo.ExportedBy = GetVersionString()
 
-	// Extract theme name from directory name
-	themeName := filepath.Base(themePath)
-	manifest.ThemeInfo.Name = strings.TrimSuffix(themeName, ".theme")
+    // Extract theme name from directory name
+    themeName := filepath.Base(themePath)
+    manifest.ThemeInfo.Name = strings.TrimSuffix(themeName, ".theme")
 
-	// Convert manifest to JSON
-	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		logger.Printf("Error creating manifest JSON: %v", err)
-		return fmt.Errorf("error creating manifest JSON: %w", err)
-	}
+    // Use an encoder that doesn't escape HTML characters
+    var buf bytes.Buffer
+    enc := json.NewEncoder(&buf)
+    enc.SetEscapeHTML(false)  // This prevents & from becoming \u0026
+    enc.SetIndent("", "  ")   // Add proper indentation
 
-	// Write manifest to file
-	manifestPath := filepath.Join(themePath, "manifest.json")
-	if err := os.WriteFile(manifestPath, manifestJSON, 0644); err != nil {
-		logger.Printf("Error writing manifest file: %v", err)
-		return fmt.Errorf("error writing manifest file: %w", err)
-	}
+    if err := enc.Encode(manifest); err != nil {
+        logger.Printf("Error creating manifest JSON: %v", err)
+        return fmt.Errorf("error creating manifest JSON: %w", err)
+    }
 
-	logger.Printf("Created manifest file: %s", manifestPath)
-	return nil
+    // Write manifest to file
+    manifestPath := filepath.Join(themePath, "manifest.json")
+    if err := os.WriteFile(manifestPath, buf.Bytes(), 0644); err != nil {
+        logger.Printf("Error writing manifest file: %v", err)
+        return fmt.Errorf("error writing manifest file: %w", err)
+    }
+
+    logger.Printf("Created manifest file: %s", manifestPath)
+    return nil
 }
 
 // ValidateTheme validates a theme package and returns its manifest
