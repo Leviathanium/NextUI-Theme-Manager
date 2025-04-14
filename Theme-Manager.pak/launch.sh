@@ -1,35 +1,30 @@
-# Define log paths explicitly
-LOGS_DIR="$PAK_DIR/Logs"
-LAUNCH_LOG="$LOGS_DIR/launch.log"
-ERROR_LOG="$LOGS_DIR/theme-manager-error.log"
+#!/bin/sh
+# Debug launcher for theme manager
 
-# Create Logs directory if it doesn't exist
-mkdir -p "$LOGS_DIR"
+# Get the directory where this script is located
+PAK_DIR="$(dirname "$0")"
+cd "$PAK_DIR" || exit 1
 
 # Log environment
-echo "PAK directory: $PAK_DIR" > "$LAUNCH_LOG"
-echo "Environment variables:" >> "$LAUNCH_LOG"
-env >> "$LAUNCH_LOG"
+echo "PAK directory: $PAK_DIR" > launch.log
+echo "Environment variables:" >> launch.log
+env >> launch.log
 
 # Log binary permissions
-echo "Binary permissions:" >> "$LAUNCH_LOG"
-ls -la theme-manager minui-list minui-presenter >> "$LAUNCH_LOG" 2>&1
+echo "Binary permissions:" >> launch.log
+ls -la theme-manager minui-list minui-presenter >> launch.log 2>&1
 
-echo "Changed to directory: $(pwd)" >> "$LAUNCH_LOG"
+echo "Changed to directory: $(pwd)" >> launch.log
 
 # Make sure binaries are executable
 chmod +x theme-manager minui-list minui-presenter 2>/dev/null
-echo "Made binaries executable" >> "$LAUNCH_LOG"
+echo "Made binaries executable" >> launch.log
 
 # Log launch
-echo "Launching theme-manager" >> "$LAUNCH_LOG"
+echo "Launching theme-manager" >> launch.log
 
-# Launch with output redirection and better error handling
-./theme-manager 2>>"$ERROR_LOG" || {
-  echo "Application crashed with exit code: $?" >> "$LAUNCH_LOG"
-  echo "Last 10 lines of error log:" >> "$LAUNCH_LOG"
-  tail -10 "$ERROR_LOG" >> "$LAUNCH_LOG"
-}
+# Launch with output redirection
+./theme-manager 2>>theme-manager-error.log
 
 # Exit code
-echo "Exit code: $?" >> "$LAUNCH_LOG"
+echo "Exit code: $?" >> launch.log
