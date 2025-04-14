@@ -3,12 +3,15 @@
 
 package themes
 
+// Add at the top of import.go, after existing imports
 import (
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"  // Add this for regex support
 	"strings"
+	"nextui-themes/internal/system"  // Add this for system paths
 	"nextui-themes/internal/ui"
 )
 
@@ -20,6 +23,26 @@ func ImportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		return nil
 	}
 
+	// Get system paths for metadata matching
+	systemPaths, err := system.GetSystemPaths()
+	if err != nil {
+		logger.Printf("Error getting system paths: %v", err)
+		// Continue anyway, we'll use direct path mapping
+	}
+
+	// Create a map of system tags for faster lookup
+	systemsByTag := make(map[string]system.SystemInfo)
+	if systemPaths != nil {
+		for _, sys := range systemPaths.Systems {
+			if sys.Tag != "" {
+				systemsByTag[sys.Tag] = sys
+			}
+		}
+	}
+
+	// Regular expression to extract system tag from directory path
+	reSystemTag := regexp.MustCompile(`/Systems/\((.*?)\)/`)
+
 	// Import each wallpaper using path mappings
 	for _, mapping := range manifest.PathMappings.Wallpapers {
 		srcPath := filepath.Join(themePath, mapping.ThemePath)
@@ -29,6 +52,21 @@ func ImportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
 			logger.Printf("Warning: Source wallpaper file not found: %s", srcPath)
 			continue
+		}
+
+		// Check if this is a system wallpaper with a tag
+		matches := reSystemTag.FindStringSubmatch(mapping.ThemePath)
+		if len(matches) >= 2 {
+			systemTag := matches[1]
+			logger.Printf("Found system tag in wallpaper path: %s", systemTag)
+
+			// Try to find the matching system by tag
+			if sys, ok := systemsByTag[systemTag]; ok {
+				// Update destination path to use the current system name
+				newDstPath := filepath.Join(sys.MediaPath, "bg.png")
+				logger.Printf("Updated destination path using system tag match: %s -> %s", dstPath, newDstPath)
+				dstPath = newDstPath
+			}
 		}
 
 		// Create destination directory

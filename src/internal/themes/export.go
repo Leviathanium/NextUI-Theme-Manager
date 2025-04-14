@@ -116,7 +116,6 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		}
 	}
 
-	// Rest of function remains unchanged
 	// Root .media wallpaper
 	rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
 	if _, err := os.Stat(rootMediaBg); err == nil {
@@ -210,7 +209,14 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 	for _, system := range systemPaths.Systems {
 		systemBg := filepath.Join(system.MediaPath, "bg.png")
 		if _, err := os.Stat(systemBg); err == nil {
-			targetDir := filepath.Join(themePath, "Wallpapers", "Systems", system.Name)
+			// Skip systems without a tag
+			if system.Tag == "" {
+				logger.Printf("Skipping system with no tag: %s", system.Name)
+				continue
+			}
+
+			// Use the tag instead of full name for the directory
+			targetDir := filepath.Join(themePath, "Wallpapers", "Systems", fmt.Sprintf("(%s)", system.Tag))
 			if err := os.MkdirAll(targetDir, 0755); err != nil {
 				logger.Printf("Warning: Could not create directory for system %s: %v", system.Name, err)
 				continue
@@ -220,17 +226,22 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 			if err := CopyFile(systemBg, targetPath); err != nil {
 				logger.Printf("Warning: Could not copy system %s bg.png: %v", system.Name, err)
 			} else {
-				// Add to manifest path mappings
+				// Add to manifest path mappings with extended metadata
 				manifest.PathMappings.Wallpapers = append(
 					manifest.PathMappings.Wallpapers,
 					PathMapping{
-						ThemePath:  fmt.Sprintf("Wallpapers/Systems/%s/bg.png", system.Name),
+						ThemePath:  fmt.Sprintf("Wallpapers/Systems/(%s)/bg.png", system.Tag),
 						SystemPath: systemBg,
+						// Add system metadata to improve matching
+						Metadata: map[string]string{
+							"SystemName": system.Name,
+							"SystemTag":  system.Tag,
+						},
 					},
 				)
 				manifest.Content.Wallpapers.Present = true
 				manifest.Content.Wallpapers.Count++
-				logger.Printf("Exported system wallpaper for %s: %s", system.Name, systemBg)
+				logger.Printf("Exported system wallpaper for %s (%s): %s", system.Name, system.Tag, systemBg)
 			}
 		}
 	}

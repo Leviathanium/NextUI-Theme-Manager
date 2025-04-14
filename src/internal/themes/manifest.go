@@ -58,8 +58,9 @@ type ThemeManifest struct {
 
 // PathMapping represents a mapping between theme and system paths
 type PathMapping struct {
-	ThemePath  string `json:"theme_path"`
-	SystemPath string `json:"system_path"`
+	ThemePath  string            `json:"theme_path"`
+	SystemPath string            `json:"system_path"`
+	Metadata   map[string]string `json:"metadata,omitempty"` // Additional metadata to aid in matching
 }
 
 // ThemeVersionInfo holds the theme manager version information

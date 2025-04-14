@@ -3,10 +3,12 @@
 
 package themes
 
+// Add at the top of global.go, after existing imports
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"  // Add this for regex support
 	"strings"
 
 	"nextui-themes/internal/logging"
@@ -148,6 +150,23 @@ func ApplyCustomTheme(systemName string, themeName string) error {
 
 	// Source background image - updated to use Wallpapers directory
 	srcBg := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
+
+	// Special case: check if the system name is actually a tag in parentheses
+	isTag := false
+	tagOnly := ""
+	if strings.HasPrefix(systemName, "(") && strings.HasSuffix(systemName, ")") {
+		isTag = true
+		tagOnly = systemName[1 : len(systemName)-1]
+		logging.LogDebug("Detected system tag: %s", tagOnly)
+
+		// For tag-only input, try to find the corresponding theme in the Systems directory
+		tagThemePath := filepath.Join(cwd, "Wallpapers", themeName, "Systems", systemName, "bg.png")
+		if _, err := os.Stat(tagThemePath); err == nil {
+			srcBg = tagThemePath
+			logging.LogDebug("Using tag-specific background: %s", srcBg)
+		}
+	}
+
 	logging.LogDebug("Theme background path: %s", srcBg)
 
 	// Check if the source background exists
@@ -219,21 +238,68 @@ func ApplyCustomTheme(systemName string, themeName string) error {
 		}
 
 	} else {
-		// Find the system in our list
+		// Find the system in our list - try multiple matching approaches
 		found := false
-		for _, system := range systemPaths.Systems {
-			if system.Name == systemName {
-				targetPath = system.Path
-				targetMediaPath = system.MediaPath
+		var matchedSystem system.SystemInfo
+
+		// First, try exact match with system name
+		for _, sys := range systemPaths.Systems {
+			if sys.Name == systemName {
+				matchedSystem = sys
 				found = true
+				logging.LogDebug("Found exact name match for system: %s", sys.Name)
 				break
 			}
 		}
 
+		// If not found by name, and not already a tag, try matching by tag
+		if !found && !isTag {
+			// Check if the systemName contains a tag in parentheses that we can extract
+			re := regexp.MustCompile(`\((.*?)\)`)
+			matches := re.FindStringSubmatch(systemName)
+			if len(matches) >= 2 {
+				extractedTag := matches[1]
+				logging.LogDebug("Extracted tag from system name: %s", extractedTag)
+
+				// Search for a system with this tag
+				for _, sys := range systemPaths.Systems {
+					if sys.Tag == extractedTag {
+						matchedSystem = sys
+						found = true
+						logging.LogDebug("Found system by extracted tag: %s (Tag: %s)", sys.Name, extractedTag)
+						break
+					}
+				}
+			}
+		}
+
+		// If is a tag or we still haven't found it, try matching directly by tag
 		if !found {
-			logging.LogDebug("System not found: %s", systemName)
+			searchTag := tagOnly
+			if searchTag == "" && systemName != "" {
+				// Try using the systemName directly as a tag
+				searchTag = systemName
+			}
+
+			if searchTag != "" {
+				for _, sys := range systemPaths.Systems {
+					if sys.Tag == searchTag {
+						matchedSystem = sys
+						found = true
+						logging.LogDebug("Found system by direct tag match: %s (Tag: %s)", sys.Name, searchTag)
+						break
+					}
+				}
+			}
+		}
+
+		if !found {
+			logging.LogDebug("System not found by any matching method: %s", systemName)
 			return fmt.Errorf("system not found: %s", systemName)
 		}
+
+		targetPath = matchedSystem.Path
+		targetMediaPath = matchedSystem.MediaPath
 
 		// Ensure media directory exists
 		if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
