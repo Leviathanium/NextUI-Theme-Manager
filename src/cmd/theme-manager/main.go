@@ -6,17 +6,40 @@ package main
 import (
 	"os"
 	"path/filepath"
-
+    "runtime"
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/ui/screens"
+	"fmt"
 )
 
 func main() {
+	// Recover from panics
+	defer func() {
+		if r := recover(); r != nil {
+			// Get stack trace
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			stackTrace := string(buf[:n])
+
+			// Log the panic
+			fmt.Fprintf(os.Stderr, "PANIC: %v\n\nStack Trace:\n%s\n", r, stackTrace)
+
+			// Also try to log to file if possible
+			if logging.IsLoggerInitialized() {
+				logging.LogDebug("PANIC: %v\n\nStack Trace:\n%s\n", r, stackTrace)
+			}
+
+			// Exit with error
+			os.Exit(1)
+		}
+	}()
+
 	// Initialize the logger
 	defer logging.CloseLogger()
 
 	logging.LogDebug("Application started")
+	logging.SetLoggerInitialized() // Explicitly mark logger as initialized
 
 	// Get current directory
 	cwd, err := os.Getwd()

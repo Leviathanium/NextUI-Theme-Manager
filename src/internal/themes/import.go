@@ -529,6 +529,15 @@ func ImportTheme(themeName string) error {
 	// Full path to theme - look in Imports directory
 	themePath := filepath.Join(cwd, "Themes", "Imports", themeName)
 
+	// Update the manifest before validation - this scans all the theme files
+	// and ensures the manifest reflects the actual contents
+	if err := UpdateThemeManifest(themePath); err != nil {
+		logger.Printf("Warning: Could not update manifest: %v", err)
+		// Continue anyway, as the theme might still be valid
+	} else {
+		logger.Printf("Successfully updated theme manifest to reflect actual content")
+	}
+
 	// Validate theme
 	manifest, err := ValidateTheme(themePath, logger)
 	if err != nil {

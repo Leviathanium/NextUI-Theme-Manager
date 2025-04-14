@@ -80,15 +80,14 @@ func Initialize() error {
 		logging.LogDebug("Error initializing LED settings: %v", err)
 	}
 
-    // Initialize the theme directory structure
-    if err := themes.EnsureThemeDirectoryStructure(); err != nil {
-        logging.LogDebug("Warning: Could not create theme directories: %v", err)
-    }
+	// Explicitly initialize theme directories after logging is set up
+	if err := themes.EnsureThemeDirectoryStructure(); err != nil {
+		logging.LogDebug("Warning: Could not create theme directories: %v", err)
+	}
 
-    // Create placeholder files for guidance
-    if err := themes.CreatePlaceholderFiles(); err != nil {
-        logging.LogDebug("Warning: Could not create placeholder files: %v", err)
-    }
+	if err := themes.CreatePlaceholderFiles(); err != nil {
+		logging.LogDebug("Warning: Could not create placeholder files: %v", err)
+	}
 
     // Log about theme functionality
     logging.LogDebug("Theme import/export functionality initialized")

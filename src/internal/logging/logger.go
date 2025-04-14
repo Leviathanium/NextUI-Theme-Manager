@@ -13,6 +13,7 @@ import (
 var logFile *os.File
 
 // InitLogger initializes the debug log file
+// InitLogger initializes the debug log file
 func init() {
     // Get current directory
     cwd, err := os.Getwd()
@@ -41,6 +42,9 @@ func init() {
     // Log startup information
     LogDebug("=== Theme Manager Started ===")
     LogDebug("Current directory: %s", cwd)
+
+    // Mark logger as initialized
+    SetLoggerInitialized()
 }
 
 // CloseLogger closes the log file

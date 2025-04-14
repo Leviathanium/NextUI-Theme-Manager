@@ -91,10 +91,3 @@ Exported theme packages will be placed here with sequential names (theme_1.theme
 
 	return nil
 }
-
-// Initialize theme directories during package initialization
-func init() {
-	// No need to check errors here, as it's just initialization
-	EnsureThemeDirectoryStructure()
-	CreatePlaceholderFiles()
-}

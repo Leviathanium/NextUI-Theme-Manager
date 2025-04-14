@@ -1,0 +1,11 @@
+[F1 key]
+color1=0x8833FF
+
+[F2 key]
+color1=0x8833FF
+
+[Top bar]
+color1=0x8833FF
+
+[L&R triggers]
+color1=0x8833FF

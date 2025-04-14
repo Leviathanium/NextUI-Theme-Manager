@@ -24,8 +24,12 @@ echo "Made binaries executable" >> "$LAUNCH_LOG"
 # Log launch
 echo "Launching theme-manager" >> "$LAUNCH_LOG"
 
-# Launch with output redirection
-./theme-manager 2>>"$ERROR_LOG"
+# Launch with output redirection and better error handling
+./theme-manager 2>>"$ERROR_LOG" || {
+  echo "Application crashed with exit code: $?" >> "$LAUNCH_LOG"
+  echo "Last 10 lines of error log:" >> "$LAUNCH_LOG"
+  tail -10 "$ERROR_LOG" >> "$LAUNCH_LOG"
+}
 
 # Exit code
 echo "Exit code: $?" >> "$LAUNCH_LOG"
