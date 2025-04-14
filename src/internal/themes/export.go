@@ -57,11 +57,8 @@ func CreateThemeExportDirectory() (string, error) {
 
 	// Create the theme directory and subdirectories
 	subDirs := []string{
-		"Wallpapers/Root",
-		"Wallpapers/Collections",
-		"Wallpapers/Recently Played",
-		"Wallpapers/Tools",
-		"Wallpapers/Systems",
+        "Wallpapers/SystemWallpapers",
+        "Wallpapers/CollectionWallpapers",
 		"Icons/SystemIcons",
 		"Icons/ToolIcons",
 		"Icons/CollectionIcons",
@@ -80,8 +77,6 @@ func CreateThemeExportDirectory() (string, error) {
 	return themePath, nil
 }
 
-// Removed CopyFile function as it's already defined in common.go
-
 // ExportWallpapers exports wallpapers to the theme directory
 func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger) error {
 	// Get system paths
@@ -95,10 +90,24 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 	manifest.Content.Wallpapers.Present = false
 	manifest.Content.Wallpapers.Count = 0
 
-	// Root wallpaper (bg.png at root level)
+	// Create the SystemWallpapers directory
+	systemWallpapersDir := filepath.Join(themePath, "Wallpapers", "SystemWallpapers")
+	if err := os.MkdirAll(systemWallpapersDir, 0755); err != nil {
+		logger.Printf("Error creating SystemWallpapers directory: %v", err)
+		return fmt.Errorf("error creating SystemWallpapers directory: %w", err)
+	}
+
+	// Create the CollectionWallpapers directory
+	collectionWallpapersDir := filepath.Join(themePath, "Wallpapers", "CollectionWallpapers")
+	if err := os.MkdirAll(collectionWallpapersDir, 0755); err != nil {
+		logger.Printf("Error creating CollectionWallpapers directory: %v", err)
+		return fmt.Errorf("error creating CollectionWallpapers directory: %w", err)
+	}
+
+	// Export Root wallpaper (bg.png at root level)
 	rootBg := filepath.Join(systemPaths.Root, "bg.png")
 	if _, err := os.Stat(rootBg); err == nil {
-		targetPath := filepath.Join(themePath, "Wallpapers", "Root", "bg.png")
+		targetPath := filepath.Join(systemWallpapersDir, "Root.png")
 		if err := CopyFile(rootBg, targetPath); err != nil {
 			logger.Printf("Warning: Could not copy root bg.png: %v", err)
 		} else {
@@ -106,8 +115,12 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 			manifest.PathMappings.Wallpapers = append(
 				manifest.PathMappings.Wallpapers,
 				PathMapping{
-					ThemePath:  "Wallpapers/Root/bg.png",
+					ThemePath:  "Wallpapers/SystemWallpapers/Root.png",
 					SystemPath: rootBg,
+					Metadata: map[string]string{
+						"SystemName": "Root",
+						"SystemType": "System",
+					},
 				},
 			)
 			manifest.Content.Wallpapers.Present = true
@@ -116,35 +129,40 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		}
 	}
 
-	// Root .media wallpaper
+	// Also check Root .media wallpaper which is important for consistency
 	rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
 	if _, err := os.Stat(rootMediaBg); err == nil {
-		targetPath := filepath.Join(themePath, "Wallpapers", "Root", ".media", "bg.png")
-
-		// Create .media directory
-		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-			logger.Printf("Warning: Could not create directory for root media bg: %v", err)
-		} else if err := CopyFile(rootMediaBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy root .media/bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/Root/.media/bg.png",
-					SystemPath: rootMediaBg,
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported root .media wallpaper: %s", rootMediaBg)
+		// We don't need to copy it again if the root bg.png exists, just add it to manifest
+		if _, err := os.Stat(rootBg); err != nil {
+			// If root bg.png doesn't exist, copy the media one
+			targetPath := filepath.Join(systemWallpapersDir, "Root.png")
+			if err := CopyFile(rootMediaBg, targetPath); err != nil {
+				logger.Printf("Warning: Could not copy root .media/bg.png: %v", err)
+			} else {
+				manifest.Content.Wallpapers.Present = true
+				manifest.Content.Wallpapers.Count++
+				logger.Printf("Exported root .media wallpaper as Root.png: %s", rootMediaBg)
+			}
 		}
+
+		// Add the media path to manifest path mappings for import consistency
+		manifest.PathMappings.Wallpapers = append(
+			manifest.PathMappings.Wallpapers,
+			PathMapping{
+				ThemePath:  "Wallpapers/SystemWallpapers/Root.png", // Same theme path
+				SystemPath: rootMediaBg,
+				Metadata: map[string]string{
+					"SystemName": "Root",
+					"SystemType": "MediaDirectory",
+				},
+			},
+		)
 	}
 
-	// Recently Played wallpaper
+	// Export Recently Played wallpaper
 	rpBg := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
 	if _, err := os.Stat(rpBg); err == nil {
-		targetPath := filepath.Join(themePath, "Wallpapers", "Recently Played", "bg.png")
+		targetPath := filepath.Join(systemWallpapersDir, "Recently Played.png")
 		if err := CopyFile(rpBg, targetPath); err != nil {
 			logger.Printf("Warning: Could not copy Recently Played bg.png: %v", err)
 		} else {
@@ -152,8 +170,12 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 			manifest.PathMappings.Wallpapers = append(
 				manifest.PathMappings.Wallpapers,
 				PathMapping{
-					ThemePath:  "Wallpapers/Recently Played/bg.png",
+					ThemePath:  "Wallpapers/SystemWallpapers/Recently Played.png",
 					SystemPath: rpBg,
+					Metadata: map[string]string{
+						"SystemName": "Recently Played",
+						"SystemType": "System",
+					},
 				},
 			)
 			manifest.Content.Wallpapers.Present = true
@@ -162,10 +184,10 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		}
 	}
 
-	// Tools wallpaper
+	// Export Tools wallpaper
 	toolsBg := filepath.Join(systemPaths.Tools, ".media", "bg.png")
 	if _, err := os.Stat(toolsBg); err == nil {
-		targetPath := filepath.Join(themePath, "Wallpapers", "Tools", "bg.png")
+		targetPath := filepath.Join(systemWallpapersDir, "Tools.png")
 		if err := CopyFile(toolsBg, targetPath); err != nil {
 			logger.Printf("Warning: Could not copy Tools bg.png: %v", err)
 		} else {
@@ -173,8 +195,12 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 			manifest.PathMappings.Wallpapers = append(
 				manifest.PathMappings.Wallpapers,
 				PathMapping{
-					ThemePath:  "Wallpapers/Tools/bg.png",
+					ThemePath:  "Wallpapers/SystemWallpapers/Tools.png",
 					SystemPath: toolsBg,
+					Metadata: map[string]string{
+						"SystemName": "Tools",
+						"SystemType": "System",
+					},
 				},
 			)
 			manifest.Content.Wallpapers.Present = true
@@ -183,29 +209,71 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		}
 	}
 
-	// Collections wallpaper
+	// Export Collections wallpapers
 	collectionsPath := filepath.Join(systemPaths.Root, "Collections")
-	collectionsBg := filepath.Join(collectionsPath, ".media", "bg.png")
-	if _, err := os.Stat(collectionsBg); err == nil {
-		targetPath := filepath.Join(themePath, "Wallpapers", "Collections", "bg.png")
-		if err := CopyFile(collectionsBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy Collections bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/Collections/bg.png",
-					SystemPath: collectionsBg,
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported Collections wallpaper: %s", collectionsBg)
+	if collectionsDir, err := os.Stat(collectionsPath); err == nil && collectionsDir.IsDir() {
+		// First check the main Collections wallpaper
+		collectionsBg := filepath.Join(collectionsPath, ".media", "bg.png")
+		if _, err := os.Stat(collectionsBg); err == nil {
+			targetPath := filepath.Join(systemWallpapersDir, "Collections.png")
+			if err := CopyFile(collectionsBg, targetPath); err != nil {
+				logger.Printf("Warning: Could not copy Collections bg.png: %v", err)
+			} else {
+				// Add to manifest path mappings
+				manifest.PathMappings.Wallpapers = append(
+					manifest.PathMappings.Wallpapers,
+					PathMapping{
+						ThemePath:  "Wallpapers/SystemWallpapers/Collections.png",
+						SystemPath: collectionsBg,
+						Metadata: map[string]string{
+							"SystemName": "Collections",
+							"SystemType": "System",
+						},
+					},
+				)
+				manifest.Content.Wallpapers.Present = true
+				manifest.Content.Wallpapers.Count++
+				logger.Printf("Exported Collections wallpaper: %s", collectionsBg)
+			}
+		}
+
+		// Now check for individual collections
+		collectionsEntries, err := os.ReadDir(collectionsPath)
+		if err == nil {
+			for _, entry := range collectionsEntries {
+				if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+					collectionName := entry.Name()
+					collectionMediaDir := filepath.Join(collectionsPath, collectionName, ".media")
+					collectionBg := filepath.Join(collectionMediaDir, "bg.png")
+
+					if _, err := os.Stat(collectionBg); err == nil {
+						targetPath := filepath.Join(collectionWallpapersDir, collectionName + ".png")
+						if err := CopyFile(collectionBg, targetPath); err != nil {
+							logger.Printf("Warning: Could not copy collection %s bg.png: %v", collectionName, err)
+						} else {
+							// Add to manifest path mappings
+							manifest.PathMappings.Wallpapers = append(
+								manifest.PathMappings.Wallpapers,
+								PathMapping{
+									ThemePath:  fmt.Sprintf("Wallpapers/CollectionWallpapers/%s.png", collectionName),
+									SystemPath: collectionBg,
+									Metadata: map[string]string{
+										"CollectionName": collectionName,
+										"SystemType":     "Collection",
+									},
+								},
+							)
+							manifest.Content.Wallpapers.Present = true
+							manifest.Content.Wallpapers.Count++
+							logger.Printf("Exported collection wallpaper for %s: %s", collectionName, collectionBg)
+						}
+					}
+				}
+			}
 		}
 	}
 
-	// System wallpapers
+	// Export System wallpapers
 	for _, system := range systemPaths.Systems {
 		systemBg := filepath.Join(system.MediaPath, "bg.png")
 		if _, err := os.Stat(systemBg); err == nil {
@@ -215,14 +283,8 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 				continue
 			}
 
-			// Use the tag instead of full name for the directory
-			targetDir := filepath.Join(themePath, "Wallpapers", "Systems", fmt.Sprintf("(%s)", system.Tag))
-			if err := os.MkdirAll(targetDir, 0755); err != nil {
-				logger.Printf("Warning: Could not create directory for system %s: %v", system.Name, err)
-				continue
-			}
-
-			targetPath := filepath.Join(targetDir, "bg.png")
+			// Use the full system name with tag for the filename
+			targetPath := filepath.Join(systemWallpapersDir, fmt.Sprintf("%s (%s).png", system.Name, system.Tag))
 			if err := CopyFile(systemBg, targetPath); err != nil {
 				logger.Printf("Warning: Could not copy system %s bg.png: %v", system.Name, err)
 			} else {
@@ -230,12 +292,12 @@ func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 				manifest.PathMappings.Wallpapers = append(
 					manifest.PathMappings.Wallpapers,
 					PathMapping{
-						ThemePath:  fmt.Sprintf("Wallpapers/Systems/(%s)/bg.png", system.Tag),
+						ThemePath:  fmt.Sprintf("Wallpapers/SystemWallpapers/%s (%s).png", system.Name, system.Tag),
 						SystemPath: systemBg,
-						// Add system metadata to improve matching
 						Metadata: map[string]string{
 							"SystemName": system.Name,
 							"SystemTag":  system.Tag,
+							"SystemType": "GameSystem",
 						},
 					},
 				)

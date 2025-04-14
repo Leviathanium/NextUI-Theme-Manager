@@ -30,20 +30,30 @@ func ImportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 		// Continue anyway, we'll use direct path mapping
 	}
 
-	// Create a map of system tags for faster lookup
+	// Create maps for better lookups
+	systemsByName := make(map[string]system.SystemInfo)
 	systemsByTag := make(map[string]system.SystemInfo)
 	if systemPaths != nil {
 		for _, sys := range systemPaths.Systems {
+			systemsByName[sys.Name] = sys
 			if sys.Tag != "" {
 				systemsByTag[sys.Tag] = sys
 			}
 		}
 	}
 
-	// Regular expression to extract system tag from directory path
-	reSystemTag := regexp.MustCompile(`/Systems/\((.*?)\)/`)
+	// Regular expression to extract system tag from filename
+	reSystemTag := regexp.MustCompile(`\((.*?)\)$`)
 
-	// Import each wallpaper using path mappings
+	// First, check if we need to handle old-style theme with directories
+	// This ensures backward compatibility with older themes
+	oldStyleWallpapers := filepath.Join(themePath, "Wallpapers", "Root", "bg.png")
+	if _, err := os.Stat(oldStyleWallpapers); err == nil {
+		logger.Printf("Detected old-style theme with directory structure, using legacy import")
+		return importLegacyWallpapers(themePath, manifest, logger, systemPaths)
+	}
+
+	// Process each wallpaper in the manifest
 	for _, mapping := range manifest.PathMappings.Wallpapers {
 		srcPath := filepath.Join(themePath, mapping.ThemePath)
 		dstPath := mapping.SystemPath
@@ -54,18 +64,102 @@ func ImportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 			continue
 		}
 
-		// Check if this is a system wallpaper with a tag
-		matches := reSystemTag.FindStringSubmatch(mapping.ThemePath)
-		if len(matches) >= 2 {
-			systemTag := matches[1]
-			logger.Printf("Found system tag in wallpaper path: %s", systemTag)
+		// Special handling based on metadata
+		if mapping.Metadata != nil {
+			// Handle different system types
+			if systemType, ok := mapping.Metadata["SystemType"]; ok {
+				switch systemType {
+				case "GameSystem":
+					// Try to find system by tag
+					if tag, ok := mapping.Metadata["SystemTag"]; ok {
+						if sys, found := systemsByTag[tag]; found {
+							// Update destination path for current system
+							dstPath = filepath.Join(sys.MediaPath, "bg.png")
+							logger.Printf("Found system by tag %s: %s", tag, sys.Name)
+						}
+					}
 
-			// Try to find the matching system by tag
-			if sys, ok := systemsByTag[systemTag]; ok {
-				// Update destination path to use the current system name
-				newDstPath := filepath.Join(sys.MediaPath, "bg.png")
-				logger.Printf("Updated destination path using system tag match: %s -> %s", dstPath, newDstPath)
-				dstPath = newDstPath
+				case "Collection":
+					// Handle collection wallpapers
+					if collName, ok := mapping.Metadata["CollectionName"]; ok {
+						collPath := filepath.Join(systemPaths.Root, "Collections", collName, ".media")
+						if err := os.MkdirAll(collPath, 0755); err != nil {
+							logger.Printf("Warning: Could not create collection media directory: %v", err)
+						} else {
+							dstPath = filepath.Join(collPath, "bg.png")
+						}
+					}
+				}
+			}
+		}
+
+		// If we couldn't determine from metadata, try extracting from filename
+		if strings.Contains(srcPath, "SystemWallpapers") && !strings.Contains(dstPath, ".media") {
+			// Extract filename
+			filename := filepath.Base(srcPath)
+
+			// Check for special cases first
+			switch filename {
+			case "Root.png":
+				// Handle Root wallpaper - needs to go to both locations
+				rootPath := filepath.Join(systemPaths.Root, "bg.png")
+				rootMediaPath := filepath.Join(systemPaths.Root, ".media", "bg.png")
+
+				// Ensure media directory exists
+				if err := os.MkdirAll(filepath.Dir(rootMediaPath), 0755); err != nil {
+					logger.Printf("Warning: Could not create root media directory: %v", err)
+				}
+
+				// Copy to both locations
+				if err := CopyFile(srcPath, rootPath); err != nil {
+					logger.Printf("Warning: Could not copy Root wallpaper to root: %v", err)
+				} else {
+					logger.Printf("Imported Root wallpaper to: %s", rootPath)
+				}
+
+				if err := CopyFile(srcPath, rootMediaPath); err != nil {
+					logger.Printf("Warning: Could not copy Root wallpaper to media dir: %v", err)
+				} else {
+					logger.Printf("Imported Root wallpaper to: %s", rootMediaPath)
+				}
+
+				// Skip the regular copy below
+				continue
+
+			case "Recently Played.png":
+				// Handle Recently Played
+				dstPath = filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
+
+			case "Tools.png":
+				// Handle Tools
+				dstPath = filepath.Join(systemPaths.Tools, ".media", "bg.png")
+
+			case "Collections.png":
+				// Handle main Collections directory
+				dstPath = filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
+
+			default:
+				// Check if it's a system wallpaper with tag
+				matches := reSystemTag.FindStringSubmatch(filename)
+				if len(matches) >= 2 {
+					tag := matches[1]
+					if sys, ok := systemsByTag[tag]; ok {
+						dstPath = filepath.Join(sys.MediaPath, "bg.png")
+						logger.Printf("Found system by filename tag %s: %s", tag, sys.Name)
+					}
+				}
+			}
+		} else if strings.Contains(srcPath, "CollectionWallpapers") {
+			// Handle collection wallpapers
+			filename := filepath.Base(srcPath)
+			collName := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+			// Create collection media path
+			collPath := filepath.Join(systemPaths.Root, "Collections", collName, ".media")
+			if err := os.MkdirAll(collPath, 0755); err != nil {
+				logger.Printf("Warning: Could not create collection media directory: %v", err)
+			} else {
+				dstPath = filepath.Join(collPath, "bg.png")
 			}
 		}
 
@@ -81,6 +175,120 @@ func ImportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger)
 			logger.Printf("Warning: Could not copy wallpaper: %v", err)
 		} else {
 			logger.Printf("Imported wallpaper: %s -> %s", srcPath, dstPath)
+		}
+	}
+
+	return nil
+}
+
+// importLegacyWallpapers handles importing wallpapers from older themes with the directory structure
+func importLegacyWallpapers(themePath string, manifest *ThemeManifest, logger *Logger, systemPaths *system.SystemPaths) error {
+	logger.Printf("Importing legacy wallpapers with directory structure")
+
+	// Root wallpaper
+	rootBgSrc := filepath.Join(themePath, "Wallpapers", "Root", "bg.png")
+	if _, err := os.Stat(rootBgSrc); err == nil {
+		// Apply to root directory
+		rootBgDst := filepath.Join(systemPaths.Root, "bg.png")
+		if err := CopyFile(rootBgSrc, rootBgDst); err != nil {
+			logger.Printf("Warning: Could not copy Root wallpaper to root: %v", err)
+		} else {
+			logger.Printf("Imported Root wallpaper to: %s", rootBgDst)
+		}
+
+		// Apply to root media directory
+		rootMediaDst := filepath.Join(systemPaths.Root, ".media", "bg.png")
+		if err := os.MkdirAll(filepath.Dir(rootMediaDst), 0755); err != nil {
+			logger.Printf("Warning: Could not create root media directory: %v", err)
+		} else if err := CopyFile(rootBgSrc, rootMediaDst); err != nil {
+			logger.Printf("Warning: Could not copy Root wallpaper to media dir: %v", err)
+		} else {
+			logger.Printf("Imported Root wallpaper to: %s", rootMediaDst)
+		}
+	}
+
+	// Recently Played wallpaper
+	rpBgSrc := filepath.Join(themePath, "Wallpapers", "Recently Played", "bg.png")
+	if _, err := os.Stat(rpBgSrc); err == nil {
+		rpBgDst := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
+		if err := os.MkdirAll(filepath.Dir(rpBgDst), 0755); err != nil {
+			logger.Printf("Warning: Could not create Recently Played media directory: %v", err)
+		} else if err := CopyFile(rpBgSrc, rpBgDst); err != nil {
+			logger.Printf("Warning: Could not copy Recently Played wallpaper: %v", err)
+		} else {
+			logger.Printf("Imported Recently Played wallpaper to: %s", rpBgDst)
+		}
+	}
+
+	// Tools wallpaper
+	toolsBgSrc := filepath.Join(themePath, "Wallpapers", "Tools", "bg.png")
+	if _, err := os.Stat(toolsBgSrc); err == nil {
+		toolsBgDst := filepath.Join(systemPaths.Tools, ".media", "bg.png")
+		if err := os.MkdirAll(filepath.Dir(toolsBgDst), 0755); err != nil {
+			logger.Printf("Warning: Could not create Tools media directory: %v", err)
+		} else if err := CopyFile(toolsBgSrc, toolsBgDst); err != nil {
+			logger.Printf("Warning: Could not copy Tools wallpaper: %v", err)
+		} else {
+			logger.Printf("Imported Tools wallpaper to: %s", toolsBgDst)
+		}
+	}
+
+	// Collections wallpaper
+	collectionsBgSrc := filepath.Join(themePath, "Wallpapers", "Collections", "bg.png")
+	if _, err := os.Stat(collectionsBgSrc); err == nil {
+		collectionsBgDst := filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
+		if err := os.MkdirAll(filepath.Dir(collectionsBgDst), 0755); err != nil {
+			logger.Printf("Warning: Could not create Collections media directory: %v", err)
+		} else if err := CopyFile(collectionsBgSrc, collectionsBgDst); err != nil {
+			logger.Printf("Warning: Could not copy Collections wallpaper: %v", err)
+		} else {
+			logger.Printf("Imported Collections wallpaper to: %s", collectionsBgDst)
+		}
+	}
+
+	// System wallpapers
+	systemsDir := filepath.Join(themePath, "Wallpapers", "Systems")
+	if dirEntries, err := os.ReadDir(systemsDir); err == nil {
+		// Regular expression to extract system tag from directory name
+		reSystemTag := regexp.MustCompile(`^\((.*?)\)$`)
+
+		// Create maps for better lookups
+		systemsByTag := make(map[string]system.SystemInfo)
+		for _, sys := range systemPaths.Systems {
+			if sys.Tag != "" {
+				systemsByTag[sys.Tag] = sys
+			}
+		}
+
+		for _, entry := range dirEntries {
+			if entry.IsDir() {
+				dirName := entry.Name()
+
+				// Check if directory name is a tag in parentheses
+				matches := reSystemTag.FindStringSubmatch(dirName)
+				if len(matches) >= 2 {
+					tag := matches[1]
+
+					// Try to find system with this tag
+					if sys, ok := systemsByTag[tag]; ok {
+						// Source wallpaper file
+						srcPath := filepath.Join(systemsDir, dirName, "bg.png")
+						if _, err := os.Stat(srcPath); err == nil {
+							// Destination path
+							dstPath := filepath.Join(sys.MediaPath, "bg.png")
+
+							// Ensure media directory exists
+							if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+								logger.Printf("Warning: Could not create media directory for system %s: %v", sys.Name, err)
+							} else if err := CopyFile(srcPath, dstPath); err != nil {
+								logger.Printf("Warning: Could not copy system wallpaper for %s: %v", sys.Name, err)
+							} else {
+								logger.Printf("Imported system wallpaper for %s to: %s", sys.Name, dstPath)
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 

@@ -36,7 +36,28 @@ func ListGlobalThemes(globalThemesDir string) ([]string, error) {
 		return nil, fmt.Errorf("error reading themes directory: %w", err)
 	}
 
-	// Find directories that contain a bg.png file
+	// First check for new style PNG files directly in the directory
+	for _, entry := range entries {
+		if !entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+			// Check if it's a PNG file
+			if strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+				// Remove the .png extension to get the theme name
+				themeName := strings.TrimSuffix(entry.Name(), ".png")
+				themes = append(themes, themeName)
+			}
+		}
+	}
+
+	// If we found new style themes, return them
+	if len(themes) > 0 {
+		logging.LogDebug("Found %d global themes (new style)", len(themes))
+		return themes, nil
+	}
+
+	// No new style themes found, try old directory style
+	logging.LogDebug("No new style themes found, checking old directory style")
+
+	// Find directories that contain a bg.png file (old style)
 	for _, entry := range entries {
 		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 			bgPath := filepath.Join(globalThemesDir, entry.Name(), "bg.png")
@@ -46,7 +67,7 @@ func ListGlobalThemes(globalThemesDir string) ([]string, error) {
 		}
 	}
 
-	logging.LogDebug("Found %d global themes", len(themes))
+	logging.LogDebug("Found %d global themes (old style)", len(themes))
 	return themes, nil
 }
 
@@ -74,16 +95,23 @@ func ApplyGlobalTheme(themeName string) error {
 		return fmt.Errorf("error ensuring media directories: %w", err)
 	}
 
-	// Source background image - updated to use Wallpapers directory
-	srcBg := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
-	logging.LogDebug("Theme background path: %s", srcBg)
+	// Check new style first - if a PNG file exists in Wallpapers root
+	srcBg := filepath.Join(cwd, "Wallpapers", themeName + ".png")
 
-	// Check if the source background exists
-	_, err = os.Stat(srcBg)
-	if err != nil {
-		logging.LogDebug("Theme background not found: %v", err)
-		return fmt.Errorf("theme background not found: %w", err)
+	// If not found, check old directory style
+	if _, err := os.Stat(srcBg); os.IsNotExist(err) {
+		oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
+		if _, err := os.Stat(oldStylePath); err == nil {
+			srcBg = oldStylePath
+			logging.LogDebug("Using old style directory wallpaper: %s", srcBg)
+		} else {
+			// Neither new nor old style found
+			logging.LogDebug("Theme background not found in either format: %s", themeName)
+			return fmt.Errorf("theme background not found: %s", themeName)
+		}
 	}
+
+	logging.LogDebug("Theme background path: %s", srcBg)
 
 	// Apply to root .media directory
 	rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
@@ -148,32 +176,136 @@ func ApplyCustomTheme(systemName string, themeName string) error {
 		return fmt.Errorf("error getting system paths: %w", err)
 	}
 
-	// Source background image - updated to use Wallpapers directory
-	srcBg := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
+	// Try different possible wallpaper paths
+	var srcBg string
 
-	// Special case: check if the system name is actually a tag in parentheses
-	isTag := false
-	tagOnly := ""
+	// Check for system-specific wallpaper in new format first
 	if strings.HasPrefix(systemName, "(") && strings.HasSuffix(systemName, ")") {
-		isTag = true
-		tagOnly = systemName[1 : len(systemName)-1]
-		logging.LogDebug("Detected system tag: %s", tagOnly)
+		// This is a tag-only name, look for direct tag match in SystemWallpapers
+		tagOnly := systemName[1 : len(systemName)-1]
 
-		// For tag-only input, try to find the corresponding theme in the Systems directory
-		tagThemePath := filepath.Join(cwd, "Wallpapers", themeName, "Systems", systemName, "bg.png")
-		if _, err := os.Stat(tagThemePath); err == nil {
-			srcBg = tagThemePath
-			logging.LogDebug("Using tag-specific background: %s", srcBg)
+		// First check if there's an exact match with this tag
+		for _, sys := range systemPaths.Systems {
+			if sys.Tag == tagOnly {
+				specificWallpaper := filepath.Join(cwd, "Wallpapers", "SystemWallpapers", fmt.Sprintf("%s (%s).png", sys.Name, sys.Tag))
+				if _, err := os.Stat(specificWallpaper); err == nil {
+					srcBg = specificWallpaper
+					logging.LogDebug("Found system-specific wallpaper for tag %s: %s", tagOnly, srcBg)
+					break
+				}
+			}
+		}
+
+		// If not found, check old-style directory structure with tag
+		if srcBg == "" {
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "Systems", systemName, "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using old style tag directory wallpaper: %s", srcBg)
+			}
+		}
+	} else {
+		// Look for system-specific wallpaper by name
+		var systemTag string
+
+		// Try to match system by name to get its tag
+		for _, sys := range systemPaths.Systems {
+			if sys.Name == systemName {
+				systemTag = sys.Tag
+				break
+			}
+		}
+
+		// Check for system-specific wallpaper using full name and tag
+		if systemTag != "" {
+			specificWallpaper := filepath.Join(cwd, "Wallpapers", "SystemWallpapers", fmt.Sprintf("%s (%s).png", systemName, systemTag))
+			if _, err := os.Stat(specificWallpaper); err == nil {
+				srcBg = specificWallpaper
+				logging.LogDebug("Found system-specific wallpaper: %s", srcBg)
+			}
+		}
+
+		// For special systems like Root, Recently Played, etc.
+		if srcBg == "" && (systemName == "Root" || systemName == "Recently Played" ||
+		                   systemName == "Tools" || systemName == "Collections") {
+			specificWallpaper := filepath.Join(cwd, "Wallpapers", "SystemWallpapers", systemName + ".png")
+			if _, err := os.Stat(specificWallpaper); err == nil {
+				srcBg = specificWallpaper
+				logging.LogDebug("Found specific wallpaper for %s: %s", systemName, srcBg)
+			}
+		}
+
+		// Check for collection-specific wallpaper
+		if srcBg == "" && !strings.Contains(systemName, "(") {
+			// This might be a collection
+			collWallpaper := filepath.Join(cwd, "Wallpapers", "CollectionWallpapers", systemName + ".png")
+			if _, err := os.Stat(collWallpaper); err == nil {
+				srcBg = collWallpaper
+				logging.LogDebug("Found collection-specific wallpaper: %s", srcBg)
+			}
 		}
 	}
 
-	logging.LogDebug("Theme background path: %s", srcBg)
-
-	// Check if the source background exists
-	if _, err := os.Stat(srcBg); err != nil {
-		logging.LogDebug("Theme background file not found: %s, error: %v", srcBg, err)
-		return fmt.Errorf("theme background file not found: %s", srcBg)
+	// If we still don't have a source, try the theme's main wallpaper
+	if srcBg == "" {
+		// Try new style theme (direct PNG file)
+		newStylePath := filepath.Join(cwd, "Wallpapers", themeName + ".png")
+		if _, err := os.Stat(newStylePath); err == nil {
+			srcBg = newStylePath
+			logging.LogDebug("Using theme's main wallpaper (new style): %s", srcBg)
+		} else {
+			// Try old style theme (directory with bg.png)
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using theme's main wallpaper (old style): %s", srcBg)
+			}
+		}
 	}
+
+	// If we still don't have a source, try old directories
+	if srcBg == "" {
+		// Check old style path with system directory
+		if strings.HasPrefix(systemName, "(") && strings.HasSuffix(systemName, ")") {
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "Systems", systemName, "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using old style tag directory wallpaper: %s", srcBg)
+			}
+		} else if systemName == "Root" {
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "Root", "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using old style root directory wallpaper: %s", srcBg)
+			}
+		} else if systemName == "Recently Played" {
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "Recently Played", "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using old style recently played directory wallpaper: %s", srcBg)
+			}
+		} else if systemName == "Tools" {
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "Tools", "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using old style tools directory wallpaper: %s", srcBg)
+			}
+		} else if systemName == "Collections" {
+			oldStylePath := filepath.Join(cwd, "Wallpapers", themeName, "Collections", "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				srcBg = oldStylePath
+				logging.LogDebug("Using old style collections directory wallpaper: %s", srcBg)
+			}
+		}
+	}
+
+	// Final check to make sure we have a source
+	if srcBg == "" {
+		logging.LogDebug("Could not find a wallpaper source for system %s in theme %s", systemName, themeName)
+		return fmt.Errorf("wallpaper source not found for system %s in theme %s", systemName, themeName)
+	}
+
+	logging.LogDebug("Theme background path: %s", srcBg)
 
 	// Determine target directory
 	var targetPath string
@@ -237,69 +369,9 @@ func ApplyCustomTheme(systemName string, themeName string) error {
 			return fmt.Errorf("failed to copy background: %w", err)
 		}
 
-	} else {
-		// Find the system in our list - try multiple matching approaches
-		found := false
-		var matchedSystem system.SystemInfo
-
-		// First, try exact match with system name
-		for _, sys := range systemPaths.Systems {
-			if sys.Name == systemName {
-				matchedSystem = sys
-				found = true
-				logging.LogDebug("Found exact name match for system: %s", sys.Name)
-				break
-			}
-		}
-
-		// If not found by name, and not already a tag, try matching by tag
-		if !found && !isTag {
-			// Check if the systemName contains a tag in parentheses that we can extract
-			re := regexp.MustCompile(`\((.*?)\)`)
-			matches := re.FindStringSubmatch(systemName)
-			if len(matches) >= 2 {
-				extractedTag := matches[1]
-				logging.LogDebug("Extracted tag from system name: %s", extractedTag)
-
-				// Search for a system with this tag
-				for _, sys := range systemPaths.Systems {
-					if sys.Tag == extractedTag {
-						matchedSystem = sys
-						found = true
-						logging.LogDebug("Found system by extracted tag: %s (Tag: %s)", sys.Name, extractedTag)
-						break
-					}
-				}
-			}
-		}
-
-		// If is a tag or we still haven't found it, try matching directly by tag
-		if !found {
-			searchTag := tagOnly
-			if searchTag == "" && systemName != "" {
-				// Try using the systemName directly as a tag
-				searchTag = systemName
-			}
-
-			if searchTag != "" {
-				for _, sys := range systemPaths.Systems {
-					if sys.Tag == searchTag {
-						matchedSystem = sys
-						found = true
-						logging.LogDebug("Found system by direct tag match: %s (Tag: %s)", sys.Name, searchTag)
-						break
-					}
-				}
-			}
-		}
-
-		if !found {
-			logging.LogDebug("System not found by any matching method: %s", systemName)
-			return fmt.Errorf("system not found: %s", systemName)
-		}
-
-		targetPath = matchedSystem.Path
-		targetMediaPath = matchedSystem.MediaPath
+	} else if systemName == "Collections" {
+		targetPath = filepath.Join(systemPaths.Root, "Collections")
+		targetMediaPath = filepath.Join(targetPath, ".media")
 
 		// Ensure media directory exists
 		if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
@@ -312,6 +384,98 @@ func ApplyCustomTheme(systemName string, themeName string) error {
 		if err := CopyFile(srcBg, dstBg); err != nil {
 			logging.LogDebug("Error copying background: %v", err)
 			return fmt.Errorf("failed to copy background: %w", err)
+		}
+	} else {
+		// Check if this is a collection name without explicit "Collections" prefix
+		collPath := filepath.Join(systemPaths.Root, "Collections", systemName)
+		if _, err := os.Stat(collPath); err == nil {
+			// This is a collection directory
+			targetPath = collPath
+			targetMediaPath = filepath.Join(targetPath, ".media")
+
+			// Ensure media directory exists
+			if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
+				logging.LogDebug("Error creating collection media directory: %v", err)
+				return fmt.Errorf("failed to create collection media directory: %w", err)
+			}
+
+			// Apply background
+			dstBg := filepath.Join(targetMediaPath, "bg.png")
+			if err := CopyFile(srcBg, dstBg); err != nil {
+				logging.LogDebug("Error copying background: %v", err)
+				return fmt.Errorf("failed to copy background: %w", err)
+			}
+		} else {
+			// Find the system in our list - try multiple matching approaches
+			found := false
+			var matchedSystem system.SystemInfo
+
+			// First, try exact match with system name
+			for _, sys := range systemPaths.Systems {
+				if sys.Name == systemName {
+					matchedSystem = sys
+					found = true
+					logging.LogDebug("Found exact name match for system: %s", sys.Name)
+					break
+				}
+			}
+
+			// If not found by name, try matching by tag
+			if !found {
+				// Check if the systemName is a tag in parentheses
+				if strings.HasPrefix(systemName, "(") && strings.HasSuffix(systemName, ")") {
+					tagOnly := systemName[1 : len(systemName)-1]
+
+					// Search for a system with this tag
+					for _, sys := range systemPaths.Systems {
+						if sys.Tag == tagOnly {
+							matchedSystem = sys
+							found = true
+							logging.LogDebug("Found system by tag in parentheses: %s (Tag: %s)", sys.Name, tagOnly)
+							break
+						}
+					}
+				} else {
+					// Check if the systemName contains a tag that we can extract
+					re := regexp.MustCompile(`\((.*?)\)`)
+					matches := re.FindStringSubmatch(systemName)
+					if len(matches) >= 2 {
+						extractedTag := matches[1]
+						logging.LogDebug("Extracted tag from system name: %s", extractedTag)
+
+						// Search for a system with this tag
+						for _, sys := range systemPaths.Systems {
+							if sys.Tag == extractedTag {
+								matchedSystem = sys
+								found = true
+								logging.LogDebug("Found system by extracted tag: %s (Tag: %s)", sys.Name, extractedTag)
+								break
+							}
+						}
+					}
+				}
+			}
+
+			if !found {
+				logging.LogDebug("System not found by any matching method: %s", systemName)
+				return fmt.Errorf("system not found: %s", systemName)
+			}
+
+			targetPath = matchedSystem.Path
+			targetMediaPath = matchedSystem.MediaPath
+
+			// Ensure media directory exists
+			if err := os.MkdirAll(targetMediaPath, 0755); err != nil {
+				logging.LogDebug("Error creating media directory: %v", err)
+				return fmt.Errorf("failed to create media directory: %w", err)
+			}
+
+			// Apply background
+			dstBg := filepath.Join(targetMediaPath, "bg.png")
+			if err := CopyFile(srcBg, dstBg); err != nil {
+				logging.LogDebug("Error copying background: %v", err)
+				return fmt.Errorf("failed to copy background: %w", err)
+			}
 		}
 	}
 

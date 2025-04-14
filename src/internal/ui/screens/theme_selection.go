@@ -108,18 +108,25 @@ func displayGlobalBackgroundsGallery(globalDir string, themeNames []string) (str
 	// Create gallery items from theme list
 	var galleryItems []ui.GalleryItem
 	for _, themeName := range themeNames {
-		// Path to bg.png in this theme folder
-		bgPath := filepath.Join(globalDir, themeName, "bg.png")
-
-		// Verify the image exists
-		if _, err := os.Stat(bgPath); err == nil {
-			galleryItems = append(galleryItems, ui.GalleryItem{
-				Text:            themeName,
-				BackgroundImage: bgPath,
-			})
-		} else {
-			logging.LogDebug("Image not found for theme %s: %v", themeName, err)
+		// First check for new style PNG file directly in the directory
+		bgPath := filepath.Join(globalDir, themeName + ".png")
+		if _, err := os.Stat(bgPath); err != nil {
+			// If not found, check old style directory with bg.png
+			oldStylePath := filepath.Join(globalDir, themeName, "bg.png")
+			if _, err := os.Stat(oldStylePath); err == nil {
+				bgPath = oldStylePath
+			} else {
+				// Neither style found, skip this theme
+				logging.LogDebug("No image found for theme %s", themeName)
+				continue
+			}
 		}
+
+		// Add to gallery items
+		galleryItems = append(galleryItems, ui.GalleryItem{
+			Text:            themeName,
+			BackgroundImage: bgPath,
+		})
 	}
 
 	// Display gallery
