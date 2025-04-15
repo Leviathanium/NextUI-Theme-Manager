@@ -7,12 +7,13 @@ package themes
 import (
 	"fmt"
 	"log"
+	"nextui-themes/internal/icons"  // Add this for icons package
+	"nextui-themes/internal/system" // Add this for system paths
+	"nextui-themes/internal/ui"
 	"os"
 	"path/filepath"
-	"regexp"  // Add this for regex support
+	"regexp" // Add this for regex support
 	"strings"
-	"nextui-themes/internal/system"  // Add this for system paths
-	"nextui-themes/internal/ui"
 )
 
 // ImportWallpapers imports wallpapers from a theme
@@ -528,6 +529,27 @@ func ImportTheme(themeName string) error {
 
 	// Full path to theme - look in Imports directory
 	themePath := filepath.Join(cwd, "Themes", "Imports", themeName)
+
+	// FIRST DELETE ALL EXISTING WALLPAPERS AND ICONS
+	// This ensures that the new theme completely replaces previous theme elements
+	// rather than just overlaying on top of existing files
+	logger.Printf("Deleting all existing wallpapers and icons before applying new theme")
+
+	// Delete all existing backgrounds
+	if err := DeleteAllBackgrounds(); err != nil {
+		logger.Printf("Warning: Failed to delete existing wallpapers: %v", err)
+		// Continue anyway, as we can still try to apply the new theme
+	} else {
+		logger.Printf("Successfully deleted all existing wallpapers")
+	}
+
+	// Delete all existing icons - import from icons package
+	if err := icons.DeleteAllIcons(); err != nil {
+		logger.Printf("Warning: Failed to delete existing icons: %v", err)
+		// Continue anyway, as we can still try to apply the new theme
+	} else {
+		logger.Printf("Successfully deleted all existing icons")
+	}
 
 	// Update the manifest before validation - this scans all the theme files
 	// and ensures the manifest reflects the actual contents
