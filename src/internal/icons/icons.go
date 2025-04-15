@@ -136,28 +136,36 @@ func LoadIconPack(packName string) (*IconPack, error) {
 
 	// Find all PNG files
 	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-			iconPath := filepath.Join(packPath, entry.Name())
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+			continue
+		}
 
-			// Check if this is a special icon
-			lowercaseName := strings.ToLower(entry.Name())
-			switch lowercaseName {
-			case strings.ToLower(ToolsIcon):
-				pack.SpecialIcons[ToolsIcon] = iconPath
-				logging.LogDebug("Found special Tools icon: %s", iconPath)
-			case strings.ToLower(RecentlyPlayedIcon):
-				pack.SpecialIcons[RecentlyPlayedIcon] = iconPath
-				logging.LogDebug("Found special Recently Played icon: %s", iconPath)
-			case strings.ToLower(CollectionsIcon):
-				pack.SpecialIcons[CollectionsIcon] = iconPath
-				logging.LogDebug("Found special Collections icon: %s", iconPath)
-			default:
-				// Extract system tag if present
-				tag := ""
-				matches := re.FindStringSubmatch(entry.Name())
-				if len(matches) >= 2 {
-					tag = matches[1]
-				}
+		// Skip hidden files and macOS metadata files (starting with "._")
+		if strings.HasPrefix(entry.Name(), ".") {
+			logging.LogDebug("Skipping hidden/metadata file: %s", entry.Name())
+			continue
+		}
+
+		iconPath := filepath.Join(packPath, entry.Name())
+
+		// Check if this is a special icon
+		lowercaseName := strings.ToLower(entry.Name())
+		switch lowercaseName {
+		case strings.ToLower(ToolsIcon):
+			pack.SpecialIcons[ToolsIcon] = iconPath
+			logging.LogDebug("Found special Tools icon: %s", iconPath)
+		case strings.ToLower(RecentlyPlayedIcon):
+			pack.SpecialIcons[RecentlyPlayedIcon] = iconPath
+			logging.LogDebug("Found special Recently Played icon: %s", iconPath)
+		case strings.ToLower(CollectionsIcon):
+			pack.SpecialIcons[CollectionsIcon] = iconPath
+			logging.LogDebug("Found special Collections icon: %s", iconPath)
+		default:
+			// Extract system tag if present
+			tag := ""
+			matches := re.FindStringSubmatch(entry.Name())
+			if len(matches) >= 2 {
+				tag = matches[1]
 
 				// Add to the list of icons
 				pack.Icons = append(pack.Icons, Icon{
@@ -165,6 +173,10 @@ func LoadIconPack(packName string) (*IconPack, error) {
 					Name:      entry.Name(),
 					SystemTag: tag,
 				})
+
+				logging.LogDebug("Added icon for system tag '%s': %s", tag, entry.Name())
+			} else {
+				logging.LogDebug("Skipping icon with no system tag: %s", entry.Name())
 			}
 		}
 	}
@@ -349,6 +361,8 @@ func applySpecialIcons(pack *IconPack, systemPaths *system.SystemPaths) error {
 			logging.LogDebug("Error copying Tools icon: %v", err)
 			return fmt.Errorf("error copying Tools icon: %w", err)
 		}
+
+		logging.LogDebug("Successfully copied Tools icon")
 	}
 
 	// Apply Recently Played icon if available
@@ -361,6 +375,8 @@ func applySpecialIcons(pack *IconPack, systemPaths *system.SystemPaths) error {
 			logging.LogDebug("Error copying Recently Played icon: %v", err)
 			return fmt.Errorf("error copying Recently Played icon: %w", err)
 		}
+
+		logging.LogDebug("Successfully copied Recently Played icon")
 	}
 
 	// Apply Collections icon if available
@@ -373,33 +389,87 @@ func applySpecialIcons(pack *IconPack, systemPaths *system.SystemPaths) error {
 			logging.LogDebug("Error copying Collections icon: %v", err)
 			return fmt.Errorf("error copying Collections icon: %w", err)
 		}
+
+		logging.LogDebug("Successfully copied Collections icon")
 	}
 
 	return nil
 }
 
-// CopyFile copies a file from src to dst
+// CopyFile copies a file from src to dst with additional validation
 func CopyFile(src, dst string) error {
+	// Add better logging and validation
+	logging.LogDebug("Starting file copy: %s -> %s", src, dst)
+
+	// First verify source file exists and is readable
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		logging.LogDebug("Error checking source file: %v", err)
+		return fmt.Errorf("failed to access source file: %w", err)
+	}
+
+	// Log warning for suspiciously small files (likely metadata)
+	if srcInfo.Size() < 100 {
+		logging.LogDebug("WARNING: Source file is suspiciously small (%d bytes), may be a metadata file", srcInfo.Size())
+	}
+
+	// Verify source file isn't a directory
+	if srcInfo.IsDir() {
+		logging.LogDebug("Error: Source is a directory, not a file")
+		return fmt.Errorf("source is a directory, not a file")
+	}
+
+	// Create the destination directory if it doesn't exist
+	dstDir := filepath.Dir(dst)
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		logging.LogDebug("Error creating destination directory: %v", err)
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
 	// Open source file
 	srcFile, err := os.Open(src)
 	if err != nil {
+		logging.LogDebug("Error opening source file: %v", err)
 		return fmt.Errorf("failed to open source file: %w", err)
 	}
 	defer srcFile.Close()
 
+	// Try to read a small amount of data to verify file is readable
+	testBuf := make([]byte, 10)
+	_, err = srcFile.Read(testBuf)
+	if err != nil && err != io.EOF {
+		logging.LogDebug("Error reading from source file: %v", err)
+		return fmt.Errorf("failed to read from source file: %w", err)
+	}
+
+	// Reset to beginning of file
+	_, err = srcFile.Seek(0, 0)
+	if err != nil {
+		logging.LogDebug("Error seeking to start of file: %v", err)
+		return fmt.Errorf("failed to seek in source file: %w", err)
+	}
+
 	// Create destination file
 	dstFile, err := os.Create(dst)
 	if err != nil {
+		logging.LogDebug("Error creating destination file: %v", err)
 		return fmt.Errorf("failed to create destination file: %w", err)
 	}
 	defer dstFile.Close()
 
 	// Copy contents
-	_, err = io.Copy(dstFile, srcFile)
+	bytesCopied, err := io.Copy(dstFile, srcFile)
 	if err != nil {
+		logging.LogDebug("Error copying file contents: %v", err)
 		return fmt.Errorf("failed to copy file contents: %w", err)
 	}
 
+	// Verify we copied some data
+	if bytesCopied == 0 {
+		logging.LogDebug("Warning: Zero bytes copied from %s to %s", src, dst)
+	}
+
+	logging.LogDebug("Successfully copied %d bytes from %s to %s", bytesCopied, src, dst)
 	return nil
 }
 

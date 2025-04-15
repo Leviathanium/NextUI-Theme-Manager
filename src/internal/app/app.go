@@ -11,6 +11,7 @@ import (
 	"nextui-themes/internal/icons"
 	"nextui-themes/internal/leds"
 	"nextui-themes/internal/logging"
+	"nextui-themes/internal/themes" // Added this import
 )
 
 // Initialize sets up the application
@@ -39,22 +40,29 @@ func Initialize() error {
 
 	_ = os.Setenv("LD_LIBRARY_PATH", "/mnt/SDCARD/.system/tg5040/lib:/usr/trimui/lib")
 
-	// Create theme directories if they don't exist
+	// Create new directory structure
 	logging.LogDebug("Creating theme directories")
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Global"), 0755)
+	// Create new Wallpapers directory structure
+	err = os.MkdirAll(filepath.Join(cwd, "Wallpapers"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Global themes directory: %v", err)
+		logging.LogDebug("Error creating Wallpapers directory: %v", err)
 	}
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Dynamic"), 0755)
+	err = os.MkdirAll(filepath.Join(cwd, "Wallpapers", "Default"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Dynamic themes directory: %v", err)
+		logging.LogDebug("Error creating Wallpapers/Default directory: %v", err)
 	}
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Default"), 0755)
+	// Create new Themes directory structure
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Imports"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Default themes directory: %v", err)
+		logging.LogDebug("Error creating Themes/Imports directory: %v", err)
+	}
+
+	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Exports"), 0755)
+	if err != nil {
+		logging.LogDebug("Error creating Themes/Exports directory: %v", err)
 	}
 
 	// Create Icons directory and placeholder
@@ -71,6 +79,18 @@ func Initialize() error {
 	if err := leds.InitLEDSettings(); err != nil {
 		logging.LogDebug("Error initializing LED settings: %v", err)
 	}
+
+	// Explicitly initialize theme directories after logging is set up
+	if err := themes.EnsureThemeDirectoryStructure(); err != nil {
+		logging.LogDebug("Warning: Could not create theme directories: %v", err)
+	}
+
+	if err := themes.CreatePlaceholderFiles(); err != nil {
+		logging.LogDebug("Warning: Could not create placeholder files: %v", err)
+	}
+
+    // Log about theme functionality
+    logging.LogDebug("Theme import/export functionality initialized")
 
 	logging.LogDebug("Initialization complete")
 	return nil

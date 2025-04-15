@@ -3,6 +3,12 @@
 
 package app
 
+import (
+
+	"nextui-themes/internal/logging"
+
+)
+
 // ThemeType represents the type of theme operation
 type ThemeType int
 
@@ -24,32 +30,39 @@ const (
 // Screen represents the different UI screens
 type Screen int
 
+// The Screen constants should be defined like this:
 const (
-	MainMenu Screen = iota + 1
-	ThemeSelection
-	DefaultThemeOptions
-	ConfirmScreen
-	FontSelection
-	FontPreview
-	AccentMenu
-	AccentSelection
-	AccentExport
-	LEDMenu
-	LEDSelection
-	LEDExport
-	CustomizationMenu
-	IconsMenu
-	IconSelection
-	IconConfirm
-	ClearIconsConfirm
-	GlobalOptionsMenu
-	SystemOptionsMenu
-	SystemOptionsForSelectedSystem
-	SystemIconSelection
-	SystemIconConfirm
-	ResetMenu
-	WallpaperSelection
-	WallpaperConfirm
+    MainMenu Screen = iota + 1
+    ThemeSelection
+    DefaultThemeOptions
+    ConfirmScreen
+    FontSelection
+    FontList
+    FontPreview
+    AccentMenu
+    AccentSelection
+    AccentExport
+    LEDMenu
+    LEDSelection
+    LEDExport
+    CustomizationMenu
+    IconsMenu
+    IconSelection
+    IconConfirm
+    ClearIconsConfirm
+    GlobalOptionsMenu
+    SystemOptionsMenu
+    SystemOptionsForSelectedSystem
+    SystemIconSelection
+    SystemIconConfirm
+    ResetMenu
+    WallpaperSelection
+    WallpaperConfirm
+    // New screens for theme management
+    ThemesMenu          // This should be 27
+    ThemeImport         // This should be 28
+    ThemeImportConfirm  // This should be 29
+    ThemeExport         // This should be 30
 )
 
 // ScreenEnum holds all available screens
@@ -59,6 +72,7 @@ type ScreenEnum struct {
 	DefaultThemeOptions Screen
 	ConfirmScreen      Screen
 	FontSelection      Screen
+	FontList           Screen
 	FontPreview        Screen
 	AccentMenu         Screen
 	AccentSelection    Screen
@@ -79,6 +93,11 @@ type ScreenEnum struct {
 	ResetMenu          Screen
 	WallpaperSelection Screen
 	WallpaperConfirm   Screen
+	// New screen fields for theme management
+	ThemesMenu         Screen
+	ThemeImport        Screen
+	ThemeImportConfirm Screen
+	ThemeExport        Screen
 }
 
 // DefaultThemeAction represents the action to take for default themes
@@ -96,6 +115,7 @@ type appState struct {
 	SelectedTheme           string
 	DefaultAction           DefaultThemeAction
 	SelectedFont            string
+	SelectedFontSlot        string // Which font slot to modify (OG, Next, Legacy)
 	SelectedAccentTheme     string
 	SelectedLEDTheme        string
 	SelectedAccentThemeSource ThemeSource
@@ -106,12 +126,13 @@ type appState struct {
 
 // Global variables
 var (
-	Screens  = ScreenEnum{
+    Screens  = ScreenEnum{
 		MainMenu:           MainMenu,
 		ThemeSelection:     ThemeSelection,
 		DefaultThemeOptions: DefaultThemeOptions,
 		ConfirmScreen:      ConfirmScreen,
 		FontSelection:      FontSelection,
+		FontList:           FontList,
 		FontPreview:        FontPreview,
 		AccentMenu:         AccentMenu,
 		AccentSelection:    AccentSelection,
@@ -132,6 +153,10 @@ var (
 		ResetMenu:          ResetMenu,
 		WallpaperSelection: WallpaperSelection,
 		WallpaperConfirm:   WallpaperConfirm,
+        ThemesMenu:         ThemesMenu,
+        ThemeImport:        ThemeImport,
+        ThemeImportConfirm: ThemeImportConfirm,
+        ThemeExport:        ThemeExport,
 	}
 
 	state appState
@@ -139,12 +164,30 @@ var (
 
 // GetCurrentScreen returns the current screen
 func GetCurrentScreen() Screen {
-	return state.CurrentScreen
+    // Ensure we never return an invalid screen value
+    if state.CurrentScreen < MainMenu || state.CurrentScreen > ThemeExport {
+        logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
+        state.CurrentScreen = MainMenu
+    }
+    return state.CurrentScreen
 }
 
 // SetCurrentScreen sets the current screen
 func SetCurrentScreen(screen Screen) {
-	state.CurrentScreen = screen
+    // Validate screen value before setting
+    if screen < MainMenu || screen > ThemeExport {
+        logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
+        screen = MainMenu
+    }
+
+    // Add explicit debug logging
+    logging.LogDebug("Setting current screen from %d to %d", state.CurrentScreen, screen)
+
+    // Set the screen
+    state.CurrentScreen = screen
+
+    // Verify the screen was set correctly
+    logging.LogDebug("Current screen is now: %d", state.CurrentScreen)
 }
 
 // GetSelectedThemeType returns the selected theme type
@@ -185,6 +228,16 @@ func GetSelectedFont() string {
 // SetSelectedFont sets the selected font
 func SetSelectedFont(font string) {
 	state.SelectedFont = font
+}
+
+// GetSelectedFontSlot returns the selected font slot
+func GetSelectedFontSlot() string {
+	return state.SelectedFontSlot
+}
+
+// SetSelectedFontSlot sets the selected font slot
+func SetSelectedFontSlot(slot string) {
+	state.SelectedFontSlot = slot
 }
 
 // GetSelectedAccentTheme returns the selected accent theme

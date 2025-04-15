@@ -156,6 +156,8 @@ func SystemIconConfirmScreen() (string, int) {
 		"No",
 	}
 
+	logging.LogDebug("Displaying icon confirmation for system %s with pack %s",
+	                 app.GetSelectedSystem(), app.GetSelectedIconPack())
 	return ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
 }
 
@@ -191,5 +193,7 @@ func HandleSystemIconConfirm(selection string, exitCode int) app.Screen {
 		return app.Screens.SystemIconSelection
 	}
 
+	// Default case - return to system options for selected system
+	logging.LogDebug("Default case in HandleSystemIconConfirm, returning to system options")
 	return app.Screens.SystemOptionsForSelectedSystem
 }
