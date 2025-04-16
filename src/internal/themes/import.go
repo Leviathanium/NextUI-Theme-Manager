@@ -649,6 +649,8 @@ func updateLEDSettings(themePath string, manifest *ThemeManifest, logger *Logger
     return nil
 }
 
+// Update these two functions in src/internal/themes/import.go
+
 // applyAccentSettings applies accent color settings from manifest
 func applyAccentSettings(manifest *ThemeManifest, logger *Logger) error {
     // Create content for minuisettings.txt
@@ -660,8 +662,8 @@ func applyAccentSettings(manifest *ThemeManifest, logger *Logger) error {
     content.WriteString(fmt.Sprintf("color5=%s\n", manifest.AccentColors.Color5))
     content.WriteString(fmt.Sprintf("color6=%s\n", manifest.AccentColors.Color6))
 
-    // Get path to settings file
-    settingsPath := "/mnt/SDCARD/.system/tg5040/etc/minuisettings.txt"
+    // Get path to settings file - FIXED PATH
+    settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
 
     // Write settings to file
     if err := os.WriteFile(settingsPath, []byte(content.String()), 0644); err != nil {
@@ -690,21 +692,39 @@ func applyLEDSettings(manifest *ThemeManifest, logger *Logger) error {
 
     // F2 Key
     content.WriteString("[F2 key]\n")
-    // ... similar lines for F2 key ...
+    content.WriteString(fmt.Sprintf("effect=%d\n", manifest.LEDSettings.F2Key.Effect))
+    content.WriteString(fmt.Sprintf("color1=%s\n", manifest.LEDSettings.F2Key.Color1))
+    content.WriteString(fmt.Sprintf("color2=%s\n", manifest.LEDSettings.F2Key.Color2))
+    content.WriteString(fmt.Sprintf("speed=%d\n", manifest.LEDSettings.F2Key.Speed))
+    content.WriteString(fmt.Sprintf("brightness=%d\n", manifest.LEDSettings.F2Key.Brightness))
+    content.WriteString(fmt.Sprintf("trigger=%d\n", manifest.LEDSettings.F2Key.Trigger))
+    content.WriteString(fmt.Sprintf("inbrightness=%d\n", manifest.LEDSettings.F2Key.InBrightness))
     content.WriteString("\n")
 
     // Top bar
     content.WriteString("[Top bar]\n")
-    // ... similar lines for Top bar ...
+    content.WriteString(fmt.Sprintf("effect=%d\n", manifest.LEDSettings.TopBar.Effect))
+    content.WriteString(fmt.Sprintf("color1=%s\n", manifest.LEDSettings.TopBar.Color1))
+    content.WriteString(fmt.Sprintf("color2=%s\n", manifest.LEDSettings.TopBar.Color2))
+    content.WriteString(fmt.Sprintf("speed=%d\n", manifest.LEDSettings.TopBar.Speed))
+    content.WriteString(fmt.Sprintf("brightness=%d\n", manifest.LEDSettings.TopBar.Brightness))
+    content.WriteString(fmt.Sprintf("trigger=%d\n", manifest.LEDSettings.TopBar.Trigger))
+    content.WriteString(fmt.Sprintf("inbrightness=%d\n", manifest.LEDSettings.TopBar.InBrightness))
     content.WriteString("\n")
 
     // L&R triggers
     content.WriteString("[L&R triggers]\n")
-    // ... similar lines for L&R triggers ...
+    content.WriteString(fmt.Sprintf("effect=%d\n", manifest.LEDSettings.LRTriggers.Effect))
+    content.WriteString(fmt.Sprintf("color1=%s\n", manifest.LEDSettings.LRTriggers.Color1))
+    content.WriteString(fmt.Sprintf("color2=%s\n", manifest.LEDSettings.LRTriggers.Color2))
+    content.WriteString(fmt.Sprintf("speed=%d\n", manifest.LEDSettings.LRTriggers.Speed))
+    content.WriteString(fmt.Sprintf("brightness=%d\n", manifest.LEDSettings.LRTriggers.Brightness))
+    content.WriteString(fmt.Sprintf("trigger=%d\n", manifest.LEDSettings.LRTriggers.Trigger))
+    content.WriteString(fmt.Sprintf("inbrightness=%d\n", manifest.LEDSettings.LRTriggers.InBrightness))
     content.WriteString("\n")
 
-    // Get path to settings file
-    settingsPath := "/mnt/SDCARD/.system/tg5040/etc/ledsettings_brick.txt"
+    // Get path to settings file - FIXED PATH
+    settingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
 
     // Write settings to file
     if err := os.WriteFile(settingsPath, []byte(content.String()), 0644); err != nil {
