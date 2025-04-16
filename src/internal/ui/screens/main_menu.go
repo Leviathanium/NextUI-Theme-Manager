@@ -1,5 +1,5 @@
 // src/internal/ui/screens/main_menu.go
-// Implementation of the main menu screen
+// Implementation of the main menu screen - simplified for theme management only
 
 package screens
 
@@ -12,37 +12,32 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// Update the MainMenuScreen function to include "Themes" as an option
+// MainMenuScreen displays the main menu with only theme options
 func MainMenuScreen() (string, int) {
-	// Menu items without numbers
+	// Menu items - simplified to just theme management
 	menu := []string{
-		"Themes",           // Keep this first
-		"Customization",
-		"Reset",
+		"Import Theme",
+		"Export Current Settings",
 	}
 
-	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Selector", "--cancel-text", "QUIT")
+	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
 }
 
-// Update the HandleMainMenu function to handle the "Themes" selection
+// HandleMainMenu processes the user's selection from the main menu
 func HandleMainMenu(selection string, exitCode int) app.Screen {
-	logging.LogDebug("handleMainMenu called with selection: '%s', exitCode: %d", selection, exitCode)
+	logging.LogDebug("HandleMainMenu called with selection: '%s', exitCode: %d", selection, exitCode)
 
 	switch exitCode {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Themes":
-			logging.LogDebug("Selected Themes")
-			return app.Screens.ThemesMenu
+		case "Import Theme":
+			logging.LogDebug("Selected Import Theme")
+			return app.Screens.ThemeImport
 
-		case "Customization":
-			logging.LogDebug("Selected Customization")
-			return app.Screens.CustomizationMenu
-
-		case "Reset":
-			logging.LogDebug("Selected Reset")
-			return app.Screens.ResetMenu
+		case "Export Current Settings":
+			logging.LogDebug("Selected Export Current Settings")
+			return app.Screens.ThemeExport
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)
