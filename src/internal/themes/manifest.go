@@ -53,13 +53,40 @@ type ThemeManifest struct {
 		Fonts      map[string]PathMapping  `json:"fonts"`
 		Settings   map[string]PathMapping  `json:"settings"`
 	} `json:"path_mappings"`
+    AccentColors struct {
+        Color1 string `json:"color1"`
+        Color2 string `json:"color2"`
+        Color3 string `json:"color3"`
+        Color4 string `json:"color4"`
+        Color5 string `json:"color5"`
+        Color6 string `json:"color6"`
+    } `json:"accent_colors"`
+
+    // Add LED settings
+    LEDSettings struct {
+        F1Key      LEDSetting `json:"f1_key"`
+        F2Key      LEDSetting `json:"f2_key"`
+        TopBar     LEDSetting `json:"top_bar"`
+        LRTriggers LEDSetting `json:"lr_triggers"`
+    } `json:"led_settings"`
 }
+
 
 // PathMapping represents a mapping between theme and system paths
 type PathMapping struct {
 	ThemePath  string            `json:"theme_path"`
 	SystemPath string            `json:"system_path"`
 	Metadata   map[string]string `json:"metadata,omitempty"` // Additional metadata to aid in matching
+}
+
+type LEDSetting struct {
+    Effect      int    `json:"effect"`
+    Color1      string `json:"color1"`
+    Color2      string `json:"color2"`
+    Speed       int    `json:"speed"`
+    Brightness  int    `json:"brightness"`
+    Trigger     int    `json:"trigger"`
+    InBrightness int   `json:"in_brightness"`
 }
 
 // Logger is a simple wrapper for logging
