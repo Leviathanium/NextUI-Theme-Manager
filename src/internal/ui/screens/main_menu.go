@@ -19,7 +19,7 @@ func MainMenuScreen() (string, int) {
 		"Browse Themes",
 		"Download Themes",
 		"Components",
-		"Exports", // Renamed from "Export Current Settings" to "Exports"
+		"Export", // Renamed from "Export Current Settings" to "Exports"
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
@@ -45,8 +45,8 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			logging.LogDebug("Selected Components")
 			return app.Screens.ComponentsMenu
 
-		case "Exports":
-			logging.LogDebug("Selected Exports")
+		case "Export":
+			logging.LogDebug("Selected Export")
 			return app.Screens.ThemeExport
 
 		default:

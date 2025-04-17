@@ -148,8 +148,8 @@ func DeconstructWallpapers(themePath string, manifest *ThemeManifest, componentN
 		componentName = componentName + ComponentExtension[ComponentWallpaper]
 	}
 
-	// Path where component will be created (in Components/Wallpapers directory)
-	exportPath := filepath.Join(cwd, "Components", "Wallpapers", componentName)
+	// Path where component will be created (in Exports directory)
+	exportPath := filepath.Join(cwd, "Exports", componentName)
 
 	// Create directories for the wallpaper component
 	dirPaths := []string{
@@ -303,8 +303,8 @@ func DeconstructIcons(themePath string, manifest *ThemeManifest, componentName s
 		componentName = componentName + ComponentExtension[ComponentIcon]
 	}
 
-	// Path where component will be created (in Components/Icons directory)
-	exportPath := filepath.Join(cwd, "Components", "Icons", componentName)
+	// Path where component will be created (in Exports directory)
+	exportPath := filepath.Join(cwd, "Exports", componentName)
 
 	// Create directories for the icon component
 	dirPaths := []string{
@@ -470,8 +470,8 @@ func DeconstructOverlays(themePath string, manifest *ThemeManifest, componentNam
 		componentName = componentName + ComponentExtension[ComponentOverlay]
 	}
 
-	// Path where component will be created (in Components/Overlays directory)
-	exportPath := filepath.Join(cwd, "Components", "Overlays", componentName)
+	// Path where component will be created (in Exports directory)
+	exportPath := filepath.Join(cwd, "Exports", componentName)
 
 	// Create the root directory
 	if err := os.MkdirAll(exportPath, 0755); err != nil {
@@ -483,7 +483,6 @@ func DeconstructOverlays(themePath string, manifest *ThemeManifest, componentNam
 	if err := os.MkdirAll(systemsDir, 0755); err != nil {
 		return fmt.Errorf("error creating directory %s: %w", systemsDir, err)
 	}
-
 
 	// Create component manifest
 	manifestObj, err := CreateComponentManifest(ComponentOverlay, componentName)
@@ -574,14 +573,13 @@ func DeconstructFonts(themePath string, manifest *ThemeManifest, componentName s
 		componentName = componentName + ComponentExtension[ComponentFont]
 	}
 
-	// Path where component will be created (in Fonts directory)
-	exportPath := filepath.Join(cwd, "Fonts", componentName)
+	// Path where component will be created (in Exports directory)
+	exportPath := filepath.Join(cwd, "Exports", componentName)
 
 	// Create the root directory
 	if err := os.MkdirAll(exportPath, 0755); err != nil {
 		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
 	}
-
 
 	// Create component manifest
 	manifestObj, err := CreateComponentManifest(ComponentFont, componentName)
