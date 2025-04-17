@@ -19,7 +19,6 @@ func MainMenuScreen() (string, int) {
 		"Browse Themes",
 		"Download Themes",
 		"Components",
-		"Deconstruction", // Added Deconstruction to main menu
 		"Exports", // Renamed from "Export Current Settings" to "Exports"
 	}
 
@@ -45,10 +44,6 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 		case "Components":
 			logging.LogDebug("Selected Components")
 			return app.Screens.ComponentsMenu
-
-		case "Deconstruction": // Handle Deconstruction option
-			logging.LogDebug("Selected Deconstruction")
-			return app.Screens.Deconstruction
 
 		case "Exports":
 			logging.LogDebug("Selected Exports")

@@ -25,7 +25,7 @@ func ComponentsMenuScreen() (string, int) {
 		"Overlays",
 		"LEDs",
 		"Fonts",
-		// "Deconstruction" removed from this menu
+		"Deconstruct...", // Added back with ellipsis to indicate it performs an action
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Components")
@@ -37,7 +37,13 @@ func HandleComponentsMenu(selection string, exitCode int) app.Screen {
 
 	switch exitCode {
 	case 0:
-		// Set the selected component type
+		// If selected "Deconstruct...", go directly to deconstruction screen
+		if selection == "Deconstruct..." {
+			logging.LogDebug("Selected Deconstruct...")
+			return app.Screens.Deconstruction
+		}
+
+		// Otherwise, set the selected component type and go to options
 		app.SetSelectedComponentType(selection)
 		return app.Screens.ComponentOptions
 
