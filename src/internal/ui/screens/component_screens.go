@@ -25,6 +25,7 @@ func ComponentsMenuScreen() (string, int) {
 		"Overlays",
 		"LEDs",
 		"Fonts",
+		// "Deconstruction" removed from this menu
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Components")
@@ -110,23 +111,34 @@ func BrowseComponentsScreen() (string, int) {
 		"Fonts":      themes.ComponentFont,
 	}
 
+	// Map component type to subdirectory name
+	componentDirMap := map[string]string{
+		"Wallpapers": "Wallpapers",
+		"Icons":      "Icons",
+		"Accents":    "Accents",
+		"Overlays":   "Overlays",
+		"LEDs":       "LEDs",
+		"Fonts":      "Fonts",
+	}
+
 	typeConstant := componentTypeMap[componentType]
 	extension := themes.ComponentExtension[typeConstant]
+	componentSubDir := componentDirMap[componentType]
 
-	// Path to Exports directory where components are stored
-	exportsDir := filepath.Join(cwd, "Exports")
+	// Path to component directory where components are stored (inside Components directory)
+	componentsDir := filepath.Join(cwd, "Components", componentSubDir)
 
 	// Ensure directory exists
-	if err := os.MkdirAll(exportsDir, 0755); err != nil {
-		logging.LogDebug("Error creating exports directory: %v", err)
+	if err := os.MkdirAll(componentsDir, 0755); err != nil {
+		logging.LogDebug("Error creating components directory: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
 
 	// List available components of the selected type
-	entries, err := os.ReadDir(exportsDir)
+	entries, err := os.ReadDir(componentsDir)
 	if err != nil {
-		logging.LogDebug("Error reading exports directory: %v", err)
+		logging.LogDebug("Error reading components directory: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
@@ -141,14 +153,14 @@ func BrowseComponentsScreen() (string, int) {
 
 	if len(components) == 0 {
 		logging.LogDebug("No %s found", componentType)
-		ui.ShowMessage(fmt.Sprintf("No %s found in Exports directory", componentType), "3")
+		ui.ShowMessage(fmt.Sprintf("No %s found in Components/%s directory", componentType, componentSubDir), "3")
 		return "", 1
 	}
 
 	// Get preview images
 	previewImages := make([]ui.GalleryItem, 0, len(components))
 	for _, component := range components {
-		previewPath := filepath.Join(exportsDir, component, "preview.png")
+		previewPath := filepath.Join(componentsDir, component, "preview.png")
 
 		// Skip LEDs which don't have preview images
 		if typeConstant == themes.ComponentLED {
@@ -191,6 +203,18 @@ func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected a component
 		if selection != "" {
+			// Get the component type and map to directory
+			componentType := app.GetSelectedComponentType()
+			componentDirMap := map[string]string{
+				"Wallpapers": "Wallpapers",
+				"Icons":      "Icons",
+				"Accents":    "Accents",
+				"Overlays":   "Overlays",
+				"LEDs":       "LEDs",
+				"Fonts":      "Fonts",
+			}
+			componentSubDir := componentDirMap[componentType]
+
 			// Get the component path
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -199,7 +223,7 @@ func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 				return app.Screens.ComponentOptions
 			}
 
-			componentPath := filepath.Join(cwd, "Exports", selection)
+			componentPath := filepath.Join(cwd, "Components", componentSubDir, selection)
 
 			// Import/apply the selected component
 			if err := themes.ImportComponent(componentPath); err != nil {

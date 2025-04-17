@@ -19,7 +19,8 @@ func MainMenuScreen() (string, int) {
 		"Browse Themes",
 		"Download Themes",
 		"Components",
-		"Export Current Settings",
+		"Deconstruction", // Added Deconstruction to main menu
+		"Exports", // Renamed from "Export Current Settings" to "Exports"
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
@@ -45,8 +46,12 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			logging.LogDebug("Selected Components")
 			return app.Screens.ComponentsMenu
 
-		case "Export Current Settings":
-			logging.LogDebug("Selected Export Current Settings")
+		case "Deconstruction": // Handle Deconstruction option
+			logging.LogDebug("Selected Deconstruction")
+			return app.Screens.Deconstruction
+
+		case "Exports":
+			logging.LogDebug("Selected Exports")
 			return app.Screens.ThemeExport
 
 		default:

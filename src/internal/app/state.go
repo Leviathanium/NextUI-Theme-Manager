@@ -23,28 +23,32 @@ const (
 	BrowseComponents
 	DownloadComponents
 	ExportComponent
+	Deconstruction        // New screen for theme deconstruction
+	DeconstructConfirm    // New screen for deconstruction confirmation
 )
 
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
-	MainMenu          Screen
-	ThemeImport       Screen
+	MainMenu           Screen
+	ThemeImport        Screen
 	ThemeImportConfirm Screen
-	ThemeExport       Screen
-	BrowseThemes      Screen
-	DownloadThemes    Screen
-	ComponentsMenu    Screen
-	ComponentOptions  Screen
-	BrowseComponents  Screen
+	ThemeExport        Screen
+	BrowseThemes       Screen
+	DownloadThemes     Screen
+	ComponentsMenu     Screen
+	ComponentOptions   Screen
+	BrowseComponents   Screen
 	DownloadComponents Screen
-	ExportComponent   Screen
+	ExportComponent    Screen
+	Deconstruction     Screen  // New field for deconstruction screen
+	DeconstructConfirm Screen  // New field for deconstruction confirmation
 }
 
 // AppState holds the current state of the application
 type appState struct {
-	CurrentScreen       Screen
-	SelectedTheme       string // For theme import/export
-	SelectedComponentType string // For component operations
+	CurrentScreen          Screen
+	SelectedTheme          string // For theme import/export
+	SelectedComponentType  string // For component operations
 	SelectedComponentOption string // For component operations
 }
 
@@ -62,6 +66,8 @@ var (
 		BrowseComponents:   BrowseComponents,
 		DownloadComponents: DownloadComponents,
 		ExportComponent:    ExportComponent,
+		Deconstruction:     Deconstruction,     // Initialize new screen
+		DeconstructConfirm: DeconstructConfirm, // Initialize new screen
 	}
 
 	state appState
@@ -70,7 +76,7 @@ var (
 // GetCurrentScreen returns the current screen
 func GetCurrentScreen() Screen {
 	// Ensure we never return an invalid screen value
-	if state.CurrentScreen < MainMenu || state.CurrentScreen > ExportComponent {
+	if state.CurrentScreen < MainMenu || state.CurrentScreen > DeconstructConfirm {
 		logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
 		state.CurrentScreen = MainMenu
 	}
@@ -80,7 +86,7 @@ func GetCurrentScreen() Screen {
 // SetCurrentScreen sets the current screen
 func SetCurrentScreen(screen Screen) {
 	// Validate screen value before setting
-	if screen < MainMenu || screen > ExportComponent {
+	if screen < MainMenu || screen > DeconstructConfirm {
 		logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
 		screen = MainMenu
 	}

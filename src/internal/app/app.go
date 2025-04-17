@@ -63,6 +63,11 @@ func Initialize() error {
 		logging.LogDebug("Warning: Could not create theme directories: %v", err)
 	}
 
+	// Create component directories for imports
+	if err := themes.EnsureComponentDirectories(); err != nil {
+		logging.LogDebug("Warning: Could not create component directories: %v", err)
+	}
+
 	if err := themes.CreatePlaceholderFiles(); err != nil {
 		logging.LogDebug("Warning: Could not create placeholder files: %v", err)
 	}

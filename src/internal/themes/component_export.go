@@ -17,36 +17,19 @@ import (
 
 // CreateDefaultPreviewImage creates a default preview image with text
 func CreateDefaultPreviewImage(outputPath string, componentType string) error {
-	// For now, we'll just copy a static placeholder
-	// In the future, this could generate a dynamically created image with text
-	cwd, err := os.Getwd()
+	// Instead of looking for a placeholder image that doesn't exist,
+	// we'll create a simple blank one here
+
+	// For now, just log that a preview image is missing and return success
+	logging.LogDebug("Creating a blank preview for %s", componentType)
+
+	// Create a blank file as the preview (will show up as blank in the UI)
+	// This is preferable to creating empty directories that confuse users
+	f, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
+		return fmt.Errorf("error creating blank preview: %w", err)
 	}
-
-	// Default preview placeholder path
-	placeholderPath := filepath.Join(cwd, "Assets", "preview_placeholder.png")
-
-	// Check if placeholder exists
-	if _, err := os.Stat(placeholderPath); os.IsNotExist(err) {
-		// Create a directory for assets if it doesn't exist
-		assetsDir := filepath.Join(cwd, "Assets")
-		if err := os.MkdirAll(assetsDir, 0755); err != nil {
-			return fmt.Errorf("error creating Assets directory: %w", err)
-		}
-
-		// For now, log that we need a placeholder
-		logging.LogDebug("Preview placeholder image not found: %s", placeholderPath)
-		logging.LogDebug("Please create a placeholder image: %s", placeholderPath)
-
-		// Return without copying, but don't treat as an error
-		return nil
-	}
-
-	// Copy the placeholder to the output path
-	if err := CopyFile(placeholderPath, outputPath); err != nil {
-		return fmt.Errorf("error copying preview placeholder: %w", err)
-	}
+	f.Close()
 
 	return nil
 }
@@ -953,6 +936,40 @@ func ExportOverlays(name string) error {
 
 	// Show success message
 	ui.ShowMessage(fmt.Sprintf("Overlays exported to '%s'", name), "3")
+
+	return nil
+}
+
+// Helper function to ensure component directories exist for importing
+func EnsureComponentDirectories() error {
+	// Get current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Create main Components directory
+	componentsDir := filepath.Join(cwd, "Components")
+	if err := os.MkdirAll(componentsDir, 0755); err != nil {
+		return fmt.Errorf("error creating Components directory: %w", componentsDir, err)
+	}
+
+	// Component subdirectories to create
+	directories := []string{
+		filepath.Join(componentsDir, "Wallpapers"),
+		filepath.Join(componentsDir, "Icons"),
+		filepath.Join(componentsDir, "Accents"),
+		filepath.Join(componentsDir, "Overlays"),
+		filepath.Join(componentsDir, "LEDs"),
+		filepath.Join(componentsDir, "Fonts"),
+	}
+
+	// Create each directory
+	for _, dir := range directories {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("error creating directory %s: %w", dir, err)
+		}
+	}
 
 	return nil
 }
