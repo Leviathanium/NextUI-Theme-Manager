@@ -12,11 +12,13 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// MainMenuScreen displays the main menu with only theme options
+// MainMenuScreen displays the main menu with expanded options
 func MainMenuScreen() (string, int) {
-	// Menu items - simplified to just theme management
+	// Menu items - expanded with new component functionality
 	menu := []string{
-		"Import Theme",
+		"Browse Themes",
+		"Download Themes",
+		"Components",
 		"Export Current Settings",
 	}
 
@@ -31,9 +33,17 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Import Theme":
-			logging.LogDebug("Selected Import Theme")
-			return app.Screens.ThemeImport
+		case "Browse Themes":
+			logging.LogDebug("Selected Browse Themes")
+			return app.Screens.BrowseThemes
+
+		case "Download Themes":
+			logging.LogDebug("Selected Download Themes")
+			return app.Screens.DownloadThemes
+
+		case "Components":
+			logging.LogDebug("Selected Components")
+			return app.Screens.ComponentsMenu
 
 		case "Export Current Settings":
 			logging.LogDebug("Selected Export Current Settings")

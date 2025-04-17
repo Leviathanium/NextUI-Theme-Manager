@@ -1,5 +1,5 @@
 // src/cmd/theme-manager/main.go
-// Simplified main entry point for the NextUI Theme Manager application
+// Expanded main entry point for the NextUI Theme Manager application
 
 package main
 
@@ -57,6 +57,14 @@ func main() {
 		return
 	}
 
+	// Check if minui-presenter exists in the application directory
+	minuiPresenterPath := filepath.Join(cwd, "minui-presenter")
+	_, err = os.Stat(minuiPresenterPath)
+	if err != nil {
+		logging.LogDebug("minui-presenter not found at %s: %v", minuiPresenterPath, err)
+		return
+	}
+
 	// Initialize application
 	if err := app.Initialize(); err != nil {
 		logging.LogDebug("Failed to initialize application: %v", err)
@@ -81,7 +89,7 @@ func main() {
 		logging.LogDebug("Current screen: %d", currentScreen)
 
 		// Ensure screen value is valid
-		if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.ThemeExport {
+		if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.ExportComponent {
 			logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
 			app.SetCurrentScreen(app.Screens.MainMenu)
 			continue
@@ -113,6 +121,48 @@ func main() {
 			nextScreen = screens.HandleThemeExport(selection, exitCode)
 			logging.LogDebug("Theme export returned next screen: %d", nextScreen)
 
+		case app.Screens.BrowseThemes:
+			logging.LogDebug("Showing browse themes screen")
+			selection, exitCode = screens.BrowseThemesScreen()
+			nextScreen = screens.HandleBrowseThemes(selection, exitCode)
+			logging.LogDebug("Browse themes returned next screen: %d", nextScreen)
+
+		case app.Screens.DownloadThemes:
+			logging.LogDebug("Showing download themes screen")
+			selection, exitCode = screens.DownloadThemesScreen()
+			nextScreen = screens.HandleDownloadThemes(selection, exitCode)
+			logging.LogDebug("Download themes returned next screen: %d", nextScreen)
+
+		case app.Screens.ComponentsMenu:
+			logging.LogDebug("Showing components menu screen")
+			selection, exitCode = screens.ComponentsMenuScreen()
+			nextScreen = screens.HandleComponentsMenu(selection, exitCode)
+			logging.LogDebug("Components menu returned next screen: %d", nextScreen)
+
+		case app.Screens.ComponentOptions:
+			logging.LogDebug("Showing component options screen")
+			selection, exitCode = screens.ComponentOptionsScreen()
+			nextScreen = screens.HandleComponentOptions(selection, exitCode)
+			logging.LogDebug("Component options returned next screen: %d", nextScreen)
+
+		case app.Screens.BrowseComponents:
+			logging.LogDebug("Showing browse components screen")
+			selection, exitCode = screens.BrowseComponentsScreen()
+			nextScreen = screens.HandleBrowseComponents(selection, exitCode)
+			logging.LogDebug("Browse components returned next screen: %d", nextScreen)
+
+		case app.Screens.DownloadComponents:
+			logging.LogDebug("Showing download components screen")
+			selection, exitCode = screens.DownloadComponentsScreen()
+			nextScreen = screens.HandleDownloadComponents(selection, exitCode)
+			logging.LogDebug("Download components returned next screen: %d", nextScreen)
+
+		case app.Screens.ExportComponent:
+			logging.LogDebug("Showing export component screen")
+			selection, exitCode = screens.ExportComponentScreen()
+			nextScreen = screens.HandleExportComponent(selection, exitCode)
+			logging.LogDebug("Export component returned next screen: %d", nextScreen)
+
 		default:
 			logging.LogDebug("Unknown screen type: %d, defaulting to MainMenu", currentScreen)
 			nextScreen = app.Screens.MainMenu
@@ -122,7 +172,7 @@ func main() {
 		logging.LogDebug("Current screen: %d, Next screen: %d", currentScreen, nextScreen)
 
 		// Verify next screen is valid before setting
-		if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.ThemeExport {
+		if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.ExportComponent {
 			logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
 			nextScreen = app.Screens.MainMenu
 		}
