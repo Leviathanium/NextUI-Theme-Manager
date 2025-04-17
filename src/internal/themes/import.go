@@ -177,19 +177,6 @@ func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, s
         logger.DebugFn("Warning: Error updating overlay mappings: %v", err)
     }
 
-    // Update settings if present
-    if manifest.Content.Settings.AccentsIncluded {
-        if err := updateAccentSettings(themePath, manifest, logger); err != nil {
-            logger.DebugFn("Warning: Error updating accent settings: %v", err)
-        }
-    }
-
-    if manifest.Content.Settings.LEDsIncluded {
-        if err := updateLEDSettings(themePath, manifest, logger); err != nil {
-            logger.DebugFn("Warning: Error updating LED settings: %v", err)
-        }
-    }
-
     // Write updated manifest back to file
     return WriteManifest(themePath, manifest, logger)
 }

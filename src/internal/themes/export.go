@@ -12,6 +12,7 @@ import (
 	"nextui-themes/internal/ui"
 	"strings"
 	"regexp"
+	"strconv"
 )
 
 // CreateThemeExportDirectory creates a new theme directory with sequential naming
@@ -55,7 +56,7 @@ func CreateThemeExportDirectory() (string, error) {
         "Icons/CollectionIcons",
         "Overlays",
         "Fonts",
-        "Settings",
+        // Removed "Settings" directory since we're storing settings directly in manifest.json
     }
 
     for _, dir := range subDirs {
@@ -104,6 +105,16 @@ func ExportTheme() error {
 
     // Export overlays
     exportOverlays(themePath, manifest, systemPaths, logger)
+
+    // Read and include accent settings directly in manifest
+    if err := readAccentSettingsFromSystem(manifest, logger); err != nil {
+        logger.DebugFn("Warning: Could not read accent settings: %v", err)
+    }
+
+    // Read and include LED settings directly in manifest
+    if err := readLEDSettingsFromSystem(manifest, logger); err != nil {
+        logger.DebugFn("Warning: Could not read LED settings: %v", err)
+    }
 
     // Write manifest
     if err := WriteManifest(themePath, manifest, logger); err != nil {
@@ -672,4 +683,149 @@ func exportOverlays(themePath string, manifest *ThemeManifest, systemPaths *syst
             }
         }
     }
+}
+
+// readAccentSettingsFromSystem reads accent settings from the system and updates the manifest
+func readAccentSettingsFromSystem(manifest *ThemeManifest, logger *Logger) error {
+    // Path to the accent settings file
+    settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
+
+    // Check if settings file exists
+    if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+        logger.DebugFn("Accent settings file not found: %s", settingsPath)
+        return fmt.Errorf("accent settings file not found: %s", settingsPath)
+    }
+
+    // Read settings file
+    content, err := os.ReadFile(settingsPath)
+    if err != nil {
+        return fmt.Errorf("error reading accent settings file: %w", err)
+    }
+
+    // Parse settings
+    lines := strings.Split(string(content), "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
+
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
+            continue
+        }
+
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
+
+        // Store color values directly in manifest
+        switch key {
+        case "color1":
+            manifest.AccentColors.Color1 = value
+        case "color2":
+            manifest.AccentColors.Color2 = value
+        case "color3":
+            manifest.AccentColors.Color3 = value
+        case "color4":
+            manifest.AccentColors.Color4 = value
+        case "color5":
+            manifest.AccentColors.Color5 = value
+        case "color6":
+            manifest.AccentColors.Color6 = value
+        }
+    }
+
+    // Mark accent colors as included
+    manifest.Content.Settings.AccentsIncluded = true
+    logger.DebugFn("Read accent settings from system and updated manifest")
+
+    return nil
+}
+
+// readLEDSettingsFromSystem reads LED settings from the system and updates the manifest
+func readLEDSettingsFromSystem(manifest *ThemeManifest, logger *Logger) error {
+    // Path to the LED settings file
+    settingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
+
+    // Check if settings file exists
+    if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+        logger.DebugFn("LED settings file not found: %s", settingsPath)
+        return fmt.Errorf("LED settings file not found: %s", settingsPath)
+    }
+
+    // Read settings file
+    content, err := os.ReadFile(settingsPath)
+    if err != nil {
+        return fmt.Errorf("error reading LED settings file: %w", err)
+    }
+
+    // Parse settings
+    lines := strings.Split(string(content), "\n")
+    var currentLED *LEDSetting
+    var currentSection string
+
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
+
+        // Check for section header [X]
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            currentSection = line[1 : len(line)-1]
+
+            // Determine which LED setting to update
+            switch currentSection {
+            case "F1 key":
+                currentLED = &manifest.LEDSettings.F1Key
+            case "F2 key":
+                currentLED = &manifest.LEDSettings.F2Key
+            case "Top bar":
+                currentLED = &manifest.LEDSettings.TopBar
+            case "L&R triggers":
+                currentLED = &manifest.LEDSettings.LRTriggers
+            default:
+                currentLED = nil
+            }
+            continue
+        }
+
+        // If not in a valid section, skip
+        if currentLED == nil {
+            continue
+        }
+
+        // Parse key=value
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
+            continue
+        }
+
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
+
+        // Update LED setting based on key
+        switch key {
+        case "effect":
+            currentLED.Effect, _ = strconv.Atoi(value)
+        case "color1":
+            currentLED.Color1 = value
+        case "color2":
+            currentLED.Color2 = value
+        case "speed":
+            currentLED.Speed, _ = strconv.Atoi(value)
+        case "brightness":
+            currentLED.Brightness, _ = strconv.Atoi(value)
+        case "trigger":
+            currentLED.Trigger, _ = strconv.Atoi(value)
+        case "inbrightness":
+            currentLED.InBrightness, _ = strconv.Atoi(value)
+        }
+    }
+
+    // Mark LED settings as included
+    manifest.Content.Settings.LEDsIncluded = true
+    logger.DebugFn("Read LED settings from system and updated manifest")
+
+    return nil
 }
