@@ -40,15 +40,16 @@ func Initialize() error {
 	// Create theme directory structure
 	logging.LogDebug("Creating theme directories")
 
-	// Create Themes directory structure
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Imports"), 0755)
+	// Create Themes directory directly
+	err = os.MkdirAll(filepath.Join(cwd, "Themes"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Themes/Imports directory: %v", err)
+		logging.LogDebug("Error creating Themes directory: %v", err)
 	}
 
-	err = os.MkdirAll(filepath.Join(cwd, "Themes", "Exports"), 0755)
+	// Create Exports directory
+	err = os.MkdirAll(filepath.Join(cwd, "Exports"), 0755)
 	if err != nil {
-		logging.LogDebug("Error creating Themes/Exports directory: %v", err)
+		logging.LogDebug("Error creating Exports directory: %v", err)
 	}
 
 	// Create logs directory

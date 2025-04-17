@@ -15,7 +15,7 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// ThemeImportScreen displays available themes from the Imports directory
+// ThemeImportScreen displays available themes from the Themes directory
 func ThemeImportScreen() (string, int) {
 	// Get the current directory
 	cwd, err := os.Getwd()
@@ -25,12 +25,12 @@ func ThemeImportScreen() (string, int) {
 		return "", 1
 	}
 
-	// Path to Themes/Imports directory
-	importsDir := filepath.Join(cwd, "Themes", "Imports")
+	// Path to Themes directory directly instead of Themes/Imports
+	importsDir := filepath.Join(cwd, "Themes")
 
 	// Ensure directory exists
 	if err := os.MkdirAll(importsDir, 0755); err != nil {
-		logging.LogDebug("Error creating imports directory: %v", err)
+		logging.LogDebug("Error creating themes directory: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
@@ -38,7 +38,7 @@ func ThemeImportScreen() (string, int) {
 	// List available themes
 	entries, err := os.ReadDir(importsDir)
 	if err != nil {
-		logging.LogDebug("Error reading imports directory: %v", err)
+		logging.LogDebug("Error reading themes directory: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
@@ -53,7 +53,7 @@ func ThemeImportScreen() (string, int) {
 
 	if len(themesList) == 0 {
 		logging.LogDebug("No themes found")
-		ui.ShowMessage("No themes found in Imports directory", "3")
+		ui.ShowMessage("No themes found in Themes directory", "3")
 		return "", 1
 	}
 

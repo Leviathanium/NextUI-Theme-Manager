@@ -30,8 +30,8 @@ func ImportTheme(themeName string) error {
         return fmt.Errorf("error getting current directory: %w", err)
     }
 
-    // Full path to theme - look in Imports directory
-    themePath := filepath.Join(cwd, "Themes", "Imports", themeName)
+    // Full path to theme - look in Themes directory directly instead of Themes/Imports
+    themePath := filepath.Join(cwd, "Themes", themeName)
 
     // Validate theme
     manifest, err := ValidateTheme(themePath, logger)

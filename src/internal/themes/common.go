@@ -56,11 +56,10 @@ func EnsureThemeDirectoryStructure() error {
 		return err
 	}
 
-	// Theme directories to create
+	// Theme directories to create - now directly using Themes and Exports
 	directories := []string{
 		filepath.Join(cwd, "Themes"),
-		filepath.Join(cwd, "Themes", "Imports"),
-		filepath.Join(cwd, "Themes", "Exports"),
+		filepath.Join(cwd, "Exports"),
 		filepath.Join(cwd, "Logs"),
 	}
 
@@ -87,12 +86,12 @@ func CreatePlaceholderFiles() error {
 
 	// Define placeholder files
 	placeholders := map[string]string{
-		filepath.Join(cwd, "Themes", "Imports", "README.txt"): `# Theme Import Directory
+		filepath.Join(cwd, "Themes", "README.txt"): `# Theme Directory
 
 Place theme packages (directories with .theme extension) here to import them.
 Themes should contain a manifest.json file and the appropriate theme files.`,
 
-		filepath.Join(cwd, "Themes", "Exports", "README.txt"): `# Theme Export Directory
+		filepath.Join(cwd, "Exports", "README.txt"): `# Theme Export Directory
 
 Exported theme packages will be placed here with sequential names (theme_1.theme, theme_2.theme, etc.)`,
 	}

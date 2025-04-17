@@ -22,8 +22,8 @@ func CreateThemeExportDirectory() (string, error) {
         return "", fmt.Errorf("error getting current directory: %w", err)
     }
 
-    // Path to Themes/Exports directory
-    exportsDir := filepath.Join(cwd, "Themes", "Exports")
+    // Path to Exports directory directly instead of Themes/Exports
+    exportsDir := filepath.Join(cwd, "Exports")
 
     // Ensure directory exists
     if err := os.MkdirAll(exportsDir, 0755); err != nil {
