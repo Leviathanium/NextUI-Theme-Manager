@@ -102,6 +102,9 @@ func ExportTheme() error {
     // Export icons
     exportIcons(themePath, manifest, systemPaths, logger)
 
+    // Export overlays
+    exportOverlays(themePath, manifest, systemPaths, logger)
+
     // Write manifest
     if err := WriteManifest(themePath, manifest, logger); err != nil {
         logger.DebugFn("Error writing manifest: %v", err)
@@ -561,6 +564,111 @@ func exportIcons(themePath string, manifest *ThemeManifest, systemPaths *system.
                     manifest.Content.Icons.CollectionCount++
                     logger.DebugFn("Exported collection %s icon to %s", collectionName, destPath)
                 }
+            }
+        }
+    }
+}
+
+// exportOverlays scans for and exports system overlays
+func exportOverlays(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
+    // Initialize overlay section
+    manifest.Content.Overlays.Present = false
+    manifest.Content.Overlays.Systems = []string{}
+    manifest.PathMappings.Overlays = []PathMapping{}
+
+    // Check for overlays directory
+    overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
+    if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
+        logger.DebugFn("Overlays directory not found: %s", overlaysDir)
+        return
+    }
+
+    // List system directories in Overlays
+    entries, err := os.ReadDir(overlaysDir)
+    if err != nil {
+        logger.DebugFn("Error reading Overlays directory: %v", err)
+        return
+    }
+
+    // Process each system's overlays
+    for _, entry := range entries {
+        if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+            continue
+        }
+
+        systemTag := entry.Name()
+        systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
+
+        // List overlay files for this system
+        overlayFiles, err := os.ReadDir(systemOverlaysPath)
+        if err != nil {
+            logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
+            continue
+        }
+
+        var hasOverlays bool
+
+        // Copy each overlay file
+        for _, file := range overlayFiles {
+            if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+                continue
+            }
+
+            // Only process PNG files
+            if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+                continue
+            }
+
+            srcPath := filepath.Join(systemOverlaysPath, file.Name())
+
+            // Create destination directories if needed
+            destDir := filepath.Join(themePath, "Overlays", systemTag)
+            if err := os.MkdirAll(destDir, 0755); err != nil {
+                logger.DebugFn("Error creating overlay directory: %v", err)
+                continue
+            }
+
+            destPath := filepath.Join(destDir, file.Name())
+
+            // Copy the overlay file
+            if err := CopyFile(srcPath, destPath); err != nil {
+                logger.DebugFn("Warning: Could not copy overlay %s: %v", file.Name(), err)
+            } else {
+                themePath := filepath.Join("Overlays", systemTag, file.Name())
+
+                // Add to manifest
+                manifest.PathMappings.Overlays = append(
+                    manifest.PathMappings.Overlays,
+                    PathMapping{
+                        ThemePath:  themePath,
+                        SystemPath: srcPath,
+                        Metadata: map[string]string{
+                            "SystemTag": systemTag,
+                            "OverlayName": file.Name(),
+                        },
+                    },
+                )
+
+                hasOverlays = true
+                logger.DebugFn("Exported overlay %s for system %s", file.Name(), systemTag)
+            }
+        }
+
+        // If this system had overlays, add it to the systems list
+        if hasOverlays {
+            manifest.Content.Overlays.Present = true
+
+            // Check if system is already in the list
+            var systemExists bool
+            for _, sys := range manifest.Content.Overlays.Systems {
+                if sys == systemTag {
+                    systemExists = true
+                    break
+                }
+            }
+
+            if !systemExists {
+                manifest.Content.Overlays.Systems = append(manifest.Content.Overlays.Systems, systemTag)
             }
         }
     }

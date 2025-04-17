@@ -172,6 +172,11 @@ func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, s
         logger.DebugFn("Warning: Error updating icon mappings: %v", err)
     }
 
+    // Update overlays
+    if err := updateOverlayMappings(themePath, manifest, systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error updating overlay mappings: %v", err)
+    }
+
     // Update settings if present
     if manifest.Content.Settings.AccentsIncluded {
         if err := updateAccentSettings(themePath, manifest, logger); err != nil {
@@ -388,6 +393,106 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
        manifest.Content.Icons.ToolCount > 0 ||
        manifest.Content.Icons.CollectionCount > 0 {
         manifest.Content.Icons.Present = true
+    }
+
+    return nil
+}
+
+// updateOverlayMappings scans overlays in the theme and updates manifest mappings
+func updateOverlayMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
+    // Create a map of existing mappings for quick lookup
+    existingMappings := make(map[string]bool)
+    for _, mapping := range manifest.PathMappings.Overlays {
+        existingMappings[mapping.ThemePath] = true
+    }
+
+    // Process overlay directories
+    overlaysDir := filepath.Join(themePath, "Overlays")
+    if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
+        logger.DebugFn("No Overlays directory found in theme")
+        return nil
+    }
+
+    // List system directories
+    entries, err := os.ReadDir(overlaysDir)
+    if err != nil {
+        logger.DebugFn("Error reading Overlays directory: %v", err)
+        return err
+    }
+
+    // Process each system's overlays
+    for _, entry := range entries {
+        if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+            continue
+        }
+
+        systemTag := entry.Name()
+        systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
+
+        // List overlay files for this system
+        overlayFiles, err := os.ReadDir(systemOverlaysPath)
+        if err != nil {
+            logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
+            continue
+        }
+
+        var hasOverlays bool
+
+        // Process each overlay file
+        for _, file := range overlayFiles {
+            if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+                continue
+            }
+
+            // Only process PNG files
+            if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+                continue
+            }
+
+            themePath := filepath.Join("Overlays", systemTag, file.Name())
+
+            // Skip if already in mappings
+            if existingMappings[themePath] {
+                continue
+            }
+
+            // Determine system path
+            systemPath := filepath.Join(systemPaths.Root, "Overlays", systemTag, file.Name())
+
+            // Add to manifest
+            manifest.PathMappings.Overlays = append(
+                manifest.PathMappings.Overlays,
+                PathMapping{
+                    ThemePath:  themePath,
+                    SystemPath: systemPath,
+                    Metadata: map[string]string{
+                        "SystemTag": systemTag,
+                        "OverlayName": file.Name(),
+                    },
+                },
+            )
+
+            hasOverlays = true
+            logger.DebugFn("Added mapping for overlay %s for system %s", file.Name(), systemTag)
+        }
+
+        // If this system had overlays, add it to the systems list
+        if hasOverlays {
+            manifest.Content.Overlays.Present = true
+
+            // Check if system is already in the list
+            var systemExists bool
+            for _, sys := range manifest.Content.Overlays.Systems {
+                if sys == systemTag {
+                    systemExists = true
+                    break
+                }
+            }
+
+            if !systemExists {
+                manifest.Content.Overlays.Systems = append(manifest.Content.Overlays.Systems, systemTag)
+            }
+        }
     }
 
     return nil
