@@ -1,5 +1,5 @@
 // src/internal/system/detection.go
-// System path detection and utilities
+// System path detection for theme application
 
 package system
 

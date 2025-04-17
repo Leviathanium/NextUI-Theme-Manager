@@ -1,386 +1,381 @@
 // src/internal/themes/export.go
-// Implementation of theme export functionality
+// Simplified implementation of theme export functionality
 
 package themes
 
 import (
-	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
-	"strings"
-    "regexp"
-	// Removed unused import: "nextui-themes/internal/logging"
-	"nextui-themes/internal/accents"
-	"nextui-themes/internal/fonts"
+	"nextui-themes/internal/logging"
 	"nextui-themes/internal/system"
 	"nextui-themes/internal/ui"
+	"strings"
+	"regexp"
+	"strconv"
 )
-
-// Logger is a simple wrapper around log.Logger to maintain consistent logging
-type Logger struct {
-	*log.Logger
-}
 
 // CreateThemeExportDirectory creates a new theme directory with sequential naming
 func CreateThemeExportDirectory() (string, error) {
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return "", fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Path to Themes/Exports directory
-	exportsDir := filepath.Join(cwd, "Themes", "Exports")
+    // Path to Exports directory directly instead of Themes/Exports
+    exportsDir := filepath.Join(cwd, "Exports")
 
-	// Ensure directory exists
-	if err := os.MkdirAll(exportsDir, 0755); err != nil {
-		return "", fmt.Errorf("error creating exports directory: %w", err)
-	}
+    // Ensure directory exists
+    if err := os.MkdirAll(exportsDir, 0755); err != nil {
+        return "", fmt.Errorf("error creating exports directory: %w", err)
+    }
 
-	// Generate sequential theme name
-	themeNumber := 1
-	var themePath string
+    // Generate sequential theme name
+    themeNumber := 1
+    var themePath string
 
-	for {
-		themeName := fmt.Sprintf("theme_%d.theme", themeNumber)
-		themePath = filepath.Join(exportsDir, themeName)
+    for {
+        themeName := fmt.Sprintf("theme_%d.theme", themeNumber)
+        themePath = filepath.Join(exportsDir, themeName)
 
-		if _, err := os.Stat(themePath); os.IsNotExist(err) {
-			// Theme directory doesn't exist, we can use this name
-			break
-		}
+        if _, err := os.Stat(themePath); os.IsNotExist(err) {
+            // Theme directory doesn't exist, we can use this name
+            break
+        }
 
-		themeNumber++
-	}
+        themeNumber++
+    }
 
-	// Create the theme directory and subdirectories using the preferred structure
-	// that mirrors the icon directory structure
-	subDirs := []string{
-		// Primary wallpaper structure
-		"Wallpapers/SystemWallpapers",
-		"Wallpapers/CollectionWallpapers",
+    // Create the theme directory and subdirectories
+    subDirs := []string{
+        "Wallpapers/SystemWallpapers",
+        "Wallpapers/CollectionWallpapers",
+        "Icons/SystemIcons",
+        "Icons/ToolIcons",
+        "Icons/CollectionIcons",
+        "Overlays",
+        "Fonts",
+        // Removed "Settings" directory since we're storing settings directly in manifest.json
+    }
 
-		// Legacy structure (for backward compatibility)
-		"Wallpapers/Root",
-		"Wallpapers/Collections",
-		"Wallpapers/Recently Played",
-		"Wallpapers/Tools",
-		"Wallpapers/Systems",
+    for _, dir := range subDirs {
+        path := filepath.Join(themePath, dir)
+        if err := os.MkdirAll(path, 0755); err != nil {
+            return "", fmt.Errorf("error creating theme subdirectory %s: %w", dir, err)
+        }
+    }
 
-		// Icons directory structure
-		"Icons/SystemIcons",
-		"Icons/ToolIcons",
-		"Icons/CollectionIcons",
-
-		// Other directories
-		"Overlays",
-		"Fonts",
-		"Settings",
-	}
-
-	for _, dir := range subDirs {
-		path := filepath.Join(themePath, dir)
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return "", fmt.Errorf("error creating theme subdirectory %s: %w", dir, err)
-		}
-	}
-
-	return themePath, nil
+    return themePath, nil
 }
 
-// ExportWallpapers exports wallpapers to the theme directory using the preferred structure
-func ExportWallpapers(themePath string, manifest *ThemeManifest, logger *Logger) error {
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		logger.Printf("Error getting system paths: %v", err)
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+// ExportTheme exports the current theme settings
+func ExportTheme() error {
+    // Create logger
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	// Initialize wallpapers section in manifest
-	manifest.Content.Wallpapers.Present = false
-	manifest.Content.Wallpapers.Count = 0
+    logger.DebugFn("Starting theme export")
 
-	// Directory for system wallpapers in the preferred structure
-	sysWallDir := filepath.Join(themePath, "Wallpapers", "SystemWallpapers")
-	collWallDir := filepath.Join(themePath, "Wallpapers", "CollectionWallpapers")
+    // Create theme directory
+    themePath, err := CreateThemeExportDirectory()
+    if err != nil {
+        logger.DebugFn("Error creating theme directory: %v", err)
+        return fmt.Errorf("error creating theme directory: %w", err)
+    }
 
-	// Ensure directories exist
-	if err := os.MkdirAll(sysWallDir, 0755); err != nil {
-		logger.Printf("Error creating SystemWallpapers directory: %v", err)
-		return fmt.Errorf("error creating SystemWallpapers directory: %w", err)
-	}
+    logger.DebugFn("Created theme directory: %s", themePath)
 
-	if err := os.MkdirAll(collWallDir, 0755); err != nil {
-		logger.Printf("Error creating CollectionWallpapers directory: %v", err)
-		return fmt.Errorf("error creating CollectionWallpapers directory: %w", err)
-	}
+    // Initialize manifest
+    manifest := &ThemeManifest{}
 
-	// Root wallpaper (bg.png at root level)
-	rootBg := filepath.Join(systemPaths.Root, "bg.png")
-	if _, err := os.Stat(rootBg); err == nil {
-		// Using the new preferred structure: SystemWallpapers/Root.png
-		targetPath := filepath.Join(sysWallDir, "Root.png")
-		if err := CopyFile(rootBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy root bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/SystemWallpapers/Root.png",
-					SystemPath: rootBg,
-					Metadata: map[string]string{
-						"SystemName": "Root",
-						"WallpaperType": "Main",
-					},
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported root wallpaper: %s", rootBg)
-		}
-	}
-
-	// Root .media wallpaper
-	rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
-	if _, err := os.Stat(rootMediaBg); err == nil {
-		// Using the new preferred structure: SystemWallpapers/Root-Media.png
-		targetPath := filepath.Join(sysWallDir, "Root-Media.png")
-		if err := CopyFile(rootMediaBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy root .media/bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/SystemWallpapers/Root-Media.png",
-					SystemPath: rootMediaBg,
-					Metadata: map[string]string{
-						"SystemName": "Root",
-						"WallpaperType": "Media",
-					},
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported root .media wallpaper: %s", rootMediaBg)
-		}
-	}
-
-	// Recently Played wallpaper
-	rpBg := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
-	if _, err := os.Stat(rpBg); err == nil {
-		// Using the new preferred structure: SystemWallpapers/Recently Played.png
-		targetPath := filepath.Join(sysWallDir, "Recently Played.png")
-		if err := CopyFile(rpBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy Recently Played bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/SystemWallpapers/Recently Played.png",
-					SystemPath: rpBg,
-					Metadata: map[string]string{
-						"SystemName": "Recently Played",
-						"WallpaperType": "Media",
-					},
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported Recently Played wallpaper: %s", rpBg)
-		}
-	}
-
-	// Tools wallpaper
-	toolsBg := filepath.Join(systemPaths.Tools, ".media", "bg.png")
-	if _, err := os.Stat(toolsBg); err == nil {
-		// Using the new preferred structure: SystemWallpapers/Tools.png
-		targetPath := filepath.Join(sysWallDir, "Tools.png")
-		if err := CopyFile(toolsBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy Tools bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/SystemWallpapers/Tools.png",
-					SystemPath: toolsBg,
-					Metadata: map[string]string{
-						"SystemName": "Tools",
-						"WallpaperType": "Media",
-					},
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported Tools wallpaper: %s", toolsBg)
-		}
-	}
-
-	// Collections wallpaper
-	collectionsPath := filepath.Join(systemPaths.Root, "Collections")
-	collectionsBg := filepath.Join(collectionsPath, ".media", "bg.png")
-	if _, err := os.Stat(collectionsBg); err == nil {
-		// Using the new preferred structure: SystemWallpapers/Collections.png
-		targetPath := filepath.Join(sysWallDir, "Collections.png")
-		if err := CopyFile(collectionsBg, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy Collections bg.png: %v", err)
-		} else {
-			// Add to manifest path mappings
-			manifest.PathMappings.Wallpapers = append(
-				manifest.PathMappings.Wallpapers,
-				PathMapping{
-					ThemePath:  "Wallpapers/SystemWallpapers/Collections.png",
-					SystemPath: collectionsBg,
-					Metadata: map[string]string{
-						"SystemName": "Collections",
-						"WallpaperType": "Media",
-					},
-				},
-			)
-			manifest.Content.Wallpapers.Present = true
-			manifest.Content.Wallpapers.Count++
-			logger.Printf("Exported Collections wallpaper: %s", collectionsBg)
-		}
-	}
-
-	// Check for collection-specific wallpapers
-	if _, err := os.Stat(collectionsPath); err == nil {
-		// Read the Collections directory to find individual collections
-		collections, err := os.ReadDir(collectionsPath)
-		if err == nil {
-			for _, collection := range collections {
-				if collection.IsDir() && !strings.HasPrefix(collection.Name(), ".") {
-					collectionName := collection.Name()
-					collectionBg := filepath.Join(collectionsPath, collectionName, ".media", "bg.png")
-
-					// Check if this collection has a background
-					if _, err := os.Stat(collectionBg); err == nil {
-						// Using the new preferred structure: CollectionWallpapers/[CollectionName].png
-						targetPath := filepath.Join(collWallDir, collectionName + ".png")
-						if err := CopyFile(collectionBg, targetPath); err != nil {
-							logger.Printf("Warning: Could not copy collection %s bg.png: %v", collectionName, err)
-						} else {
-							// Add to manifest path mappings
-							manifest.PathMappings.Wallpapers = append(
-								manifest.PathMappings.Wallpapers,
-								PathMapping{
-									ThemePath:  "Wallpapers/CollectionWallpapers/" + collectionName + ".png",
-									SystemPath: collectionBg,
-									Metadata: map[string]string{
-										"CollectionName": collectionName,
-										"WallpaperType": "Collection",
-									},
-								},
-							)
-							manifest.Content.Wallpapers.Present = true
-							manifest.Content.Wallpapers.Count++
-							logger.Printf("Exported collection wallpaper for %s: %s", collectionName, collectionBg)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// System wallpapers
-	for _, system := range systemPaths.Systems {
-		systemBg := filepath.Join(system.MediaPath, "bg.png")
-		if _, err := os.Stat(systemBg); err == nil {
-			// Skip systems without a tag
-			if system.Tag == "" {
-				logger.Printf("Skipping system with no tag: %s", system.Name)
-				continue
-			}
-
-			// Using the new preferred structure: SystemWallpapers/[SystemName (TAG)].png
-			fileName := fmt.Sprintf("%s (%s).png", system.Name, system.Tag)
-			targetPath := filepath.Join(sysWallDir, fileName)
-
-			if err := CopyFile(systemBg, targetPath); err != nil {
-				logger.Printf("Warning: Could not copy system %s bg.png: %v", system.Name, err)
-			} else {
-				// Add to manifest path mappings with extended metadata
-				manifest.PathMappings.Wallpapers = append(
-					manifest.PathMappings.Wallpapers,
-					PathMapping{
-						ThemePath:  "Wallpapers/SystemWallpapers/" + fileName,
-						SystemPath: systemBg,
-						// Add system metadata to improve matching
-						Metadata: map[string]string{
-							"SystemName": system.Name,
-							"SystemTag":  system.Tag,
-							"WallpaperType": "System",
-						},
-					},
-				)
-				manifest.Content.Wallpapers.Present = true
-				manifest.Content.Wallpapers.Count++
-				logger.Printf("Exported system wallpaper for %s (%s): %s", system.Name, system.Tag, systemBg)
-			}
-		}
-	}
-
-	return nil
-}
-
-// ExportIcons exports icons to the theme directory
-func ExportIcons(themePath string, manifest *ThemeManifest, logger *Logger) error {
     // Get system paths
     systemPaths, err := system.GetSystemPaths()
     if err != nil {
-        logger.Printf("Error getting system paths: %v", err)
+        logger.DebugFn("Error getting system paths: %v", err)
         return fmt.Errorf("error getting system paths: %w", err)
     }
 
-    // Initialize icons section in manifest
+    // Export wallpapers
+    exportWallpapers(themePath, manifest, systemPaths, logger)
+
+    // Export icons
+    exportIcons(themePath, manifest, systemPaths, logger)
+
+    // Export overlays
+    exportOverlays(themePath, manifest, systemPaths, logger)
+
+    // Read and include accent settings directly in manifest
+    if err := readAccentSettingsFromSystem(manifest, logger); err != nil {
+        logger.DebugFn("Warning: Could not read accent settings: %v", err)
+    }
+
+    // Read and include LED settings directly in manifest
+    if err := readLEDSettingsFromSystem(manifest, logger); err != nil {
+        logger.DebugFn("Warning: Could not read LED settings: %v", err)
+    }
+
+    // Write manifest
+    if err := WriteManifest(themePath, manifest, logger); err != nil {
+        logger.DebugFn("Error writing manifest: %v", err)
+        return fmt.Errorf("error writing manifest: %w", err)
+    }
+
+    logger.DebugFn("Theme export completed successfully: %s", themePath)
+
+    // Show success message to user
+    themeName := filepath.Base(themePath)
+    ui.ShowMessage(fmt.Sprintf("Theme exported successfully: %s", themeName), "3")
+
+    return nil
+}
+
+// exportWallpapers scans for and exports wallpapers
+func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
+    // Initialize wallpaper section
+    manifest.Content.Wallpapers.Present = false
+    manifest.Content.Wallpapers.Count = 0
+    manifest.PathMappings.Wallpapers = []PathMapping{}
+
+    // Check for root wallpaper
+    rootBg := filepath.Join(systemPaths.Root, "bg.png")
+    if _, err := os.Stat(rootBg); err == nil {
+        // Copy to theme
+        destPath := filepath.Join(themePath, "Wallpapers", "SystemWallpapers", "Root.png")
+        if err := CopyFile(rootBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy root bg.png: %v", err)
+        } else {
+            // Add to manifest
+            manifest.PathMappings.Wallpapers = append(
+                manifest.PathMappings.Wallpapers,
+                PathMapping{
+                    ThemePath:  "Wallpapers/SystemWallpapers/Root.png",
+                    SystemPath: rootBg,
+                    Metadata: map[string]string{
+                        "SystemName": "Root",
+                        "WallpaperType": "Main",
+                    },
+                },
+            )
+            manifest.Content.Wallpapers.Present = true
+            manifest.Content.Wallpapers.Count++
+            logger.DebugFn("Exported Root wallpaper to %s", destPath)
+        }
+    }
+
+    // Check for root media wallpaper
+    rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
+    if _, err := os.Stat(rootMediaBg); err == nil {
+        // Copy to theme
+        destPath := filepath.Join(themePath, "Wallpapers", "SystemWallpapers", "Root-Media.png")
+        if err := CopyFile(rootMediaBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy root media bg.png: %v", err)
+        } else {
+            // Add to manifest
+            manifest.PathMappings.Wallpapers = append(
+                manifest.PathMappings.Wallpapers,
+                PathMapping{
+                    ThemePath:  "Wallpapers/SystemWallpapers/Root-Media.png",
+                    SystemPath: rootMediaBg,
+                    Metadata: map[string]string{
+                        "SystemName": "Root",
+                        "WallpaperType": "Media",
+                    },
+                },
+            )
+            manifest.Content.Wallpapers.Present = true
+            manifest.Content.Wallpapers.Count++
+            logger.DebugFn("Exported Root-Media wallpaper to %s", destPath)
+        }
+    }
+
+    // Check for Recently Played wallpaper
+    rpBg := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
+    if _, err := os.Stat(rpBg); err == nil {
+        // Copy to theme
+        destPath := filepath.Join(themePath, "Wallpapers", "SystemWallpapers", "Recently Played.png")
+        if err := CopyFile(rpBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Recently Played bg.png: %v", err)
+        } else {
+            // Add to manifest
+            manifest.PathMappings.Wallpapers = append(
+                manifest.PathMappings.Wallpapers,
+                PathMapping{
+                    ThemePath:  "Wallpapers/SystemWallpapers/Recently Played.png",
+                    SystemPath: rpBg,
+                    Metadata: map[string]string{
+                        "SystemName": "Recently Played",
+                        "WallpaperType": "Media",
+                    },
+                },
+            )
+            manifest.Content.Wallpapers.Present = true
+            manifest.Content.Wallpapers.Count++
+            logger.DebugFn("Exported Recently Played wallpaper to %s", destPath)
+        }
+    }
+
+    // Check for Tools wallpaper
+    toolsBg := filepath.Join(systemPaths.Tools, ".media", "bg.png")
+    if _, err := os.Stat(toolsBg); err == nil {
+        // Copy to theme
+        destPath := filepath.Join(themePath, "Wallpapers", "SystemWallpapers", "Tools.png")
+        if err := CopyFile(toolsBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Tools bg.png: %v", err)
+        } else {
+            // Add to manifest
+            manifest.PathMappings.Wallpapers = append(
+                manifest.PathMappings.Wallpapers,
+                PathMapping{
+                    ThemePath:  "Wallpapers/SystemWallpapers/Tools.png",
+                    SystemPath: toolsBg,
+                    Metadata: map[string]string{
+                        "SystemName": "Tools",
+                        "WallpaperType": "Media",
+                    },
+                },
+            )
+            manifest.Content.Wallpapers.Present = true
+            manifest.Content.Wallpapers.Count++
+            logger.DebugFn("Exported Tools wallpaper to %s", destPath)
+        }
+    }
+
+    // Check for Collections wallpaper
+    collectionsBg := filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
+    if _, err := os.Stat(collectionsBg); err == nil {
+        // Copy to theme
+        destPath := filepath.Join(themePath, "Wallpapers", "SystemWallpapers", "Collections.png")
+        if err := CopyFile(collectionsBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Collections bg.png: %v", err)
+        } else {
+            // Add to manifest
+            manifest.PathMappings.Wallpapers = append(
+                manifest.PathMappings.Wallpapers,
+                PathMapping{
+                    ThemePath:  "Wallpapers/SystemWallpapers/Collections.png",
+                    SystemPath: collectionsBg,
+                    Metadata: map[string]string{
+                        "SystemName": "Collections",
+                        "WallpaperType": "Media",
+                    },
+                },
+            )
+            manifest.Content.Wallpapers.Present = true
+            manifest.Content.Wallpapers.Count++
+            logger.DebugFn("Exported Collections wallpaper to %s", destPath)
+        }
+    }
+
+    // Check for system wallpapers
+    for _, system := range systemPaths.Systems {
+        if system.Tag == "" {
+            // Skip systems without tags
+            continue
+        }
+
+        systemBg := filepath.Join(system.MediaPath, "bg.png")
+        if _, err := os.Stat(systemBg); err == nil {
+            // Create filename with system tag - check if already contains tag to prevent duplication
+            var fileName string
+            if strings.Contains(system.Name, fmt.Sprintf("(%s)", system.Tag)) {
+                // System name already has the tag, use as is
+                fileName = fmt.Sprintf("%s.png", system.Name)
+                logger.DebugFn("System name already contains tag: %s", system.Name)
+            } else {
+                // Add tag to system name
+                fileName = fmt.Sprintf("%s (%s).png", system.Name, system.Tag)
+                logger.DebugFn("Adding tag to system name: %s (%s)", system.Name, system.Tag)
+            }
+
+            destPath := filepath.Join(themePath, "Wallpapers", "SystemWallpapers", fileName)
+
+            if err := CopyFile(systemBg, destPath); err != nil {
+                logger.DebugFn("Warning: Could not copy system %s bg.png: %v", system.Name, err)
+            } else {
+                // Add to manifest
+                manifest.PathMappings.Wallpapers = append(
+                    manifest.PathMappings.Wallpapers,
+                    PathMapping{
+                        ThemePath:  "Wallpapers/SystemWallpapers/" + fileName,
+                        SystemPath: systemBg,
+                        Metadata: map[string]string{
+                            "SystemName": system.Name,
+                            "SystemTag": system.Tag,
+                            "WallpaperType": "System",
+                        },
+                    },
+                )
+                manifest.Content.Wallpapers.Present = true
+                manifest.Content.Wallpapers.Count++
+                logger.DebugFn("Exported %s wallpaper to %s", system.Name, destPath)
+            }
+        }
+    }
+
+    // Check for collection wallpapers
+    collectionsDir := filepath.Join(systemPaths.Root, "Collections")
+    entries, err := os.ReadDir(collectionsDir)
+    if err != nil {
+        logger.DebugFn("Warning: Could not read Collections directory: %v", err)
+        return
+    }
+
+    for _, entry := range entries {
+        if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+            continue
+        }
+
+        collectionName := entry.Name()
+        collectionBg := filepath.Join(collectionsDir, collectionName, ".media", "bg.png")
+
+        if _, err := os.Stat(collectionBg); err == nil {
+            // Create filename for collection
+            fileName := fmt.Sprintf("%s.png", collectionName)
+            destPath := filepath.Join(themePath, "Wallpapers", "CollectionWallpapers", fileName)
+
+            if err := CopyFile(collectionBg, destPath); err != nil {
+                logger.DebugFn("Warning: Could not copy collection %s bg.png: %v", collectionName, err)
+            } else {
+                // Add to manifest
+                manifest.PathMappings.Wallpapers = append(
+                    manifest.PathMappings.Wallpapers,
+                    PathMapping{
+                        ThemePath:  "Wallpapers/CollectionWallpapers/" + fileName,
+                        SystemPath: collectionBg,
+                        Metadata: map[string]string{
+                            "CollectionName": collectionName,
+                            "WallpaperType": "Collection",
+                        },
+                    },
+                )
+                manifest.Content.Wallpapers.Present = true
+                manifest.Content.Wallpapers.Count++
+                logger.DebugFn("Exported collection %s wallpaper to %s", collectionName, destPath)
+            }
+        }
+    }
+}
+
+// exportIcons scans for and exports icons
+func exportIcons(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
+    // Initialize icon section
     manifest.Content.Icons.Present = false
     manifest.Content.Icons.SystemCount = 0
     manifest.Content.Icons.ToolCount = 0
     manifest.Content.Icons.CollectionCount = 0
+    manifest.PathMappings.Icons = []PathMapping{}
 
-    // Root media directory for special icons
-    rootMediaPath := filepath.Join(systemPaths.Root, ".media")
+    // Export system icons
 
-    // Collections icon
-    collectionsIcon := filepath.Join(rootMediaPath, "Collections.png")
-    if _, err := os.Stat(collectionsIcon); err == nil {
-        targetPath := filepath.Join(themePath, "Icons", "SystemIcons", "Collections.png")
-        if err := CopyFile(collectionsIcon, targetPath); err != nil {
-            logger.Printf("Warning: Could not copy Collections icon: %v", err)
-        } else {
-            // Add to manifest path mappings
-            manifest.PathMappings.Icons = append(
-                manifest.PathMappings.Icons,
-                PathMapping{
-                    ThemePath:  "Icons/SystemIcons/Collections.png",
-                    SystemPath: collectionsIcon,
-                    Metadata: map[string]string{
-                        "SystemName": "Collections",
-                        "SystemTag":  "COLLECTIONS", // Special tag for Collections
-                        "IconType":   "Special",
-                    },
-                },
-            )
-            manifest.Content.Icons.Present = true
-            manifest.Content.Icons.SystemCount++
-            logger.Printf("Exported Collections icon: %s", collectionsIcon)
-        }
-    }
-
-    // Recently Played icon
-    rpIcon := filepath.Join(rootMediaPath, "Recently Played.png")
+    // Recently Played icon - in SD_CARD/.media/Recently Played.png
+    rpIcon := filepath.Join(systemPaths.Root, ".media", "Recently Played.png")
     if _, err := os.Stat(rpIcon); err == nil {
-        targetPath := filepath.Join(themePath, "Icons", "SystemIcons", "Recently Played.png")
-        if err := CopyFile(rpIcon, targetPath); err != nil {
-            logger.Printf("Warning: Could not copy Recently Played icon: %v", err)
+        destPath := filepath.Join(themePath, "Icons", "SystemIcons", "Recently Played.png")
+        if err := CopyFile(rpIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Recently Played icon: %v", err)
         } else {
-            // Add to manifest path mappings
             manifest.PathMappings.Icons = append(
                 manifest.PathMappings.Icons,
                 PathMapping{
@@ -388,27 +383,24 @@ func ExportIcons(themePath string, manifest *ThemeManifest, logger *Logger) erro
                     SystemPath: rpIcon,
                     Metadata: map[string]string{
                         "SystemName": "Recently Played",
-                        "SystemTag":  "RECENT", // Special tag for Recently Played
-                        "IconType":   "Special",
+                        "IconType": "System",
                     },
                 },
             )
             manifest.Content.Icons.Present = true
             manifest.Content.Icons.SystemCount++
-            logger.Printf("Exported Recently Played icon: %s", rpIcon)
+            logger.DebugFn("Exported Recently Played icon to %s", destPath)
         }
     }
 
-    // Tools icon
-    toolsBaseDir := filepath.Dir(systemPaths.Tools)
-    toolsMediaPath := filepath.Join(toolsBaseDir, ".media")
-    toolsIcon := filepath.Join(toolsMediaPath, "tg5040.png")
+    // Tools icon - use parent path of Tools since Tools path includes tg5040
+    toolsParentDir := filepath.Dir(systemPaths.Tools) // Gets /mnt/SDCARD/Tools
+    toolsIcon := filepath.Join(toolsParentDir, ".media", "tg5040.png")
     if _, err := os.Stat(toolsIcon); err == nil {
-        targetPath := filepath.Join(themePath, "Icons", "SystemIcons", "Tools.png")
-        if err := CopyFile(toolsIcon, targetPath); err != nil {
-            logger.Printf("Warning: Could not copy Tools icon: %v", err)
+        destPath := filepath.Join(themePath, "Icons", "SystemIcons", "Tools.png")
+        if err := CopyFile(toolsIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Tools icon: %v", err)
         } else {
-            // Add to manifest path mappings
             manifest.PathMappings.Icons = append(
                 manifest.PathMappings.Icons,
                 PathMapping{
@@ -416,93 +408,126 @@ func ExportIcons(themePath string, manifest *ThemeManifest, logger *Logger) erro
                     SystemPath: toolsIcon,
                     Metadata: map[string]string{
                         "SystemName": "Tools",
-                        "SystemTag":  "TOOLS", // Special tag for Tools
-                        "IconType":   "Special",
+                        "IconType": "System",
                     },
                 },
             )
             manifest.Content.Icons.Present = true
             manifest.Content.Icons.SystemCount++
-            logger.Printf("Exported Tools icon: %s", toolsIcon)
+            logger.DebugFn("Exported Tools icon to %s", destPath)
         }
     }
 
-    // Regular expression to extract system tag
-    re := regexp.MustCompile(`\((.*?)\)`)
+    // Collections icon - in SD_CARD/.media/Collections.png
+    collectionsIcon := filepath.Join(systemPaths.Root, ".media", "Collections.png")
+    if _, err := os.Stat(collectionsIcon); err == nil {
+        destPath := filepath.Join(themePath, "Icons", "SystemIcons", "Collections.png")
+        if err := CopyFile(collectionsIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Collections icon: %v", err)
+        } else {
+            manifest.PathMappings.Icons = append(
+                manifest.PathMappings.Icons,
+                PathMapping{
+                    ThemePath:  "Icons/SystemIcons/Collections.png",
+                    SystemPath: collectionsIcon,
+                    Metadata: map[string]string{
+                        "SystemName": "Collections",
+                        "IconType": "System",
+                    },
+                },
+            )
+            manifest.Content.Icons.Present = true
+            manifest.Content.Icons.SystemCount++
+            logger.DebugFn("Exported Collections icon to %s", destPath)
+        }
+    }
 
-    // System icons
-    romsMediaPath := filepath.Join(systemPaths.Roms, ".media")
-    if entries, err := os.ReadDir(romsMediaPath); err == nil {
-        for _, entry := range entries {
-            if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-                // Skip bg.png
-                if entry.Name() == "bg.png" {
+    // System-specific icons - each system has its own icon file in Roms/.media/ with system name and tag
+    systemIconsDir := filepath.Join(systemPaths.Roms, ".media")
+    if _, err := os.Stat(systemIconsDir); err == nil {
+        entries, err := os.ReadDir(systemIconsDir)
+        if err == nil {
+            for _, entry := range entries {
+                if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
                     continue
                 }
 
-                iconPath := filepath.Join(romsMediaPath, entry.Name())
-                targetPath := filepath.Join(themePath, "Icons", "SystemIcons", entry.Name())
-
-                // Extract system name and tag
-                systemName := entry.Name()
-                systemName = strings.TrimSuffix(systemName, ".png") // Remove the .png extension
-
-                // Extract the tag using regex
-                systemTag := ""
-                matches := re.FindStringSubmatch(systemName)
-                if len(matches) >= 2 {
-                    systemTag = matches[1]
+                // Check if file has a PNG extension
+                if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    continue
                 }
 
-                if err := CopyFile(iconPath, targetPath); err != nil {
-                    logger.Printf("Warning: Could not copy system icon %s: %v", entry.Name(), err)
+                // Only process icons that match system naming pattern
+                // Skip other special icons like Recently Played that we handle separately
+                if entry.Name() == "Recently Played.png" ||
+                   entry.Name() == "Collections.png" ||
+                   entry.Name() == "tg5040.png" {
+                    continue
+                }
+
+                // Check for system tag pattern
+                tagRegex := regexp.MustCompile(`\((.*?)\)`)
+                if !tagRegex.MatchString(entry.Name()) {
+                    logger.DebugFn("Skipping non-system icon: %s", entry.Name())
+                    continue
+                }
+
+                systemIconPath := filepath.Join(systemIconsDir, entry.Name())
+                destPath := filepath.Join(themePath, "Icons", "SystemIcons", entry.Name())
+
+                if err := CopyFile(systemIconPath, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy system icon %s: %v", entry.Name(), err)
                 } else {
-                    // Add to manifest path mappings with metadata
+                    // Extract system tag for metadata
+                    matches := tagRegex.FindStringSubmatch(entry.Name())
+                    systemTag := ""
+                    if len(matches) >= 2 {
+                        systemTag = matches[1]
+                    }
+
                     manifest.PathMappings.Icons = append(
                         manifest.PathMappings.Icons,
                         PathMapping{
-                            ThemePath:  fmt.Sprintf("Icons/SystemIcons/%s", entry.Name()),
-                            SystemPath: iconPath,
+                            ThemePath:  "Icons/SystemIcons/" + entry.Name(),
+                            SystemPath: systemIconPath,
                             Metadata: map[string]string{
-                                "SystemName": systemName,
-                                "SystemTag":  systemTag,
-                                "IconType":   "System",
+                                "SystemName": strings.TrimSuffix(entry.Name(), ".png"),
+                                "SystemTag": systemTag,
+                                "IconType": "System",
                             },
                         },
                     )
                     manifest.Content.Icons.Present = true
                     manifest.Content.Icons.SystemCount++
-                    logger.Printf("Exported system icon: %s", iconPath)
+                    logger.DebugFn("Exported system icon %s to %s", entry.Name(), destPath)
                 }
             }
         }
     }
 
-    // Tool icons
-    toolsDir := filepath.Join(systemPaths.Tools, ".media")
-    if entries, err := os.ReadDir(toolsDir); err == nil {
-        for _, entry := range entries {
-            if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-                // Skip bg.png and tg5040.png
-                if entry.Name() == "bg.png" || entry.Name() == "tg5040.png" {
-                    continue
-                }
+    // Tool icons - each tool folder has its own icon.png file
+    toolsDir := filepath.Join(systemPaths.Tools)
+    toolEntries, err := os.ReadDir(toolsDir)
+    if err == nil {
+        for _, entry := range toolEntries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
 
-                iconPath := filepath.Join(toolsDir, entry.Name())
-                targetPath := filepath.Join(themePath, "Icons", "ToolIcons", entry.Name())
+            toolName := entry.Name()
+            toolIcon := filepath.Join(toolsDir, toolName, ".media", toolName + ".png")
 
-                // Get tool name without extension
-                toolName := strings.TrimSuffix(entry.Name(), ".png")
+            if _, err := os.Stat(toolIcon); err == nil {
+                destPath := filepath.Join(themePath, "Icons", "ToolIcons", fmt.Sprintf("%s.png", toolName))
 
-                if err := CopyFile(iconPath, targetPath); err != nil {
-                    logger.Printf("Warning: Could not copy tool icon %s: %v", entry.Name(), err)
+                if err := CopyFile(toolIcon, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy tool %s icon: %v", toolName, err)
                 } else {
-                    // Add to manifest path mappings with metadata
                     manifest.PathMappings.Icons = append(
                         manifest.PathMappings.Icons,
                         PathMapping{
-                            ThemePath:  fmt.Sprintf("Icons/ToolIcons/%s", entry.Name()),
-                            SystemPath: iconPath,
+                            ThemePath:  fmt.Sprintf("Icons/ToolIcons/%s.png", toolName),
+                            SystemPath: toolIcon,
                             Metadata: map[string]string{
                                 "ToolName": toolName,
                                 "IconType": "Tool",
@@ -511,507 +536,296 @@ func ExportIcons(themePath string, manifest *ThemeManifest, logger *Logger) erro
                     )
                     manifest.Content.Icons.Present = true
                     manifest.Content.Icons.ToolCount++
-                    logger.Printf("Exported tool icon: %s", iconPath)
+                    logger.DebugFn("Exported tool %s icon to %s", toolName, destPath)
                 }
             }
         }
     }
 
-    // Collection icons
-    collectionsMediaPath := filepath.Join(systemPaths.Root, "Collections", ".media")
-    if entries, err := os.ReadDir(collectionsMediaPath); err == nil {
-        for _, entry := range entries {
-            if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-                // Skip bg.png
-                if entry.Name() == "bg.png" {
-                    continue
-                }
+    // Collection icons - each collection has its own icon.png file
+    collectionsDir := filepath.Join(systemPaths.Root, "Collections")
+    colEntries, err := os.ReadDir(collectionsDir)
+    if err == nil {
+        for _, entry := range colEntries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
 
-                iconPath := filepath.Join(collectionsMediaPath, entry.Name())
-                targetPath := filepath.Join(themePath, "Icons", "CollectionIcons", entry.Name())
+            collectionName := entry.Name()
+            collectionIcon := filepath.Join(collectionsDir, collectionName, ".media", collectionName + ".png")
 
-                // Get collection name without extension
-                collectionName := strings.TrimSuffix(entry.Name(), ".png")
+            if _, err := os.Stat(collectionIcon); err == nil {
+                destPath := filepath.Join(themePath, "Icons", "CollectionIcons", fmt.Sprintf("%s.png", collectionName))
 
-                if err := CopyFile(iconPath, targetPath); err != nil {
-                    logger.Printf("Warning: Could not copy collection icon %s: %v", entry.Name(), err)
+                if err := CopyFile(collectionIcon, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy collection %s icon: %v", collectionName, err)
                 } else {
-                    // Add to manifest path mappings with metadata
                     manifest.PathMappings.Icons = append(
                         manifest.PathMappings.Icons,
                         PathMapping{
-                            ThemePath:  fmt.Sprintf("Icons/CollectionIcons/%s", entry.Name()),
-                            SystemPath: iconPath,
+                            ThemePath:  fmt.Sprintf("Icons/CollectionIcons/%s.png", collectionName),
+                            SystemPath: collectionIcon,
                             Metadata: map[string]string{
                                 "CollectionName": collectionName,
-                                "IconType":       "Collection",
+                                "IconType": "Collection",
                             },
                         },
                     )
                     manifest.Content.Icons.Present = true
                     manifest.Content.Icons.CollectionCount++
-                    logger.Printf("Exported collection icon: %s", iconPath)
+                    logger.DebugFn("Exported collection %s icon to %s", collectionName, destPath)
                 }
             }
         }
     }
-
-    return nil
 }
 
-// ExportOverlays exports overlays to the theme directory
-func ExportOverlays(themePath string, manifest *ThemeManifest, logger *Logger) error {
-	// Initialize overlays section in manifest
-	manifest.Content.Overlays.Present = false
-	manifest.Content.Overlays.Systems = []string{}
+// exportOverlays scans for and exports system overlays
+func exportOverlays(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
+    // Initialize overlay section
+    manifest.Content.Overlays.Present = false
+    manifest.Content.Overlays.Systems = []string{}
+    manifest.PathMappings.Overlays = []PathMapping{}
 
-	// Path to Overlays directory
-	overlaysPath := filepath.Join("/mnt/SDCARD", "Overlays")
-	if _, err := os.Stat(overlaysPath); os.IsNotExist(err) {
-		logger.Printf("Overlays directory not found, skipping overlay export")
-		return nil
-	}
+    // Check for overlays directory
+    overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
+    if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
+        logger.DebugFn("Overlays directory not found: %s", overlaysDir)
+        return
+    }
 
-	// Read Overlays directory
-	entries, err := os.ReadDir(overlaysPath)
-	if err != nil {
-		logger.Printf("Error reading Overlays directory: %v", err)
-		return nil // Skip but don't fail
-	}
+    // List system directories in Overlays
+    entries, err := os.ReadDir(overlaysDir)
+    if err != nil {
+        logger.DebugFn("Error reading Overlays directory: %v", err)
+        return
+    }
 
-	// Process each system in the Overlays directory
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
+    // Process each system's overlays
+    for _, entry := range entries {
+        if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+            continue
+        }
 
-		systemName := entry.Name()
-		systemOverlaysPath := filepath.Join(overlaysPath, systemName)
-		targetDir := filepath.Join(themePath, "Overlays", systemName)
+        systemTag := entry.Name()
+        systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
 
-		// Create system overlays directory in theme
-		if err := os.MkdirAll(targetDir, 0755); err != nil {
-			logger.Printf("Warning: Could not create overlays directory for system %s: %v", systemName, err)
-			continue
-		}
+        // List overlay files for this system
+        overlayFiles, err := os.ReadDir(systemOverlaysPath)
+        if err != nil {
+            logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
+            continue
+        }
 
-		// Read system overlays directory
-		overlayFiles, err := os.ReadDir(systemOverlaysPath)
-		if err != nil {
-			logger.Printf("Warning: Could not read overlays for system %s: %v", systemName, err)
-			continue
-		}
+        var hasOverlays bool
 
-		systemHasOverlays := false
-
-		// Copy each overlay file
-		for _, overlayFile := range overlayFiles {
-			if overlayFile.IsDir() || !strings.HasSuffix(strings.ToLower(overlayFile.Name()), ".png") {
-				continue
-			}
-
-			srcPath := filepath.Join(systemOverlaysPath, overlayFile.Name())
-			targetPath := filepath.Join(targetDir, overlayFile.Name())
-
-			if err := CopyFile(srcPath, targetPath); err != nil {
-				logger.Printf("Warning: Could not copy overlay %s for system %s: %v",
-					overlayFile.Name(), systemName, err)
-			} else {
-				// Add to manifest path mappings
-				manifest.PathMappings.Overlays = append(
-					manifest.PathMappings.Overlays,
-					PathMapping{
-						ThemePath:  fmt.Sprintf("Overlays/%s/%s", systemName, overlayFile.Name()),
-						SystemPath: srcPath,
-					},
-				)
-				systemHasOverlays = true
-				logger.Printf("Exported overlay: %s", srcPath)
-			}
-		}
-
-		if systemHasOverlays {
-			manifest.Content.Overlays.Present = true
-			manifest.Content.Overlays.Systems = append(manifest.Content.Overlays.Systems, systemName)
-		}
-	}
-
-	return nil
-}
-
-// ExportFonts exports fonts to the theme directory
-func ExportFonts(themePath string, manifest *ThemeManifest, logger *Logger) error {
-	// Initialize fonts section in manifest
-	manifest.Content.Fonts.Present = false
-	manifest.Content.Fonts.OGReplaced = false
-	manifest.Content.Fonts.NextReplaced = false
-
-	// Initialize fonts mapping in manifest
-	manifest.PathMappings.Fonts = make(map[string]PathMapping)
-
-	// Copy and check OG font
-	ogFontPath := fonts.OGFontPath
-	ogBackupPath := filepath.Join(filepath.Dir(fonts.OGFontPath), fonts.OGFontBackupName)
-
-	targetOGPath := filepath.Join(themePath, "Fonts", "OG.ttf")
-	targetOGBackupPath := filepath.Join(themePath, "Fonts", "OG.backup.ttf")
-
-	// Copy OG font
-	if _, err := os.Stat(ogFontPath); err == nil {
-		if err := CopyFile(ogFontPath, targetOGPath); err != nil {
-			logger.Printf("Warning: Could not copy OG font: %v", err)
-		} else {
-			manifest.Content.Fonts.Present = true
-			manifest.PathMappings.Fonts["og_font"] = PathMapping{
-				ThemePath:  "Fonts/OG.ttf",
-				SystemPath: ogFontPath,
-			}
-			logger.Printf("Exported OG font: %s", ogFontPath)
-		}
-	}
-
-	// Check if OG font has been replaced (backup exists)
-	if _, err := os.Stat(ogBackupPath); err == nil {
-		manifest.Content.Fonts.OGReplaced = true
-
-		// Copy OG backup font
-		if err := CopyFile(ogBackupPath, targetOGBackupPath); err != nil {
-			logger.Printf("Warning: Could not copy OG font backup: %v", err)
-		} else {
-			manifest.PathMappings.Fonts["og_backup"] = PathMapping{
-				ThemePath:  "Fonts/OG.backup.ttf",
-				SystemPath: ogBackupPath,
-			}
-			logger.Printf("Exported OG font backup: %s", ogBackupPath)
-		}
-	} else {
-		// No backup found, copy our default backup
-		cwd, err := os.Getwd()
-		if err != nil {
-			logger.Printf("Error getting current directory: %v", err)
-		} else {
-			defaultOGBackup := filepath.Join(cwd, "Fonts", "Backups", "font2.backup.ttf")
-			if _, err := os.Stat(defaultOGBackup); err == nil {
-				if err := CopyFile(defaultOGBackup, targetOGBackupPath); err != nil {
-					logger.Printf("Warning: Could not copy default OG font backup: %v", err)
-				} else {
-					manifest.PathMappings.Fonts["og_backup"] = PathMapping{
-						ThemePath:  "Fonts/OG.backup.ttf",
-						SystemPath: ogBackupPath,
-					}
-					logger.Printf("Exported default OG font backup")
-				}
-			} else {
-				logger.Printf("Warning: No default OG font backup found: %s", defaultOGBackup)
-			}
-		}
-	}
-
-	// Copy and check Next font
-	nextFontPath := fonts.NextFontPath
-	nextBackupPath := filepath.Join(filepath.Dir(fonts.NextFontPath), fonts.NextFontBackupName)
-
-	targetNextPath := filepath.Join(themePath, "Fonts", "Next.ttf")
-	targetNextBackupPath := filepath.Join(themePath, "Fonts", "Next.backup.ttf")
-
-	// Copy Next font
-	if _, err := os.Stat(nextFontPath); err == nil {
-		if err := CopyFile(nextFontPath, targetNextPath); err != nil {
-			logger.Printf("Warning: Could not copy Next font: %v", err)
-		} else {
-			manifest.Content.Fonts.Present = true
-			manifest.PathMappings.Fonts["next_font"] = PathMapping{
-				ThemePath:  "Fonts/Next.ttf",
-				SystemPath: nextFontPath,
-			}
-			logger.Printf("Exported Next font: %s", nextFontPath)
-		}
-	}
-
-	// Check if Next font has been replaced (backup exists)
-	if _, err := os.Stat(nextBackupPath); err == nil {
-		manifest.Content.Fonts.NextReplaced = true
-
-		// Copy Next backup font
-		if err := CopyFile(nextBackupPath, targetNextBackupPath); err != nil {
-			logger.Printf("Warning: Could not copy Next font backup: %v", err)
-		} else {
-			manifest.PathMappings.Fonts["next_backup"] = PathMapping{
-				ThemePath:  "Fonts/Next.backup.ttf",
-				SystemPath: nextBackupPath,
-			}
-			logger.Printf("Exported Next font backup: %s", nextBackupPath)
-		}
-	} else {
-		// No backup found, copy our default backup
-		cwd, err := os.Getwd()
-		if err != nil {
-			logger.Printf("Error getting current directory: %v", err)
-		} else {
-			defaultNextBackup := filepath.Join(cwd, "Fonts", "Backups", "font1.backup.ttf")
-			if _, err := os.Stat(defaultNextBackup); err == nil {
-				if err := CopyFile(defaultNextBackup, targetNextBackupPath); err != nil {
-					logger.Printf("Warning: Could not copy default Next font backup: %v", err)
-				} else {
-					manifest.PathMappings.Fonts["next_backup"] = PathMapping{
-						ThemePath:  "Fonts/Next.backup.ttf",
-						SystemPath: nextBackupPath,
-					}
-					logger.Printf("Exported default Next font backup")
-				}
-			} else {
-				logger.Printf("Warning: No default Next font backup found: %s", defaultNextBackup)
-			}
-		}
-	}
-
-	return nil
-}
-
-// ExportSettings exports settings to the theme directory
-func ExportSettings(themePath string, manifest *ThemeManifest, logger *Logger) error {
-	// Initialize settings section in manifest
-	manifest.Content.Settings.AccentsIncluded = false
-	manifest.Content.Settings.LEDsIncluded = false
-
-	// Initialize settings mapping in manifest
-	manifest.PathMappings.Settings = make(map[string]PathMapping)
-
-	// Export accent settings
-	accentSettingsPath := accents.SettingsPath
-	if _, err := os.Stat(accentSettingsPath); err == nil {
-		targetPath := filepath.Join(themePath, "Settings", "minuisettings.txt")
-		if err := CopyFile(accentSettingsPath, targetPath); err != nil {
-			logger.Printf("Warning: Could not copy accent settings: %v", err)
-		} else {
-			manifest.Content.Settings.AccentsIncluded = true
-			manifest.PathMappings.Settings["accents"] = PathMapping{
-				ThemePath:  "Settings/minuisettings.txt",
-				SystemPath: accentSettingsPath,
-			}
-			logger.Printf("Exported accent settings: %s", accentSettingsPath)
-
-			// Extract accent colors for the manifest
-			if err := ExtractAccentColors(accentSettingsPath, manifest); err != nil {
-				logger.Printf("Warning: Could not extract accent colors: %v", err)
-			}
-		}
-	}
-
-    // Export LED settings
-    ledSettingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
-    if _, err := os.Stat(ledSettingsPath); err == nil {
-        targetPath := filepath.Join(themePath, "Settings", "ledsettings_brick.txt")
-        if err := CopyFile(ledSettingsPath, targetPath); err != nil {
-            logger.Printf("Warning: Could not copy LED settings: %v", err)
-        } else {
-            manifest.Content.Settings.LEDsIncluded = true
-            manifest.PathMappings.Settings["leds"] = PathMapping{
-                ThemePath:  "Settings/ledsettings_brick.txt",
-                SystemPath: ledSettingsPath,
+        // Copy each overlay file
+        for _, file := range overlayFiles {
+            if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+                continue
             }
-            logger.Printf("Exported LED settings: %s", ledSettingsPath)
 
-            // Extract LED settings for the manifest
-            if err := ExtractLEDSettings(ledSettingsPath, manifest); err != nil {
-                logger.Printf("Warning: Could not extract LED settings: %v", err)
+            // Only process PNG files
+            if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+                continue
+            }
+
+            srcPath := filepath.Join(systemOverlaysPath, file.Name())
+
+            // Create destination directories if needed
+            destDir := filepath.Join(themePath, "Overlays", systemTag)
+            if err := os.MkdirAll(destDir, 0755); err != nil {
+                logger.DebugFn("Error creating overlay directory: %v", err)
+                continue
+            }
+
+            destPath := filepath.Join(destDir, file.Name())
+
+            // Copy the overlay file
+            if err := CopyFile(srcPath, destPath); err != nil {
+                logger.DebugFn("Warning: Could not copy overlay %s: %v", file.Name(), err)
             } else {
-                logger.Printf("LED settings extracted and added to manifest")
+                themePath := filepath.Join("Overlays", systemTag, file.Name())
+
+                // Add to manifest
+                manifest.PathMappings.Overlays = append(
+                    manifest.PathMappings.Overlays,
+                    PathMapping{
+                        ThemePath:  themePath,
+                        SystemPath: srcPath,
+                        Metadata: map[string]string{
+                            "SystemTag": systemTag,
+                            "OverlayName": file.Name(),
+                        },
+                    },
+                )
+
+                hasOverlays = true
+                logger.DebugFn("Exported overlay %s for system %s", file.Name(), systemTag)
+            }
+        }
+
+        // If this system had overlays, add it to the systems list
+        if hasOverlays {
+            manifest.Content.Overlays.Present = true
+
+            // Check if system is already in the list
+            var systemExists bool
+            for _, sys := range manifest.Content.Overlays.Systems {
+                if sys == systemTag {
+                    systemExists = true
+                    break
+                }
+            }
+
+            if !systemExists {
+                manifest.Content.Overlays.Systems = append(manifest.Content.Overlays.Systems, systemTag)
             }
         }
     }
-
-	return nil
 }
 
-// ExtractAccentColors extracts accent colors from the settings file
-func ExtractAccentColors(settingsPath string, manifest *ThemeManifest) error {
-	// Initialize accent colors map
-	manifest.AccentColors = make(map[string]string)
+// readAccentSettingsFromSystem reads accent settings from the system and updates the manifest
+func readAccentSettingsFromSystem(manifest *ThemeManifest, logger *Logger) error {
+    // Path to the accent settings file
+    settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
 
-	// Read the settings file
-	file, err := os.Open(settingsPath)
-	if err != nil {
-		return fmt.Errorf("failed to open settings file: %w", err)
-	}
-	defer file.Close()
-
-	// Read each line and extract color settings
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "color") && len(line) > 6 {
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				colorKey := parts[0]
-				colorValue := parts[1]
-
-				// Convert to display format (#RRGGBB)
-				if strings.HasPrefix(colorValue, "0x") {
-					colorValue = "#" + colorValue[2:]
-				}
-
-				manifest.AccentColors[colorKey] = colorValue
-			}
-		}
-	}
-
-	return scanner.Err()
-}
-
-// ExtractLEDSettings extracts LED settings from the LED settings file
-func ExtractLEDSettings(settingsPath string, manifest *ThemeManifest) error {
-    // Initialize LED settings map
-    manifest.LEDSettings = make(map[string]map[string]string)
-
-    // Read the settings file
-    file, err := os.Open(settingsPath)
-    if err != nil {
-        return fmt.Errorf("failed to open LED settings file: %w", err)
+    // Check if settings file exists
+    if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+        logger.DebugFn("Accent settings file not found: %s", settingsPath)
+        return fmt.Errorf("accent settings file not found: %s", settingsPath)
     }
-    defer file.Close()
 
-    // Read each line and extract settings
-    scanner := bufio.NewScanner(file)
-    var currentSection string
+    // Read settings file
+    content, err := os.ReadFile(settingsPath)
+    if err != nil {
+        return fmt.Errorf("error reading accent settings file: %w", err)
+    }
 
-    for scanner.Scan() {
-        line := scanner.Text()
+    // Parse settings
+    lines := strings.Split(string(content), "\n")
+    for _, line := range lines {
         line = strings.TrimSpace(line)
-
-        // Skip empty lines
         if line == "" {
             continue
         }
 
-        // Check if this is a section header
-        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-            // Extract section name (LED name)
-            currentSection = line[1 : len(line)-1]
-            // Initialize the map for this section
-            manifest.LEDSettings[currentSection] = make(map[string]string)
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
             continue
         }
 
-        // If we have a current section and this is a key-value pair
-        if currentSection != "" && strings.Contains(line, "=") {
-            parts := strings.SplitN(line, "=", 2)
-            if len(parts) == 2 {
-                key := strings.TrimSpace(parts[0])
-                value := strings.TrimSpace(parts[1])
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
 
-                // Convert color values to display format (#RRGGBB) if needed
-                if (key == "color1" || key == "color2") && strings.HasPrefix(value, "0x") {
-                    value = "#" + value[2:]
-                }
-
-                // Add to the current section's map
-                manifest.LEDSettings[currentSection][key] = value
-            }
+        // Store color values directly in manifest
+        switch key {
+        case "color1":
+            manifest.AccentColors.Color1 = value
+        case "color2":
+            manifest.AccentColors.Color2 = value
+        case "color3":
+            manifest.AccentColors.Color3 = value
+        case "color4":
+            manifest.AccentColors.Color4 = value
+        case "color5":
+            manifest.AccentColors.Color5 = value
+        case "color6":
+            manifest.AccentColors.Color6 = value
         }
     }
 
-    return scanner.Err()
+    // Mark accent colors as included
+    manifest.Content.Settings.AccentsIncluded = true
+    logger.DebugFn("Read accent settings from system and updated manifest")
+
+    return nil
 }
 
-// GeneratePreview generates a preview image for the theme
-func GeneratePreview(themePath string, logger *Logger) error {
-	// For now, we'll copy the root background as the preview
-	// In a more advanced version, we could generate a composite image
+// readLEDSettingsFromSystem reads LED settings from the system and updates the manifest
+func readLEDSettingsFromSystem(manifest *ThemeManifest, logger *Logger) error {
+    // Path to the LED settings file
+    settingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
 
-	rootBgPath := filepath.Join("/mnt/SDCARD", "bg.png")
-	previewPath := filepath.Join(themePath, "preview.png")
+    // Check if settings file exists
+    if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+        logger.DebugFn("LED settings file not found: %s", settingsPath)
+        return fmt.Errorf("LED settings file not found: %s", settingsPath)
+    }
 
-	if _, err := os.Stat(rootBgPath); err == nil {
-		if err := CopyFile(rootBgPath, previewPath); err != nil {
-			logger.Printf("Warning: Could not create preview image: %v", err)
-			return err
-		}
-		logger.Printf("Created preview image from root background")
-	} else {
-		logger.Printf("Warning: Root background not found, no preview image created")
-	}
+    // Read settings file
+    content, err := os.ReadFile(settingsPath)
+    if err != nil {
+        return fmt.Errorf("error reading LED settings file: %w", err)
+    }
 
-	return nil
-}
+    // Parse settings
+    lines := strings.Split(string(content), "\n")
+    var currentLED *LEDSetting
+    var currentSection string
 
-// ExportTheme exports the current theme settings
-func ExportTheme() error {
-	// Create logging directory if it doesn't exist
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
 
-	logsDir := filepath.Join(cwd, "Logs")
-	if err := os.MkdirAll(logsDir, 0755); err != nil {
-		return fmt.Errorf("error creating logs directory: %w", err)
-	}
+        // Check for section header [X]
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            currentSection = line[1 : len(line)-1]
 
-	// Create log file
-	logFile, err := os.OpenFile(
-		filepath.Join(logsDir, "exports.log"),
-		os.O_CREATE|os.O_APPEND|os.O_WRONLY,
-		0644,
-	)
-	if err != nil {
-		return fmt.Errorf("error creating log file: %w", err)
-	}
-	defer logFile.Close()
+            // Determine which LED setting to update
+            switch currentSection {
+            case "F1 key":
+                currentLED = &manifest.LEDSettings.F1Key
+            case "F2 key":
+                currentLED = &manifest.LEDSettings.F2Key
+            case "Top bar":
+                currentLED = &manifest.LEDSettings.TopBar
+            case "L&R triggers":
+                currentLED = &manifest.LEDSettings.LRTriggers
+            default:
+                currentLED = nil
+            }
+            continue
+        }
 
-	// Create logger
-	logger := &Logger{log.New(logFile, "", log.LstdFlags)}
-	logger.Printf("Starting theme export")
+        // If not in a valid section, skip
+        if currentLED == nil {
+            continue
+        }
 
-	// Create theme directory
-	themePath, err := CreateThemeExportDirectory()
-	if err != nil {
-		logger.Printf("Error creating theme directory: %v", err)
-		return fmt.Errorf("error creating theme directory: %w", err)
-	}
+        // Parse key=value
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
+            continue
+        }
 
-	logger.Printf("Created theme directory: %s", themePath)
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
 
-	// Initialize manifest
-	manifest := &ThemeManifest{}
+        // Update LED setting based on key
+        switch key {
+        case "effect":
+            currentLED.Effect, _ = strconv.Atoi(value)
+        case "color1":
+            currentLED.Color1 = value
+        case "color2":
+            currentLED.Color2 = value
+        case "speed":
+            currentLED.Speed, _ = strconv.Atoi(value)
+        case "brightness":
+            currentLED.Brightness, _ = strconv.Atoi(value)
+        case "trigger":
+            currentLED.Trigger, _ = strconv.Atoi(value)
+        case "inbrightness":
+            currentLED.InBrightness, _ = strconv.Atoi(value)
+        }
+    }
 
-	// Export theme components
-	if err := ExportWallpapers(themePath, manifest, logger); err != nil {
-		logger.Printf("Error exporting wallpapers: %v", err)
-	}
+    // Mark LED settings as included
+    manifest.Content.Settings.LEDsIncluded = true
+    logger.DebugFn("Read LED settings from system and updated manifest")
 
-	if err := ExportIcons(themePath, manifest, logger); err != nil {
-		logger.Printf("Error exporting icons: %v", err)
-	}
-
-	if err := ExportOverlays(themePath, manifest, logger); err != nil {
-		logger.Printf("Error exporting overlays: %v", err)
-	}
-
-	if err := ExportFonts(themePath, manifest, logger); err != nil {
-		logger.Printf("Error exporting fonts: %v", err)
-	}
-
-	if err := ExportSettings(themePath, manifest, logger); err != nil {
-		logger.Printf("Error exporting settings: %v", err)
-	}
-
-	// Generate preview image
-	if err := GeneratePreview(themePath, logger); err != nil {
-		logger.Printf("Error generating preview: %v", err)
-	}
-
-	// Write manifest
-	if err := WriteManifest(themePath, manifest, logger); err != nil {
-		logger.Printf("Error writing manifest: %v", err)
-		return fmt.Errorf("error writing manifest: %w", err)
-	}
-
-	logger.Printf("Theme export completed successfully: %s", themePath)
-
-	// Show success message to user
-	themeName := filepath.Base(themePath)
-	ui.ShowMessage(fmt.Sprintf("Theme exported successfully: %s", themeName), "3")
-
-	return nil
+    return nil
 }

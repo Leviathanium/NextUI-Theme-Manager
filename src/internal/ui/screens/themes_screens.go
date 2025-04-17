@@ -1,5 +1,5 @@
 // src/internal/ui/screens/themes_screens.go
-// Implementation of screens for theme management
+// Implementation of theme import/export screens - simplified version
 
 package screens
 
@@ -15,53 +15,7 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// ThemesMenuScreen displays the main themes menu
-func ThemesMenuScreen() (string, int) {
-	// Menu items
-	menu := []string{
-		"Import Theme",
-		"Export Current Settings",
-	}
-
-	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Themes")
-}
-
-// Replace the HandleThemesMenu function with this:
-func HandleThemesMenu(selection string, exitCode int) app.Screen {
-    logging.LogDebug("HandleThemesMenu called with selection: '%s', exitCode: %d", selection, exitCode)
-
-    var nextScreen app.Screen
-
-    switch exitCode {
-    case 0:
-        // User selected an option
-        switch selection {
-        case "Import Theme":
-            logging.LogDebug("Selected Import Theme")
-            nextScreen = app.Screens.ThemeImport
-
-        case "Export Current Settings":
-            logging.LogDebug("Selected Export Current Settings")
-            nextScreen = app.Screens.ThemeExport
-
-        default:
-            logging.LogDebug("Unknown selection: %s", selection)
-            nextScreen = app.Screens.ThemesMenu
-        }
-
-    case 1, 2:
-        // User pressed cancel or back
-        nextScreen = app.Screens.MainMenu
-    default:
-        // Default case
-        nextScreen = app.Screens.ThemesMenu
-    }
-
-    logging.LogDebug("HandleThemesMenu returning screen: %d", nextScreen)
-    return nextScreen
-}
-
-// ThemeImportScreen displays available themes from the Imports directory
+// ThemeImportScreen displays available themes from the Themes directory
 func ThemeImportScreen() (string, int) {
 	// Get the current directory
 	cwd, err := os.Getwd()
@@ -71,12 +25,12 @@ func ThemeImportScreen() (string, int) {
 		return "", 1
 	}
 
-	// Path to Themes/Imports directory
-	importsDir := filepath.Join(cwd, "Themes", "Imports")
+	// Path to Themes directory directly instead of Themes/Imports
+	importsDir := filepath.Join(cwd, "Themes")
 
 	// Ensure directory exists
 	if err := os.MkdirAll(importsDir, 0755); err != nil {
-		logging.LogDebug("Error creating imports directory: %v", err)
+		logging.LogDebug("Error creating themes directory: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
@@ -84,7 +38,7 @@ func ThemeImportScreen() (string, int) {
 	// List available themes
 	entries, err := os.ReadDir(importsDir)
 	if err != nil {
-		logging.LogDebug("Error reading imports directory: %v", err)
+		logging.LogDebug("Error reading themes directory: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
@@ -99,7 +53,7 @@ func ThemeImportScreen() (string, int) {
 
 	if len(themesList) == 0 {
 		logging.LogDebug("No themes found")
-		ui.ShowMessage("No themes found in Imports directory", "3")
+		ui.ShowMessage("No themes found in Themes directory", "3")
 		return "", 1
 	}
 
@@ -119,7 +73,7 @@ func HandleThemeImport(selection string, exitCode int) app.Screen {
 
 	case 1, 2:
 		// User pressed cancel or back
-		return app.Screens.ThemesMenu
+		return app.Screens.MainMenu
 	}
 
 	return app.Screens.ThemeImport
@@ -150,10 +104,12 @@ func HandleThemeImportConfirm(selection string, exitCode int) app.Screen {
 			if err := themes.ImportTheme(themeName); err != nil {
 				logging.LogDebug("Error importing theme: %v", err)
 				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			} else {
+				ui.ShowMessage(fmt.Sprintf("Theme '%s' imported successfully!", themeName), "3")
 			}
 		}
-		// Return to themes menu
-		return app.Screens.ThemesMenu
+		// Return to main menu
+		return app.Screens.MainMenu
 
 	case 1, 2:
 		// User pressed cancel or back
@@ -186,14 +142,16 @@ func HandleThemeExport(selection string, exitCode int) app.Screen {
 			if err := themes.ExportTheme(); err != nil {
 				logging.LogDebug("Error exporting theme: %v", err)
 				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			} else {
+				ui.ShowMessage("Theme exported successfully!", "3")
 			}
 		}
-		// Return to themes menu
-		return app.Screens.ThemesMenu
+		// Return to main menu
+		return app.Screens.MainMenu
 
 	case 1, 2:
 		// User pressed cancel or back
-		return app.Screens.ThemesMenu
+		return app.Screens.MainMenu
 	}
 
 	return app.Screens.ThemeExport
