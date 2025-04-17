@@ -31,6 +31,12 @@ func ImportComponent(componentPath string) error {
 		return fmt.Errorf("unknown component type for extension: %s", ext)
 	}
 
+	// Update the component's manifest based on its actual content
+	if err := UpdateComponentManifest(componentPath); err != nil {
+		logging.LogDebug("Warning: Error updating component manifest: %v", err)
+		// Continue anyway, as we can still try to import with the existing manifest
+	}
+
 	// Dispatch to specific import function
 	switch componentType {
 	case ComponentWallpaper:
@@ -157,6 +163,30 @@ func ImportIcons(componentPath string) error {
 		srcPath := filepath.Join(componentPath, mapping.ThemePath)
 		dstPath := mapping.SystemPath
 
+		// Special handling for system icons that need to match ROM directory names exactly
+		if mapping.Metadata != nil && mapping.Metadata["IconType"] == "System" &&
+		   mapping.Metadata["SystemTag"] != "" && mapping.Metadata["RenameRequired"] == "true" {
+
+			// Find the exact ROM directory for this system tag
+			systemTag := mapping.Metadata["SystemTag"]
+			var exactSystemName string
+
+			for _, system := range systemPaths.Systems {
+				if system.Tag == systemTag {
+					exactSystemName = system.Name
+					break
+				}
+			}
+
+			if exactSystemName != "" {
+				// Use the exact ROM directory name for the destination filename
+				mediaDir := filepath.Dir(dstPath)
+				dstPath = filepath.Join(mediaDir, exactSystemName + ".png")
+
+				logger.DebugFn("Renaming system icon to match ROM directory: %s", exactSystemName)
+			}
+		}
+
 		// Copy the file
 		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
 			logger.DebugFn("Warning: Failed to copy icon: %v", err)
@@ -172,7 +202,7 @@ func ImportIcons(componentPath string) error {
 
 	logger.DebugFn("Icon import completed: %s", componentPath)
 
-	// Show success message
+	// Show success message to user
 	ui.ShowMessage(fmt.Sprintf("Icons from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
 
 	return nil
