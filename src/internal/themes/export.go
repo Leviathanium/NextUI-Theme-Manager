@@ -11,6 +11,7 @@ import (
 	"nextui-themes/internal/system"
 	"nextui-themes/internal/ui"
 	"strings"
+	"regexp"
 )
 
 // CreateThemeExportDirectory creates a new theme directory with sequential naming
@@ -69,49 +70,51 @@ func CreateThemeExportDirectory() (string, error) {
 
 // ExportTheme exports the current theme settings
 func ExportTheme() error {
-	// Create logger
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    // Create logger
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting theme export")
+    logger.DebugFn("Starting theme export")
 
-	// Create theme directory
-	themePath, err := CreateThemeExportDirectory()
-	if err != nil {
-		logger.DebugFn("Error creating theme directory: %v", err)
-		return fmt.Errorf("error creating theme directory: %w", err)
-	}
+    // Create theme directory
+    themePath, err := CreateThemeExportDirectory()
+    if err != nil {
+        logger.DebugFn("Error creating theme directory: %v", err)
+        return fmt.Errorf("error creating theme directory: %w", err)
+    }
 
-	logger.DebugFn("Created theme directory: %s", themePath)
+    logger.DebugFn("Created theme directory: %s", themePath)
 
-	// Initialize manifest
-	manifest := &ThemeManifest{}
+    // Initialize manifest
+    manifest := &ThemeManifest{}
 
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		logger.DebugFn("Error getting system paths: %v", err)
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    // Get system paths
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        logger.DebugFn("Error getting system paths: %v", err)
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-	// Scan and export various components
-	// This is a simplified version that just focuses on wallpapers as an example
-	exportWallpapers(themePath, manifest, systemPaths, logger)
+    // Export wallpapers
+    exportWallpapers(themePath, manifest, systemPaths, logger)
 
-	// Write manifest
-	if err := WriteManifest(themePath, manifest, logger); err != nil {
-		logger.DebugFn("Error writing manifest: %v", err)
-		return fmt.Errorf("error writing manifest: %w", err)
-	}
+    // Export icons
+    exportIcons(themePath, manifest, systemPaths, logger)
 
-	logger.DebugFn("Theme export completed successfully: %s", themePath)
+    // Write manifest
+    if err := WriteManifest(themePath, manifest, logger); err != nil {
+        logger.DebugFn("Error writing manifest: %v", err)
+        return fmt.Errorf("error writing manifest: %w", err)
+    }
 
-	// Show success message to user
-	themeName := filepath.Base(themePath)
-	ui.ShowMessage(fmt.Sprintf("Theme exported successfully: %s", themeName), "3")
+    logger.DebugFn("Theme export completed successfully: %s", themePath)
 
-	return nil
+    // Show success message to user
+    themeName := filepath.Base(themePath)
+    ui.ShowMessage(fmt.Sprintf("Theme exported successfully: %s", themeName), "3")
+
+    return nil
 }
 
 // exportWallpapers scans for and exports wallpapers
@@ -336,6 +339,228 @@ func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *sy
                 manifest.Content.Wallpapers.Present = true
                 manifest.Content.Wallpapers.Count++
                 logger.DebugFn("Exported collection %s wallpaper to %s", collectionName, destPath)
+            }
+        }
+    }
+}
+
+// exportIcons scans for and exports icons
+func exportIcons(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
+    // Initialize icon section
+    manifest.Content.Icons.Present = false
+    manifest.Content.Icons.SystemCount = 0
+    manifest.Content.Icons.ToolCount = 0
+    manifest.Content.Icons.CollectionCount = 0
+    manifest.PathMappings.Icons = []PathMapping{}
+
+    // Export system icons
+
+    // Recently Played icon - in SD_CARD/.media/Recently Played.png
+    rpIcon := filepath.Join(systemPaths.Root, ".media", "Recently Played.png")
+    if _, err := os.Stat(rpIcon); err == nil {
+        destPath := filepath.Join(themePath, "Icons", "SystemIcons", "Recently Played.png")
+        if err := CopyFile(rpIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Recently Played icon: %v", err)
+        } else {
+            manifest.PathMappings.Icons = append(
+                manifest.PathMappings.Icons,
+                PathMapping{
+                    ThemePath:  "Icons/SystemIcons/Recently Played.png",
+                    SystemPath: rpIcon,
+                    Metadata: map[string]string{
+                        "SystemName": "Recently Played",
+                        "IconType": "System",
+                    },
+                },
+            )
+            manifest.Content.Icons.Present = true
+            manifest.Content.Icons.SystemCount++
+            logger.DebugFn("Exported Recently Played icon to %s", destPath)
+        }
+    }
+
+    // Tools icon - use parent path of Tools since Tools path includes tg5040
+    toolsParentDir := filepath.Dir(systemPaths.Tools) // Gets /mnt/SDCARD/Tools
+    toolsIcon := filepath.Join(toolsParentDir, ".media", "tg5040.png")
+    if _, err := os.Stat(toolsIcon); err == nil {
+        destPath := filepath.Join(themePath, "Icons", "SystemIcons", "Tools.png")
+        if err := CopyFile(toolsIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Tools icon: %v", err)
+        } else {
+            manifest.PathMappings.Icons = append(
+                manifest.PathMappings.Icons,
+                PathMapping{
+                    ThemePath:  "Icons/SystemIcons/Tools.png",
+                    SystemPath: toolsIcon,
+                    Metadata: map[string]string{
+                        "SystemName": "Tools",
+                        "IconType": "System",
+                    },
+                },
+            )
+            manifest.Content.Icons.Present = true
+            manifest.Content.Icons.SystemCount++
+            logger.DebugFn("Exported Tools icon to %s", destPath)
+        }
+    }
+
+    // Collections icon - in SD_CARD/.media/Collections.png
+    collectionsIcon := filepath.Join(systemPaths.Root, ".media", "Collections.png")
+    if _, err := os.Stat(collectionsIcon); err == nil {
+        destPath := filepath.Join(themePath, "Icons", "SystemIcons", "Collections.png")
+        if err := CopyFile(collectionsIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Collections icon: %v", err)
+        } else {
+            manifest.PathMappings.Icons = append(
+                manifest.PathMappings.Icons,
+                PathMapping{
+                    ThemePath:  "Icons/SystemIcons/Collections.png",
+                    SystemPath: collectionsIcon,
+                    Metadata: map[string]string{
+                        "SystemName": "Collections",
+                        "IconType": "System",
+                    },
+                },
+            )
+            manifest.Content.Icons.Present = true
+            manifest.Content.Icons.SystemCount++
+            logger.DebugFn("Exported Collections icon to %s", destPath)
+        }
+    }
+
+    // System-specific icons - each system has its own icon file in Roms/.media/ with system name and tag
+    systemIconsDir := filepath.Join(systemPaths.Roms, ".media")
+    if _, err := os.Stat(systemIconsDir); err == nil {
+        entries, err := os.ReadDir(systemIconsDir)
+        if err == nil {
+            for _, entry := range entries {
+                if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                    continue
+                }
+
+                // Check if file has a PNG extension
+                if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    continue
+                }
+
+                // Only process icons that match system naming pattern
+                // Skip other special icons like Recently Played that we handle separately
+                if entry.Name() == "Recently Played.png" ||
+                   entry.Name() == "Collections.png" ||
+                   entry.Name() == "tg5040.png" {
+                    continue
+                }
+
+                // Check for system tag pattern
+                tagRegex := regexp.MustCompile(`\((.*?)\)`)
+                if !tagRegex.MatchString(entry.Name()) {
+                    logger.DebugFn("Skipping non-system icon: %s", entry.Name())
+                    continue
+                }
+
+                systemIconPath := filepath.Join(systemIconsDir, entry.Name())
+                destPath := filepath.Join(themePath, "Icons", "SystemIcons", entry.Name())
+
+                if err := CopyFile(systemIconPath, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy system icon %s: %v", entry.Name(), err)
+                } else {
+                    // Extract system tag for metadata
+                    matches := tagRegex.FindStringSubmatch(entry.Name())
+                    systemTag := ""
+                    if len(matches) >= 2 {
+                        systemTag = matches[1]
+                    }
+
+                    manifest.PathMappings.Icons = append(
+                        manifest.PathMappings.Icons,
+                        PathMapping{
+                            ThemePath:  "Icons/SystemIcons/" + entry.Name(),
+                            SystemPath: systemIconPath,
+                            Metadata: map[string]string{
+                                "SystemName": strings.TrimSuffix(entry.Name(), ".png"),
+                                "SystemTag": systemTag,
+                                "IconType": "System",
+                            },
+                        },
+                    )
+                    manifest.Content.Icons.Present = true
+                    manifest.Content.Icons.SystemCount++
+                    logger.DebugFn("Exported system icon %s to %s", entry.Name(), destPath)
+                }
+            }
+        }
+    }
+
+    // Tool icons - each tool folder has its own icon.png file
+    toolsDir := filepath.Join(systemPaths.Tools)
+    toolEntries, err := os.ReadDir(toolsDir)
+    if err == nil {
+        for _, entry := range toolEntries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
+
+            toolName := entry.Name()
+            toolIcon := filepath.Join(toolsDir, toolName, ".media", toolName + ".png")
+
+            if _, err := os.Stat(toolIcon); err == nil {
+                destPath := filepath.Join(themePath, "Icons", "ToolIcons", fmt.Sprintf("%s.png", toolName))
+
+                if err := CopyFile(toolIcon, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy tool %s icon: %v", toolName, err)
+                } else {
+                    manifest.PathMappings.Icons = append(
+                        manifest.PathMappings.Icons,
+                        PathMapping{
+                            ThemePath:  fmt.Sprintf("Icons/ToolIcons/%s.png", toolName),
+                            SystemPath: toolIcon,
+                            Metadata: map[string]string{
+                                "ToolName": toolName,
+                                "IconType": "Tool",
+                            },
+                        },
+                    )
+                    manifest.Content.Icons.Present = true
+                    manifest.Content.Icons.ToolCount++
+                    logger.DebugFn("Exported tool %s icon to %s", toolName, destPath)
+                }
+            }
+        }
+    }
+
+    // Collection icons - each collection has its own icon.png file
+    collectionsDir := filepath.Join(systemPaths.Root, "Collections")
+    colEntries, err := os.ReadDir(collectionsDir)
+    if err == nil {
+        for _, entry := range colEntries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
+
+            collectionName := entry.Name()
+            collectionIcon := filepath.Join(collectionsDir, collectionName, ".media", collectionName + ".png")
+
+            if _, err := os.Stat(collectionIcon); err == nil {
+                destPath := filepath.Join(themePath, "Icons", "CollectionIcons", fmt.Sprintf("%s.png", collectionName))
+
+                if err := CopyFile(collectionIcon, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy collection %s icon: %v", collectionName, err)
+                } else {
+                    manifest.PathMappings.Icons = append(
+                        manifest.PathMappings.Icons,
+                        PathMapping{
+                            ThemePath:  fmt.Sprintf("Icons/CollectionIcons/%s.png", collectionName),
+                            SystemPath: collectionIcon,
+                            Metadata: map[string]string{
+                                "CollectionName": collectionName,
+                                "IconType": "Collection",
+                            },
+                        },
+                    )
+                    manifest.Content.Icons.Present = true
+                    manifest.Content.Icons.CollectionCount++
+                    logger.DebugFn("Exported collection %s icon to %s", collectionName, destPath)
+                }
             }
         }
     }

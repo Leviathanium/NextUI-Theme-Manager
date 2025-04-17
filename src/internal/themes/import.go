@@ -40,17 +40,17 @@ func ImportTheme(themeName string) error {
         return fmt.Errorf("theme validation failed: %w", err)
     }
 
-    // Update manifest based on theme content
-    if err := UpdateManifestFromThemeContent(themePath, manifest, logger); err != nil {
-        logger.DebugFn("Warning: Error updating manifest from theme content: %v", err)
-        // Continue anyway with the original manifest
-    }
-
-    // Get system paths
+    // Get system paths BEFORE updating manifest
     systemPaths, err := system.GetSystemPaths()
     if err != nil {
         logger.DebugFn("Error getting system paths: %v", err)
         return fmt.Errorf("error getting system paths: %w", err)
+    }
+
+    // Update manifest based on theme content - now passing systemPaths
+    if err := UpdateManifestFromThemeContent(themePath, manifest, systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error updating manifest from theme content: %v", err)
+        // Continue anyway with the original manifest
     }
 
     // Clean up existing components
@@ -60,7 +60,7 @@ func ImportTheme(themeName string) error {
     }
 
     // Apply theme components based on the (now updated) manifest
-    if err := importThemeFiles(themePath, manifest, logger); err != nil {
+    if err := importThemeFiles(themePath, manifest, systemPaths, logger); err != nil {
         logger.DebugFn("Error importing theme files: %v", err)
         return fmt.Errorf("error importing theme files: %w", err)
     }
@@ -89,105 +89,87 @@ func ImportTheme(themeName string) error {
 }
 
 // importThemeFiles copies all files from the theme to the system based on path mappings
-func importThemeFiles(themePath string, manifest *ThemeManifest, logger *Logger) error {
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		logger.DebugFn("Error getting system paths: %v", err)
-		// Continue anyway with just the path mappings
-	}
+func importThemeFiles(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
+    // Ensure media directories exist
+    if systemPaths != nil {
+        if err := system.EnsureMediaDirectories(systemPaths); err != nil {
+            logger.DebugFn("Warning: Failed to ensure media directories: %v", err)
+        }
+    }
 
-	// Ensure media directories exist
-	if systemPaths != nil {
-		if err := system.EnsureMediaDirectories(systemPaths); err != nil {
-			logger.DebugFn("Warning: Failed to ensure media directories: %v", err)
-		}
-	}
+    // Process wallpaper mappings
+    for _, mapping := range manifest.PathMappings.Wallpapers {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-	// Process wallpaper mappings
-	for _, mapping := range manifest.PathMappings.Wallpapers {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy wallpaper: %v", err)
+            // Continue with other files
+        }
+    }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy wallpaper: %v", err)
-			// Continue with other files
-		}
-	}
+    // Process icon mappings
+    for _, mapping := range manifest.PathMappings.Icons {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-	// Process icon mappings
-	for _, mapping := range manifest.PathMappings.Icons {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy icon: %v", err)
+            // Continue with other files
+        }
+    }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy icon: %v", err)
-			// Continue with other files
-		}
-	}
+    // Process overlay mappings
+    for _, mapping := range manifest.PathMappings.Overlays {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-	// Process overlay mappings
-	for _, mapping := range manifest.PathMappings.Overlays {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy overlay: %v", err)
+            // Continue with other files
+        }
+    }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy overlay: %v", err)
-			// Continue with other files
-		}
-	}
+    // Process font mappings
+    for fontType, mapping := range manifest.PathMappings.Fonts {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-	// Process font mappings
-	for fontType, mapping := range manifest.PathMappings.Fonts {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy font %s: %v", fontType, err)
+            // Continue with other files
+        }
+    }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy font %s: %v", fontType, err)
-			// Continue with other files
-		}
-	}
+    // Process settings mappings
+    for settingType, mapping := range manifest.PathMappings.Settings {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-	// Process settings mappings
-	for settingType, mapping := range manifest.PathMappings.Settings {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy setting %s: %v", settingType, err)
+            // Continue with other files
+        }
+    }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy setting %s: %v", settingType, err)
-			// Continue with other files
-		}
-	}
-
-	return nil
+    return nil
 }
 
 // UpdateManifestFromThemeContent scans a theme directory and updates the manifest
-func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, logger *Logger) error {
-    // Get system paths for mapping
-    systemPaths, err := system.GetSystemPaths()
-    if err != nil {
-        logger.DebugFn("Warning: Error getting system paths: %v", err)
-        // Continue anyway - we can still use naming conventions
+func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
+    // Update wallpapers
+    if err := updateWallpaperMappings(themePath, manifest, systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error updating wallpaper mappings: %v", err)
     }
 
-    // Update wallpapers if present
-    if manifest.Content.Wallpapers.Present {
-        if err := updateWallpaperMappings(themePath, manifest, systemPaths, logger); err != nil {
-            logger.DebugFn("Warning: Error updating wallpaper mappings: %v", err)
-        }
-    }
-
-    // Update icons if present
-    if manifest.Content.Icons.Present {
-        if err := updateIconMappings(themePath, manifest, systemPaths, logger); err != nil {
-            logger.DebugFn("Warning: Error updating icon mappings: %v", err)
-        }
+    // Update icons
+    if err := updateIconMappings(themePath, manifest, systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error updating icon mappings: %v", err)
     }
 
     // Update settings if present
@@ -209,85 +191,63 @@ func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, l
 
 // updateIconMappings scans icons in the theme and updates manifest mappings
 func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
-    iconsDir := filepath.Join(themePath, "Icons")
-
-    // Check if directory exists
-    if _, err := os.Stat(iconsDir); os.IsNotExist(err) {
-        return nil // No icons directory, nothing to update
-    }
-
     // Create a map of existing mappings for quick lookup
     existingMappings := make(map[string]bool)
     for _, mapping := range manifest.PathMappings.Icons {
         existingMappings[mapping.ThemePath] = true
     }
 
-    // Subdirectories to scan
-    subdirs := []string{
-        "SystemIcons",
-        "ToolIcons",
-        "CollectionIcons",
-    }
-
     // Regular expression to extract system tag from filenames
     tagRegex := regexp.MustCompile(`\((.*?)\)`)
 
-    for _, subdir := range subdirs {
-        fullSubdir := filepath.Join(iconsDir, subdir)
-
-        // Skip if subdirectory doesn't exist
-        if _, err := os.Stat(fullSubdir); os.IsNotExist(err) {
-            continue
-        }
-
-        // List icon files
-        entries, err := os.ReadDir(fullSubdir)
+    // Process system icons
+    systemIconsDir := filepath.Join(themePath, "Icons", "SystemIcons")
+    if _, err := os.Stat(systemIconsDir); err == nil {
+        entries, err := os.ReadDir(systemIconsDir)
         if err != nil {
-            logger.DebugFn("Warning: Error reading icons directory %s: %v", subdir, err)
-            continue
-        }
+            logger.DebugFn("Warning: Error reading system icons directory: %v", err)
+        } else {
+            for _, entry := range entries {
+                if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                    continue
+                }
 
-        for _, entry := range entries {
-            if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-                continue
-            }
+                // Check if file has a PNG extension
+                if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    continue
+                }
 
-            // Check if file has a PNG extension
-            if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-                continue
-            }
+                themePath := filepath.Join("Icons/SystemIcons", entry.Name())
 
-            themePath := filepath.Join("Icons", subdir, entry.Name())
+                // Skip if this file is already in mappings
+                if existingMappings[themePath] {
+                    continue
+                }
 
-            // Skip if this file is already in mappings
-            if existingMappings[themePath] {
-                continue
-            }
+                // Determine where this file should go based on naming
+                var systemPath string
+                var metadata map[string]string
 
-            // Determine where this file should go based on naming
-            var systemPath string
-            var metadata map[string]string
-
-            switch subdir {
-            case "SystemIcons":
                 // Special case handling for predefined names
                 switch strings.TrimSuffix(entry.Name(), ".png") {
-                case "Recently Played", "Recently-Played":
-                    systemPath = filepath.Join(systemPaths.RecentlyPlayed, ".media", "icon.png")
+                case "Recently Played":
+                    systemPath = filepath.Join(systemPaths.Root, ".media", "Recently Played.png")
                     metadata = map[string]string{
                         "SystemName": "Recently Played",
                         "IconType": "System",
                     }
 
                 case "Tools":
-                    systemPath = filepath.Join(systemPaths.Tools, ".media", "icon.png")
+                    // Get parent directory of Tools path since it includes tg5040
+                    toolsParentDir := filepath.Dir(systemPaths.Tools)
+                    systemPath = filepath.Join(toolsParentDir, ".media", "tg5040.png")
                     metadata = map[string]string{
                         "SystemName": "Tools",
                         "IconType": "System",
                     }
 
                 case "Collections":
-                    systemPath = filepath.Join(systemPaths.Root, "Collections", ".media", "icon.png")
+                    systemPath = filepath.Join(systemPaths.Root, ".media", "Collections.png")
                     metadata = map[string]string{
                         "SystemName": "Collections",
                         "IconType": "System",
@@ -298,54 +258,71 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
                     matches := tagRegex.FindStringSubmatch(entry.Name())
                     if len(matches) >= 2 {
                         systemTag := matches[1]
-                        systemName := strings.TrimSuffix(strings.Split(entry.Name(), "(")[0], " ")
 
-                        // Find matching system by tag
-                        var systemFound bool
-                        for _, system := range systemPaths.Systems {
-                            if system.Tag == systemTag {
-                                systemPath = filepath.Join(system.MediaPath, "icon.png")
-                                metadata = map[string]string{
-                                    "SystemName": systemName,
-                                    "SystemTag": systemTag,
-                                    "IconType": "System",
-                                }
-                                systemFound = true
-                                break
-                            }
-                        }
+                        // Full system icon file name
+                        iconName := entry.Name()
 
-                        // If system not found in paths, create a default path
-                        if !systemFound && systemTag != "" {
-                            systemPath = filepath.Join(systemPaths.Roms, fmt.Sprintf("%s (%s)", systemName, systemTag), ".media", "icon.png")
-                            metadata = map[string]string{
-                                "SystemName": systemName,
-                                "SystemTag": systemTag,
-                                "IconType": "System",
-                            }
+                        // System path based on the icon name (with tag)
+                        systemPath = filepath.Join(systemPaths.Roms, ".media", iconName)
+                        metadata = map[string]string{
+                            "SystemName": strings.TrimSuffix(iconName, ".png"),
+                            "SystemTag": systemTag,
+                            "IconType": "System",
                         }
                     }
                 }
 
-            case "ToolIcons":
+                // If we determined a system path, add to mappings
+                if systemPath != "" {
+                    manifest.PathMappings.Icons = append(
+                        manifest.PathMappings.Icons,
+                        PathMapping{
+                            ThemePath:  themePath,
+                            SystemPath: systemPath,
+                            Metadata:   metadata,
+                        },
+                    )
+                    manifest.Content.Icons.SystemCount++
+                    logger.DebugFn("Added mapping for system icon: %s -> %s", themePath, systemPath)
+                } else {
+                    logger.DebugFn("Could not determine system path for icon: %s", entry.Name())
+                }
+            }
+        }
+    }
+
+    // Process tool icons
+    toolIconsDir := filepath.Join(themePath, "Icons", "ToolIcons")
+    if _, err := os.Stat(toolIconsDir); err == nil {
+        entries, err := os.ReadDir(toolIconsDir)
+        if err != nil {
+            logger.DebugFn("Warning: Error reading tool icons directory: %v", err)
+        } else {
+            for _, entry := range entries {
+                if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                    continue
+                }
+
+                // Check if file has a PNG extension
+                if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    continue
+                }
+
+                themePath := filepath.Join("Icons/ToolIcons", entry.Name())
+
+                // Skip if this file is already in mappings
+                if existingMappings[themePath] {
+                    continue
+                }
+
+                // Extract tool name
                 toolName := strings.TrimSuffix(entry.Name(), ".png")
-                systemPath = filepath.Join(systemPaths.Tools, toolName, ".media", "icon.png")
-                metadata = map[string]string{
+                systemPath := filepath.Join(systemPaths.Tools, toolName, ".media", toolName + ".png")
+                metadata := map[string]string{
                     "ToolName": toolName,
                     "IconType": "Tool",
                 }
 
-            case "CollectionIcons":
-                collectionName := strings.TrimSuffix(entry.Name(), ".png")
-                systemPath = filepath.Join(systemPaths.Root, "Collections", collectionName, ".media", "icon.png")
-                metadata = map[string]string{
-                    "CollectionName": collectionName,
-                    "IconType": "Collection",
-                }
-            }
-
-            // If we determined a system path, add to mappings
-            if systemPath != "" {
                 manifest.PathMappings.Icons = append(
                     manifest.PathMappings.Icons,
                     PathMapping{
@@ -354,20 +331,54 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
                         Metadata:   metadata,
                     },
                 )
+                manifest.Content.Icons.ToolCount++
+                logger.DebugFn("Added mapping for tool icon: %s -> %s", themePath, systemPath)
+            }
+        }
+    }
 
-                // Update counters based on icon type
-                switch subdir {
-                case "SystemIcons":
-                    manifest.Content.Icons.SystemCount++
-                case "ToolIcons":
-                    manifest.Content.Icons.ToolCount++
-                case "CollectionIcons":
-                    manifest.Content.Icons.CollectionCount++
+    // Process collection icons
+    collectionIconsDir := filepath.Join(themePath, "Icons", "CollectionIcons")
+    if _, err := os.Stat(collectionIconsDir); err == nil {
+        entries, err := os.ReadDir(collectionIconsDir)
+        if err != nil {
+            logger.DebugFn("Warning: Error reading collection icons directory: %v", err)
+        } else {
+            for _, entry := range entries {
+                if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                    continue
                 }
 
-                logger.DebugFn("Added mapping for icon: %s -> %s", themePath, systemPath)
-            } else {
-                logger.DebugFn("Could not determine system path for icon: %s", entry.Name())
+                // Check if file has a PNG extension
+                if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    continue
+                }
+
+                themePath := filepath.Join("Icons/CollectionIcons", entry.Name())
+
+                // Skip if this file is already in mappings
+                if existingMappings[themePath] {
+                    continue
+                }
+
+                // Extract collection name
+                collectionName := strings.TrimSuffix(entry.Name(), ".png")
+                systemPath := filepath.Join(systemPaths.Root, "Collections", collectionName, ".media", collectionName + ".png")
+                metadata := map[string]string{
+                    "CollectionName": collectionName,
+                    "IconType": "Collection",
+                }
+
+                manifest.PathMappings.Icons = append(
+                    manifest.PathMappings.Icons,
+                    PathMapping{
+                        ThemePath:  themePath,
+                        SystemPath: systemPath,
+                        Metadata:   metadata,
+                    },
+                )
+                manifest.Content.Icons.CollectionCount++
+                logger.DebugFn("Added mapping for collection icon: %s -> %s", themePath, systemPath)
             }
         }
     }
@@ -882,38 +893,83 @@ func cleanupExistingComponents(manifest *ThemeManifest, systemPaths *system.Syst
     if !manifest.Content.Icons.Present {
         logger.DebugFn("Theme doesn't include icons - cleaning up existing icons")
 
-        // System icons
-        for _, system := range systemPaths.Systems {
-            systemIcon := filepath.Join(system.MediaPath, "icon.png")
-            if err := os.Remove(systemIcon); err != nil && !os.IsNotExist(err) {
-                logger.DebugFn("Warning: Could not remove %s icon: %v", system.Name, err)
-            } else {
-                logger.DebugFn("Removed %s icon: %s", system.Name, systemIcon)
+        // System icons in Roms/.media directory
+        romsMediaDir := filepath.Join(systemPaths.Roms, ".media")
+        if _, err := os.Stat(romsMediaDir); !os.IsNotExist(err) {
+            entries, err := os.ReadDir(romsMediaDir)
+            if err == nil {
+                for _, entry := range entries {
+                    if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                        continue
+                    }
+
+                    if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                        continue
+                    }
+
+                    // Skip non-system icons
+                    tagRegex := regexp.MustCompile(`\((.*?)\)`)
+                    if !tagRegex.MatchString(entry.Name()) &&
+                       entry.Name() != "Recently Played.png" &&
+                       entry.Name() != "Collections.png" &&
+                       entry.Name() != "tg5040.png" {
+                        continue
+                    }
+
+                    systemIcon := filepath.Join(romsMediaDir, entry.Name())
+                    logger.DebugFn("Checking for system icon at: %s", systemIcon)
+
+                    if err := os.Remove(systemIcon); err != nil {
+                        logger.DebugFn("Warning: Could not remove system icon %s: %v", entry.Name(), err)
+                    } else {
+                        logger.DebugFn("Removed system icon: %s", systemIcon)
+                    }
+                }
             }
         }
 
-        // Recently Played icon
-        rpIcon := filepath.Join(systemPaths.RecentlyPlayed, ".media", "icon.png")
-        if err := os.Remove(rpIcon); err != nil && !os.IsNotExist(err) {
-            logger.DebugFn("Warning: Could not remove Recently Played icon: %v", err)
-        } else {
-            logger.DebugFn("Removed Recently Played icon: %s", rpIcon)
-        }
+        // Root media directory for special icons
+        rootMediaDir := filepath.Join(systemPaths.Root, ".media")
+        if _, err := os.Stat(rootMediaDir); !os.IsNotExist(err) {
+            // Recently Played icon
+            rpIcon := filepath.Join(rootMediaDir, "Recently Played.png")
+            logger.DebugFn("Checking for Recently Played icon at: %s", rpIcon)
 
-        // Tools icon
-        toolsIcon := filepath.Join(systemPaths.Tools, ".media", "icon.png")
-        if err := os.Remove(toolsIcon); err != nil && !os.IsNotExist(err) {
-            logger.DebugFn("Warning: Could not remove Tools icon: %v", err)
-        } else {
-            logger.DebugFn("Removed Tools icon: %s", toolsIcon)
-        }
+            if _, err := os.Stat(rpIcon); !os.IsNotExist(err) {
+                if err := os.Remove(rpIcon); err != nil {
+                    logger.DebugFn("Warning: Could not remove Recently Played icon: %v", err)
+                } else {
+                    logger.DebugFn("Removed Recently Played icon: %s", rpIcon)
+                }
+            }
 
-        // Collections icon
-        collectionsIcon := filepath.Join(systemPaths.Root, "Collections", ".media", "icon.png")
-        if err := os.Remove(collectionsIcon); err != nil && !os.IsNotExist(err) {
-            logger.DebugFn("Warning: Could not remove Collections icon: %v", err)
-        } else {
-            logger.DebugFn("Removed Collections icon: %s", collectionsIcon)
+            // Tools icon - use parent path of Tools since Tools path includes tg5040
+            toolsParentDir := filepath.Dir(systemPaths.Tools) // Gets /mnt/SDCARD/Tools
+            toolsMediaDir := filepath.Join(toolsParentDir, ".media")
+            if _, err := os.Stat(toolsMediaDir); !os.IsNotExist(err) {
+                toolsIcon := filepath.Join(toolsMediaDir, "tg5040.png")
+                logger.DebugFn("Checking for Tools icon at: %s", toolsIcon)
+
+                if _, err := os.Stat(toolsIcon); !os.IsNotExist(err) {
+                    if err := os.Remove(toolsIcon); err != nil {
+                        logger.DebugFn("Warning: Could not remove Tools icon: %v", err)
+                    } else {
+                        logger.DebugFn("Removed Tools icon: %s", toolsIcon)
+                    }
+                }
+            }
+
+            // Collections icon
+            collectionsIcon := filepath.Join(rootMediaDir, "Collections.png")
+            logger.DebugFn("Checking for Collections icon at: %s", collectionsIcon)
+
+            if _, err := os.Stat(collectionsIcon); !os.IsNotExist(err) {
+                if err := os.Remove(collectionsIcon); err != nil {
+                    logger.DebugFn("Warning: Could not remove Collections icon: %v", err)
+                } else {
+                    logger.DebugFn("Removed Collections icon: %s", collectionsIcon)
+                }
+            }
         }
 
         // Tool icons
@@ -926,11 +982,21 @@ func cleanupExistingComponents(manifest *ThemeManifest, systemPaths *system.Syst
                 }
 
                 toolName := entry.Name()
-                toolIcon := filepath.Join(toolsDir, toolName, ".media", "icon.png")
-                if err := os.Remove(toolIcon); err != nil && !os.IsNotExist(err) {
-                    logger.DebugFn("Warning: Could not remove %s tool icon: %v", toolName, err)
-                } else {
-                    logger.DebugFn("Removed %s tool icon: %s", toolName, toolIcon)
+                toolMediaDir := filepath.Join(toolsDir, toolName, ".media")
+
+                if _, err := os.Stat(toolMediaDir); os.IsNotExist(err) {
+                    continue
+                }
+
+                toolIcon := filepath.Join(toolMediaDir, toolName + ".png")
+                logger.DebugFn("Checking for tool %s icon at: %s", toolName, toolIcon)
+
+                if _, err := os.Stat(toolIcon); !os.IsNotExist(err) {
+                    if err := os.Remove(toolIcon); err != nil {
+                        logger.DebugFn("Warning: Could not remove %s tool icon: %v", toolName, err)
+                    } else {
+                        logger.DebugFn("Removed %s tool icon: %s", toolName, toolIcon)
+                    }
                 }
             }
         }
@@ -945,35 +1011,26 @@ func cleanupExistingComponents(manifest *ThemeManifest, systemPaths *system.Syst
                 }
 
                 collectionName := entry.Name()
-                collectionIcon := filepath.Join(collectionsDir, collectionName, ".media", "icon.png")
-                if err := os.Remove(collectionIcon); err != nil && !os.IsNotExist(err) {
-                    logger.DebugFn("Warning: Could not remove %s collection icon: %v", collectionName, err)
-                } else {
-                    logger.DebugFn("Removed %s collection icon: %s", collectionName, collectionIcon)
+                collectionMediaDir := filepath.Join(collectionsDir, collectionName, ".media")
+
+                if _, err := os.Stat(collectionMediaDir); os.IsNotExist(err) {
+                    continue
+                }
+
+                collectionIcon := filepath.Join(collectionMediaDir, collectionName + ".png")
+                logger.DebugFn("Checking for collection %s icon at: %s", collectionName, collectionIcon)
+
+                if _, err := os.Stat(collectionIcon); !os.IsNotExist(err) {
+                    if err := os.Remove(collectionIcon); err != nil {
+                        logger.DebugFn("Warning: Could not remove %s collection icon: %v", collectionName, err)
+                    } else {
+                        logger.DebugFn("Removed %s collection icon: %s", collectionName, collectionIcon)
+                    }
                 }
             }
         }
     } else {
         logger.DebugFn("Theme includes icons - keeping existing icons until they're replaced")
-    }
-
-    // If theme doesn't include overlays, clean up existing overlays
-    if !manifest.Content.Overlays.Present {
-        logger.DebugFn("Theme doesn't include overlays - cleaning up existing overlays")
-
-        // Delete all overlays in the Overlays directory
-        overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
-        if err := os.RemoveAll(overlaysDir); err != nil && !os.IsNotExist(err) {
-            logger.DebugFn("Warning: Could not remove Overlays directory: %v", err)
-        } else {
-            logger.DebugFn("Removed Overlays directory: %s", overlaysDir)
-            // Recreate the directory
-            if err := os.MkdirAll(overlaysDir, 0755); err != nil {
-                logger.DebugFn("Warning: Could not recreate Overlays directory: %v", err)
-            }
-        }
-    } else {
-        logger.DebugFn("Theme includes overlays - keeping existing overlays until they're replaced")
     }
 
     logger.DebugFn("Completed cleanup of existing components")
