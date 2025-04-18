@@ -4,12 +4,12 @@ A comprehensive theming solution for your NextUI device that lets you customize 
 
 ---
 
-![Retro-Programmer](Theme-Manager.pak/Wallpapers/Retro-Programmer.bg/preview.png)
-![Blackstreets](Theme-Manager.pak/Wallpapers/Blackstreets.bg/preview.png)
-![Cozy](Theme-Manager.pak/Wallpapers/Cozy.bg/preview.png)
-![Retro-Mario-Chill](Theme-Manager.pak/Wallpapers/Retro-Mario-Chill.bg/preview.png)
-![Firewatch](Theme-Manager.pak/Wallpapers/Firewatch.bg/preview.png)
-![Sunset-Forest](Theme-Manager.pak/Wallpapers/Sunset-Forest.bg/preview.png)
+![Retro-Programmer](Theme-Manager.pak/Components/Wallpapers/Retro-Programmer.bg/preview.png)
+![Blackstreets](Theme-Manager.pak/Components/Wallpapers/Blackstreets.bg/preview.png)
+![Cozy](Theme-Manager.pak/Components/Wallpapers/Cozy.bg/preview.png)
+![Retro-Mario-Chill](Theme-Manager.pak/Components/Wallpapers/Retro-Mario-Chill.bg/preview.png)
+![Firewatch](Theme-Manager.pak/Components/Wallpapers/Firewatch.bg/preview.png)
+![Sunset-Forest](Theme-Manager.pak/Components/Wallpapers/Sunset-Forest.bg/preview.png)
 
 ## Features
 
