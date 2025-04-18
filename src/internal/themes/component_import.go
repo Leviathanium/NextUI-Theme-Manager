@@ -58,154 +58,152 @@ func ImportComponent(componentPath string) error {
 
 // ImportWallpapers imports a wallpaper component package
 func ImportWallpapers(componentPath string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting wallpaper import: %s", componentPath)
+    logger.DebugFn("Starting wallpaper import: %s", componentPath)
 
-	// Load the component manifest
-	manifestObj, err := LoadComponentManifest(componentPath)
-	if err != nil {
-		return fmt.Errorf("error loading wallpaper manifest: %w", err)
-	}
+    // Load the component manifest
+    manifestObj, err := LoadComponentManifest(componentPath)
+    if err != nil {
+        return fmt.Errorf("error loading wallpaper manifest: %w", err)
+    }
 
-	// Ensure it's the right type
-	manifest, ok := manifestObj.(*WallpaperManifest)
-	if !ok {
-		return fmt.Errorf("invalid manifest type for wallpaper component")
-	}
+    // Ensure it's the right type
+    manifest, ok := manifestObj.(*WallpaperManifest)
+    if !ok {
+        return fmt.Errorf("invalid manifest type for wallpaper component")
+    }
 
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    // Get system paths
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-	// Ensure media directories exist
-	if err := system.EnsureMediaDirectories(systemPaths); err != nil {
-		logger.DebugFn("Warning: Error ensuring media directories: %v", err)
-	}
+    // Ensure media directories exist
+    if err := system.EnsureMediaDirectories(systemPaths); err != nil {
+        logger.DebugFn("Warning: Error ensuring media directories: %v", err)
+    }
 
-	// Clean up existing wallpapers - only if the component has wallpapers to replace them
-	if len(manifest.PathMappings) > 0 {
-		if err := cleanupExistingWallpapers(systemPaths, logger); err != nil {
-			logger.DebugFn("Warning: Error cleaning up existing wallpapers: %v", err)
-		}
-	}
+    // IMPORTANT: Always clean up existing wallpapers, even if the component has no wallpapers
+    // This allows for "default" packages that clear wallpapers
+    if err := cleanupExistingWallpapers(systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error cleaning up existing wallpapers: %v", err)
+    }
 
-	// Import wallpapers based on path mappings
-	for _, mapping := range manifest.PathMappings {
-		srcPath := filepath.Join(componentPath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+    // Import wallpapers based on path mappings
+    for _, mapping := range manifest.PathMappings {
+        srcPath := filepath.Join(componentPath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy wallpaper: %v", err)
-			// Continue with other files
-		}
-	}
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy wallpaper: %v", err)
+            // Continue with other files
+        }
+    }
 
-	// Update global manifest to track this component
-	componentName := filepath.Base(componentPath)
-	if err := UpdateAppliedComponent(ComponentWallpaper, componentName); err != nil {
-		logger.DebugFn("Warning: Failed to update global manifest: %v", err)
-	}
+    // Update global manifest to track this component
+    componentName := filepath.Base(componentPath)
+    if err := UpdateAppliedComponent(ComponentWallpaper, componentName); err != nil {
+        logger.DebugFn("Warning: Failed to update global manifest: %v", err)
+    }
 
-	logger.DebugFn("Wallpaper import completed: %s", componentPath)
+    logger.DebugFn("Wallpaper import completed: %s", componentPath)
 
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Wallpapers from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Wallpapers from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
 
-	return nil
+    return nil
 }
 
 // ImportIcons imports an icon component package
 func ImportIcons(componentPath string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting icon import: %s", componentPath)
+    logger.DebugFn("Starting icon import: %s", componentPath)
 
-	// Load the component manifest
-	manifestObj, err := LoadComponentManifest(componentPath)
-	if err != nil {
-		return fmt.Errorf("error loading icon manifest: %w", err)
-	}
+    // Load the component manifest
+    manifestObj, err := LoadComponentManifest(componentPath)
+    if err != nil {
+        return fmt.Errorf("error loading icon manifest: %w", err)
+    }
 
-	// Ensure it's the right type
-	manifest, ok := manifestObj.(*IconManifest)
-	if !ok {
-		return fmt.Errorf("invalid manifest type for icon component")
-	}
+    // Ensure it's the right type
+    manifest, ok := manifestObj.(*IconManifest)
+    if !ok {
+        return fmt.Errorf("invalid manifest type for icon component")
+    }
 
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    // Get system paths
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-	// Ensure media directories exist
-	if err := system.EnsureMediaDirectories(systemPaths); err != nil {
-		logger.DebugFn("Warning: Error ensuring media directories: %v", err)
-	}
+    // Ensure media directories exist
+    if err := system.EnsureMediaDirectories(systemPaths); err != nil {
+        logger.DebugFn("Warning: Error ensuring media directories: %v", err)
+    }
 
-	// Clean up existing icons - only if the component has icons to replace them
-	if len(manifest.PathMappings) > 0 {
-		if err := cleanupExistingIcons(systemPaths, logger); err != nil {
-			logger.DebugFn("Warning: Error cleaning up existing icons: %v", err)
-		}
-	}
+    // IMPORTANT: Always clean up existing icons, even if the component has no icons
+    // This allows for "default" packages that clear icons
+    if err := cleanupExistingIcons(systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error cleaning up existing icons: %v", err)
+    }
 
-	// Import icons based on path mappings
-	for _, mapping := range manifest.PathMappings {
-		srcPath := filepath.Join(componentPath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+    // Import icons based on path mappings
+    for _, mapping := range manifest.PathMappings {
+        srcPath := filepath.Join(componentPath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-		// Special handling for system icons that need to match ROM directory names exactly
-		if mapping.Metadata != nil && mapping.Metadata["IconType"] == "System" &&
-		   mapping.Metadata["SystemTag"] != "" && mapping.Metadata["RenameRequired"] == "true" {
+        // Special handling for system icons that need to match ROM directory names exactly
+        if mapping.Metadata != nil && mapping.Metadata["IconType"] == "System" &&
+           mapping.Metadata["SystemTag"] != "" && mapping.Metadata["RenameRequired"] == "true" {
 
-			// Find the exact ROM directory for this system tag
-			systemTag := mapping.Metadata["SystemTag"]
-			var exactSystemName string
+            // Find the exact ROM directory for this system tag
+            systemTag := mapping.Metadata["SystemTag"]
+            var exactSystemName string
 
-			for _, system := range systemPaths.Systems {
-				if system.Tag == systemTag {
-					exactSystemName = system.Name
-					break
-				}
-			}
+            for _, system := range systemPaths.Systems {
+                if system.Tag == systemTag {
+                    exactSystemName = system.Name
+                    break
+                }
+            }
 
-			if exactSystemName != "" {
-				// Use the exact ROM directory name for the destination filename
-				mediaDir := filepath.Dir(dstPath)
-				dstPath = filepath.Join(mediaDir, exactSystemName + ".png")
+            if exactSystemName != "" {
+                // Use the exact ROM directory name for the destination filename
+                mediaDir := filepath.Dir(dstPath)
+                dstPath = filepath.Join(mediaDir, exactSystemName + ".png")
 
-				logger.DebugFn("Renaming system icon to match ROM directory: %s", exactSystemName)
-			}
-		}
+                logger.DebugFn("Renaming system icon to match ROM directory: %s", exactSystemName)
+            }
+        }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy icon: %v", err)
-			// Continue with other files
-		}
-	}
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy icon: %v", err)
+            // Continue with other files
+        }
+    }
 
-	// Update global manifest to track this component
-	componentName := filepath.Base(componentPath)
-	if err := UpdateAppliedComponent(ComponentIcon, componentName); err != nil {
-		logger.DebugFn("Warning: Failed to update global manifest: %v", err)
-	}
+    // Update global manifest to track this component
+    componentName := filepath.Base(componentPath)
+    if err := UpdateAppliedComponent(ComponentIcon, componentName); err != nil {
+        logger.DebugFn("Warning: Failed to update global manifest: %v", err)
+    }
 
-	logger.DebugFn("Icon import completed: %s", componentPath)
+    logger.DebugFn("Icon import completed: %s", componentPath)
 
-	// Show success message to user
-	ui.ShowMessage(fmt.Sprintf("Icons from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
+    // Show success message to user
+    ui.ShowMessage(fmt.Sprintf("Icons from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
 
-	return nil
+    return nil
 }
 
 // ImportAccents imports an accent component package
@@ -415,69 +413,75 @@ func ImportFonts(componentPath string) error {
 
 // ImportOverlays imports an overlay component package
 func ImportOverlays(componentPath string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting overlay import: %s", componentPath)
+    logger.DebugFn("Starting overlay import: %s", componentPath)
 
-	// Load the component manifest
-	manifestObj, err := LoadComponentManifest(componentPath)
-	if err != nil {
-		return fmt.Errorf("error loading overlay manifest: %w", err)
-	}
+    // Load the component manifest
+    manifestObj, err := LoadComponentManifest(componentPath)
+    if err != nil {
+        return fmt.Errorf("error loading overlay manifest: %w", err)
+    }
 
-	// Ensure it's the right type
-	manifest, ok := manifestObj.(*OverlayManifest)
-	if !ok {
-		return fmt.Errorf("invalid manifest type for overlay component")
-	}
+    // Ensure it's the right type
+    manifest, ok := manifestObj.(*OverlayManifest)
+    if !ok {
+        return fmt.Errorf("invalid manifest type for overlay component")
+    }
 
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    // Get system paths
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-	// Create overlays directory if it doesn't exist
-	overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
-	if err := os.MkdirAll(overlaysDir, 0755); err != nil {
-		return fmt.Errorf("error creating overlays directory: %w", err)
-	}
+    // Create overlays directory if it doesn't exist
+    overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
+    if err := os.MkdirAll(overlaysDir, 0755); err != nil {
+        return fmt.Errorf("error creating overlays directory: %w", err)
+    }
 
-	// For each system in the package, create the directory
-	for _, systemTag := range manifest.Content.Systems {
-		systemDir := filepath.Join(overlaysDir, systemTag)
-		if err := os.MkdirAll(systemDir, 0755); err != nil {
-			logger.DebugFn("Warning: Failed to create system overlay directory %s: %v", systemTag, err)
-			continue
-		}
-	}
+    // IMPORTANT: Always clean up existing overlays, even if the component has no overlays
+    // This allows for "default" packages that clear overlays
+    if err := cleanupExistingOverlays(systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error cleaning up existing overlays: %v", err)
+    }
 
-	// Import overlays based on path mappings
-	for _, mapping := range manifest.PathMappings {
-		srcPath := filepath.Join(componentPath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+    // For each system in the package, create the directory
+    for _, systemTag := range manifest.Content.Systems {
+        systemDir := filepath.Join(overlaysDir, systemTag)
+        if err := os.MkdirAll(systemDir, 0755); err != nil {
+            logger.DebugFn("Warning: Failed to create system overlay directory %s: %v", systemTag, err)
+            continue
+        }
+    }
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy overlay: %v", err)
-			// Continue with other files
-		}
-	}
+    // Import overlays based on path mappings
+    for _, mapping := range manifest.PathMappings {
+        srcPath := filepath.Join(componentPath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-	// Update global manifest to track this component
-	componentName := filepath.Base(componentPath)
-	if err := UpdateAppliedComponent(ComponentOverlay, componentName); err != nil {
-		logger.DebugFn("Warning: Failed to update global manifest: %v", err)
-	}
+        // Copy the file
+        if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+            logger.DebugFn("Warning: Failed to copy overlay: %v", err)
+            // Continue with other files
+        }
+    }
 
-	logger.DebugFn("Overlay import completed: %s", componentPath)
+    // Update global manifest to track this component
+    componentName := filepath.Base(componentPath)
+    if err := UpdateAppliedComponent(ComponentOverlay, componentName); err != nil {
+        logger.DebugFn("Warning: Failed to update global manifest: %v", err)
+    }
 
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Overlays from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
+    logger.DebugFn("Overlay import completed: %s", componentPath)
 
-	return nil
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Overlays from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
+
+    return nil
 }
 
 // Helper functions for cleanup
@@ -678,4 +682,71 @@ func cleanupExistingIcons(systemPaths *system.SystemPaths, logger *Logger) error
 	}
 
 	return nil
+}
+
+// cleanupExistingOverlays removes existing overlays before applying new ones
+func cleanupExistingOverlays(systemPaths *system.SystemPaths, logger *Logger) error {
+    logger.DebugFn("Cleaning up existing overlays")
+
+    // Check for overlays directory
+    overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
+    if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
+        logger.DebugFn("Overlays directory not found, nothing to clean up")
+        return nil
+    }
+
+    // List system directories in Overlays
+    entries, err := os.ReadDir(overlaysDir)
+    if err != nil {
+        logger.DebugFn("Error reading Overlays directory: %v", err)
+        return err
+    }
+
+    // Process each system's overlays
+    for _, entry := range entries {
+        if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+            continue
+        }
+
+        systemTag := entry.Name()
+        systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
+
+        // List overlay files for this system
+        overlayFiles, err := os.ReadDir(systemOverlaysPath)
+        if err != nil {
+            logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
+            continue
+        }
+
+        // Remove each overlay file
+        for _, file := range overlayFiles {
+            if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+                continue
+            }
+
+            // Only process PNG files
+            if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+                continue
+            }
+
+            overlayPath := filepath.Join(systemOverlaysPath, file.Name())
+            if err := os.Remove(overlayPath); err != nil && !os.IsNotExist(err) {
+                logger.DebugFn("Warning: Could not remove overlay %s: %v", file.Name(), err)
+            } else if err == nil {
+                logger.DebugFn("Removed overlay: %s", overlayPath)
+            }
+        }
+
+        // Check if system directory is now empty and remove if so
+        remainingFiles, _ := os.ReadDir(systemOverlaysPath)
+        if len(remainingFiles) == 0 {
+            if err := os.Remove(systemOverlaysPath); err != nil {
+                logger.DebugFn("Warning: Could not remove empty system overlay directory %s: %v", systemTag, err)
+            } else {
+                logger.DebugFn("Removed empty system overlay directory: %s", systemOverlaysPath)
+            }
+        }
+    }
+
+    return nil
 }

@@ -7,7 +7,7 @@ _NOTE: THERE WILL BE BUGS! Also, this is currently only for the TrimUI Brick._
 ## Features
 
 - Theme Management: Import/Export your device's current customization options to share them with the world!
-- Global Customization: Change global wallpapers, icons, fonts, LEDs, and accents.
+- Global Customization: Change global wallpapers, icons, fonts, LEDs, accents, and overlays.
 - System Customization: Change wallpapers and icons for specific systems.
 - Exporting: Export Custom LED and Accent settings, and import/apply them as well.
 - Reset: Clear all background/icon settings to start fresh.
@@ -17,12 +17,7 @@ With more features to come...
 ---
 ## Gallery
 
-![Retro-Programmer](Theme-Manager.pak/Wallpapers/Retro-Programmer/bg.png)
-![Blackstreets](Theme-Manager.pak/Wallpapers/Blackstreets/bg.png)
-![Cozy](Theme-Manager.pak/Wallpapers/Cozy/bg.png)
-![Firewatch](Theme-Manager.pak/Wallpapers/Firewatch/bg.png)
-![Retro-Mario-Chill](Theme-Manager.pak/Wallpapers/Retro-Mario-Chill/bg.png)
-![Sunset-Forest](Theme-Manager.pak/Wallpapers/Sunset-Forest/bg.png)
+
 
 ---
 ## Guide
