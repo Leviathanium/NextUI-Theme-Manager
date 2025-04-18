@@ -1,6 +1,6 @@
 {
   "component_info": {
-    "name": "Arcade-Dark",
+    "name": "Blackstreets.bg",
     "type": "wallpaper",
     "version": "1.0.0",
     "author": "Leviathan",
@@ -8,217 +8,19 @@
     "exported_by": "Theme Manager v1.0.0"
   },
   "content": {
-    "count": 21,
+    "count": 1,
     "system_wallpapers": [
-      "(FBN).png",
-      "(FC).png",
-      "(GB).png",
-      "(GBA).png",
-      "(GBC).png",
-      "(MD).png",
-      "(MGBA).png",
-      "(PS).png",
-      "(SFC).png",
-      "(SUPA).png",
-      "Collections.png",
-      "Recently Played.png",
-      "Tools.png",
-      "(CPS).png",
-      "(MAME).png",
-      "(N64).png",
-      "(NDS).png",
-      "(NEOGEO).png",
-      "(NES).png",
-      "(PGM).png",
-      "(PSP).png"
+      "Root.png"
     ],
     "collection_wallpapers": []
   },
   "path_mappings": [
     {
-      "theme_path": "SystemWallpapers/(FBN).png",
-      "system_path": "/mnt/SDCARD/Roms/Arcade (FBN)/.media/bg.png",
+      "theme_path": "SystemWallpapers/Root.png",
+      "system_path": "/mnt/SDCARD/bg.png",
       "metadata": {
-        "SystemName": "Arcade (FBN)",
-        "SystemTag": "FBN",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(FC).png",
-      "system_path": "/mnt/SDCARD/Roms/Nintendo Entertainment System (FC)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Nintendo Entertainment System (FC)",
-        "SystemTag": "FC",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(GB).png",
-      "system_path": "/mnt/SDCARD/Roms/Game Boy (GB)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Game Boy (GB)",
-        "SystemTag": "GB",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(GBA).png",
-      "system_path": "/mnt/SDCARD/Roms/Game Boy Advance (GBA)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Game Boy Advance (GBA)",
-        "SystemTag": "GBA",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(GBC).png",
-      "system_path": "/mnt/SDCARD/Roms/Game Boy Color (GBC)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Game Boy Color (GBC)",
-        "SystemTag": "GBC",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(MD).png",
-      "system_path": "/mnt/SDCARD/Roms/Sega Genesis (MD)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Sega Genesis (MD)",
-        "SystemTag": "MD",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(MGBA).png",
-      "system_path": "/mnt/SDCARD/Roms/Game Boy Advance (MGBA)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Game Boy Advance (MGBA)",
-        "SystemTag": "MGBA",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(PS).png",
-      "system_path": "/mnt/SDCARD/Roms/Playstation (PS)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Playstation (PS)",
-        "SystemTag": "PS",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(SFC).png",
-      "system_path": "/mnt/SDCARD/Roms/Super Nintendo Entertainment System (SFC)/.media/bg.png",
-      "metadata": {
-        "SystemName": "Super Nintendo Entertainment System (SFC)",
-        "SystemTag": "SFC",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(SUPA).png",
-      "system_path": "/mnt/SDCARD/Roms/SNES (SUPA)/.media/bg.png",
-      "metadata": {
-        "SystemName": "SNES (SUPA)",
-        "SystemTag": "SUPA",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/Collections.png",
-      "system_path": "/mnt/SDCARD/Collections/.media/bg.png",
-      "metadata": {
-        "SystemName": "Collections",
-        "WallpaperType": "Media"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/Recently Played.png",
-      "system_path": "/mnt/SDCARD/Recently Played/.media/bg.png",
-      "metadata": {
-        "SystemName": "Recently Played",
-        "WallpaperType": "Media"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/Tools.png",
-      "system_path": "/mnt/SDCARD/Tools/tg5040/.media/bg.png",
-      "metadata": {
-        "SystemName": "Tools",
-        "WallpaperType": "Media"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(CPS).png",
-      "system_path": "/mnt/SDCARD/Roms/ (CPS)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "CPS",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(MAME).png",
-      "system_path": "/mnt/SDCARD/Roms/ (MAME)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "MAME",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(N64).png",
-      "system_path": "/mnt/SDCARD/Roms/Nintendo 64 (N64)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "N64",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(NDS).png",
-      "system_path": "/mnt/SDCARD/Roms/Nintendo DS (NDS)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "NDS",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(NEOGEO).png",
-      "system_path": "/mnt/SDCARD/Roms/ (NEOGEO)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "NEOGEO",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(NES).png",
-      "system_path": "/mnt/SDCARD/Roms/ (NES)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "NES",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(PGM).png",
-      "system_path": "/mnt/SDCARD/Roms/ (PGM)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "PGM",
-        "WallpaperType": "System"
-      }
-    },
-    {
-      "theme_path": "SystemWallpapers/(PSP).png",
-      "system_path": "/mnt/SDCARD/Roms/Sony PlayStation Portable (PSP)/.media/bg.png",
-      "metadata": {
-        "SystemName": "",
-        "SystemTag": "PSP",
-        "WallpaperType": "System"
+        "SystemName": "Root",
+        "WallpaperType": "Main"
       }
     }
   ]

@@ -720,10 +720,10 @@ func ExportFonts(name string) error {
 
 	// Define font paths
 	fontPaths := map[string]string{
-		"OG":         "/mnt/SDCARD/.userdata/shared/font2.ttf",
-		"OG.backup":  "/mnt/SDCARD/.userdata/shared/font2.ttf.bak",
-		"Next":       "/mnt/SDCARD/.userdata/shared/font1.ttf",
-		"Next.backup": "/mnt/SDCARD/.userdata/shared/font1.ttf.bak",
+        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",
+        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",
 	}
 
 	// Export each font and update manifest

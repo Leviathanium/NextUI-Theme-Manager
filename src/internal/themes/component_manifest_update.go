@@ -651,20 +651,18 @@ func UpdateFontManifest(componentPath string, logger *Logger) error {
     // Always update component name to match the directory name
     fontManifest.ComponentInfo.Name = componentName
 
-    // Rest of the function remains the same...
+    // Clear existing content data (but preserve component_info)
+    fontManifest.Content.OGReplaced = false
+    fontManifest.Content.NextReplaced = false
+    fontManifest.PathMappings = make(map[string]PathMapping)
 
-	// Clear existing content data (but preserve component_info)
-	fontManifest.Content.OGReplaced = false
-	fontManifest.Content.NextReplaced = false
-	fontManifest.PathMappings = make(map[string]PathMapping)
-
-	// Define system paths for fonts
-	systemPaths := map[string]string{
-		"OG":         "/mnt/SDCARD/.userdata/shared/font2.ttf",
-		"OG.backup":  "/mnt/SDCARD/.userdata/shared/font2.ttf.bak",
-		"Next":       "/mnt/SDCARD/.userdata/shared/font1.ttf",
-		"Next.backup": "/mnt/SDCARD/.userdata/shared/font1.ttf.bak",
-	}
+    // Define system paths for fonts - CORRECTED PATHS
+    systemPaths := map[string]string{
+        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",  // Corrected extension
+        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",  // Corrected extension
+    }
 
 	// Check for each font file
 	fontFiles := []string{

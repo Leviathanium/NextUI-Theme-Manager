@@ -348,67 +348,79 @@ func ImportLEDs(componentPath string) error {
 
 // ImportFonts imports a font component package
 func ImportFonts(componentPath string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting font import: %s", componentPath)
+    logger.DebugFn("Starting font import: %s", componentPath)
 
-	// Load the component manifest
-	manifestObj, err := LoadComponentManifest(componentPath)
-	if err != nil {
-		return fmt.Errorf("error loading font manifest: %w", err)
-	}
+    // Load the component manifest
+    manifestObj, err := LoadComponentManifest(componentPath)
+    if err != nil {
+        return fmt.Errorf("error loading font manifest: %w", err)
+    }
 
-	// Ensure it's the right type
-	manifest, ok := manifestObj.(*FontManifest)
-	if !ok {
-		return fmt.Errorf("invalid manifest type for font component")
-	}
+    // Ensure it's the right type
+    manifest, ok := manifestObj.(*FontManifest)
+    if !ok {
+        return fmt.Errorf("invalid manifest type for font component")
+    }
 
-	// Import fonts based on path mappings
-	for fontName, mapping := range manifest.PathMappings {
-		srcPath := filepath.Join(componentPath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+    // Import fonts based on path mappings
+    for fontName, mapping := range manifest.PathMappings {
+        srcPath := filepath.Join(componentPath, mapping.ThemePath)
+        dstPath := mapping.SystemPath
 
-		// Skip if source file doesn't exist
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			logger.DebugFn("Font file doesn't exist: %s", srcPath)
-			continue
-		}
+        // Skip if source file doesn't exist
+        if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+            logger.DebugFn("Font file doesn't exist: %s", srcPath)
+            continue
+        }
 
-		// If destination exists and we don't have a backup, create one
-		if _, err := os.Stat(dstPath); err == nil {
-			backupPath := dstPath + ".bak"
-			if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-				if err := CopyFile(dstPath, backupPath); err != nil {
-					logger.DebugFn("Warning: Failed to create font backup for %s: %v", fontName, err)
-				} else {
-					logger.DebugFn("Created backup for font %s: %s", fontName, backupPath)
-				}
-			}
-		}
+        // Only create backups for the main font files, not for backup files
+        if !strings.Contains(fontName, "backup") && !strings.Contains(dstPath, "backup") {
+            // If destination exists and we don't have a backup, create one
+            if _, err := os.Stat(dstPath); err == nil {
+                // Determine correct backup path format
+                var backupPath string
+                if strings.HasSuffix(dstPath, "font1.ttf") {
+                    backupPath = "/mnt/SDCARD/.system/res/font1.backup.ttf"
+                } else if strings.HasSuffix(dstPath, "font2.ttf") {
+                    backupPath = "/mnt/SDCARD/.system/res/font2.backup.ttf"
+                } else {
+                    backupPath = dstPath + ".backup.ttf"  // Fallback
+                }
 
-		// Copy the font file
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Failed to copy font %s: %v", fontName, err)
-		} else {
-			logger.DebugFn("Imported font %s to %s", fontName, dstPath)
-		}
-	}
+                if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+                    if err := CopyFile(dstPath, backupPath); err != nil {
+                        logger.DebugFn("Warning: Failed to create font backup for %s: %v", fontName, err)
+                    } else {
+                        logger.DebugFn("Created backup for font %s: %s", fontName, backupPath)
+                    }
+                }
+            }
+        }
 
-	// Update global manifest to track this component
-	componentName := filepath.Base(componentPath)
-	if err := UpdateAppliedComponent(ComponentFont, componentName); err != nil {
-		logger.DebugFn("Warning: Failed to update global manifest: %v", err)
-	}
+        // Copy the font file
+        if err := CopyFile(srcPath, dstPath); err != nil {
+            logger.DebugFn("Warning: Failed to copy font %s: %v", fontName, err)
+        } else {
+            logger.DebugFn("Imported font %s to %s", fontName, dstPath)
+        }
+    }
 
-	logger.DebugFn("Font import completed: %s", componentPath)
+    // Update global manifest to track this component
+    componentName := filepath.Base(componentPath)
+    if err := UpdateAppliedComponent(ComponentFont, componentName); err != nil {
+        logger.DebugFn("Warning: Failed to update global manifest: %v", err)
+    }
 
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Fonts from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
+    logger.DebugFn("Font import completed: %s", componentPath)
 
-	return nil
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Fonts from '%s' applied successfully!", manifest.ComponentInfo.Name), "3")
+
+    return nil
 }
 
 // ImportOverlays imports an overlay component package

@@ -106,6 +106,9 @@ func ExportTheme() error {
     // Export overlays
     exportOverlays(themePath, manifest, systemPaths, logger)
 
+    // Export fonts - add this line
+    exportFonts(themePath, manifest, logger)
+
     // Read and include accent settings directly in manifest
     if err := readAccentSettingsFromSystem(manifest, logger); err != nil {
         logger.DebugFn("Warning: Could not read accent settings: %v", err)
@@ -683,6 +686,66 @@ func exportOverlays(themePath string, manifest *ThemeManifest, systemPaths *syst
             }
         }
     }
+}
+
+// exportFonts scans for and exports system fonts
+// exportFonts scans for and exports system fonts
+func exportFonts(themePath string, manifest *ThemeManifest, logger *Logger) error {
+    logger.DebugFn("Exporting fonts")
+
+    // Create Fonts directory if it doesn't exist
+    fontsDir := filepath.Join(themePath, "Fonts")
+    if err := os.MkdirAll(fontsDir, 0755); err != nil {
+        logger.DebugFn("Error creating Fonts directory: %v", err)
+        return err
+    }
+
+    // Initialize fonts section in manifest
+    manifest.Content.Fonts.Present = false
+    manifest.Content.Fonts.OGReplaced = false
+    manifest.Content.Fonts.NextReplaced = false
+    manifest.PathMappings.Fonts = make(map[string]PathMapping)
+
+    // Define font paths to check - CORRECTED PATHS
+    fontPaths := map[string]string{
+        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",  // Corrected extension
+        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",  // Corrected extension
+    }
+
+    // Check and export each font
+    for fontName, sourcePath := range fontPaths {
+        if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+            logger.DebugFn("Font file not found: %s", sourcePath)
+            continue
+        }
+
+        dstPath := filepath.Join(fontsDir, fontName+".ttf")
+
+        if err := CopyFile(sourcePath, dstPath); err != nil {
+            logger.DebugFn("Warning: Could not copy font %s: %v", fontName, err)
+            continue
+        }
+
+        // Add to manifest
+        manifest.PathMappings.Fonts[fontName] = PathMapping{
+            ThemePath:  "Fonts/" + fontName + ".ttf",
+            SystemPath: sourcePath,
+        }
+
+        // Update content flags
+        manifest.Content.Fonts.Present = true
+        if fontName == "OG" {
+            manifest.Content.Fonts.OGReplaced = true
+        } else if fontName == "Next" {
+            manifest.Content.Fonts.NextReplaced = true
+        }
+
+        logger.DebugFn("Exported font: %s to %s", fontName, dstPath)
+    }
+
+    return nil
 }
 
 // readAccentSettingsFromSystem reads accent settings from the system and updates the manifest

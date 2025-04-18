@@ -611,13 +611,13 @@ func DeconstructFonts(themePath string, manifest *ThemeManifest, componentName s
 		"Next.backup",
 	}
 
-	// Define system paths for fonts
-	systemPaths := map[string]string{
-		"OG":         "/mnt/SDCARD/.userdata/shared/font2.ttf",
-		"OG.backup":  "/mnt/SDCARD/.userdata/shared/font2.ttf.bak",
-		"Next":       "/mnt/SDCARD/.userdata/shared/font1.ttf",
-		"Next.backup": "/mnt/SDCARD/.userdata/shared/font1.ttf.bak",
-	}
+    // Define system paths for fonts - CORRECTED PATHS
+    systemPaths := map[string]string{
+        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",  // Corrected extension
+        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",  // Corrected extension
+    }
 
 	for i, fontPath := range fontPaths {
 		fontName := fontNames[i]

@@ -361,10 +361,4 @@ These mappings support special metadata to help Theme Manager correctly place fi
 
 ## Sources
 
-- @frysee for literally everything
-- @kytz for the work on Noir-Minimal
-- @GreenKraken22 for finding and suggesting arcade-dark
-- @Fujykky for the work on Screens-Thematic
-- Everyone else in the NextUI discord
-- Epic Noir theme from https://github.com/c64-dev/es-theme-epicnoir
-- All artwork and image source rights go to their respective owners.
+
