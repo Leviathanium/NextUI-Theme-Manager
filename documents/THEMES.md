@@ -28,7 +28,7 @@ The fastest way to understand themes:
 
 This file contains essential metadata about your theme:
 
-```
+```json5
 {
   "theme_info": {
     "name": "theme_1",
