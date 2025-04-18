@@ -4,7 +4,7 @@ The NextUI Theme Manager uses component packages to manage specific aspects of d
 
 ## What Are Component Packages?
 
-Component packages are specialized theme elements that focus on a specific customization aspect. Unlike full themes, they only modify a particular part of your device's appearance.
+Component packages are located in `Theme-Manager.pak/Components` and they are specialized theme elements that focus on a specific customization aspect. Unlike full themes, they only modify a particular part of your device's appearance.
 
 There are six types of component packages:
 
