@@ -54,15 +54,15 @@ A comprehensive theming solution for your NextUI device that lets you customize 
 
 ## Theme Structure
 
-Themes are stored as directories with the `.theme` extension and contain all the necessary files to transform your device's appearance. See the [Theme Format Documentation](documentation/THEMES.md) for details on the structure.
+Themes are stored as directories with the `.theme` extension and contain all the necessary files to transform your device's appearance. See the [Theme Format Documentation](documents/THEMES.md) for details on the structure.
 
 ## Component Packages
 
-For more granular control, the Theme Manager supports individual component packages that focus on specific aspects of customization. See the [Component Documentation](documentation/COMPONENTS.md) for more information.
+For more granular control, the Theme Manager supports individual component packages that focus on specific aspects of customization. See the [Component Documentation](documents/COMPONENTS.md) for more information.
 
 ## Creating Custom Themes
 
-Want to build your own theme from scratch? Check out our [Theme Creation Guide](documentation/THEME_BUILDING.md) for a step-by-step walkthrough.
+Want to build your own theme from scratch? Check out our [Theme Creation Guide](documents/THEME_BUILDING.md) for a step-by-step walkthrough.
 
 ## Compatibility
 
