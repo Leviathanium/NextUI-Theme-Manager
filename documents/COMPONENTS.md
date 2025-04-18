@@ -42,7 +42,7 @@ component_name.bg/
 ```
 
 The manifest will contain:
-```json
+```json5
 {
   "component_info": {
     "name": "component_name",
@@ -89,7 +89,7 @@ component_name.icon/
 ```
 
 The manifest will contain:
-```json
+```json5
 {
   "component_info": {
     "name": "component_name",
@@ -130,7 +130,7 @@ component_name.acc/
 ```
 
 The manifest will contain:
-```json
+```json5
 {
   "component_info": {
     "name": "component_name",
@@ -159,7 +159,7 @@ component_name.led/
 ```
 
 The manifest will contain:
-```json
+```json5
 {
   "component_info": {
     "name": "component_name",
@@ -205,7 +205,7 @@ component_name.font/
 ```
 
 The manifest will contain:
-```json
+```json5
 {
   "component_info": {
     "name": "component_name",
@@ -255,7 +255,7 @@ component_name.over/
 ```
 
 The manifest will contain:
-```json
+```json5
 {
   "component_info": {
     "name": "component_name",

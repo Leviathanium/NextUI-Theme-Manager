@@ -77,7 +77,7 @@ To customize the UI color scheme:
 1. Open `manifest.json` in a text editor
 2. Locate the `accent_colors` section
 3. Modify the color values (in hexadecimal format) for each element:
-   ```json
+   ```json5
    "accent_colors": {
      "color1": "0xFFFFFF", // Main UI color
      "color2": "0x9B2257", // Primary accent color
@@ -95,7 +95,7 @@ If you're creating a theme for the TrimUI Brick, you can customize the LED setti
 
 1. Locate the `led_settings` section in `manifest.json`
 2. Modify the settings for each LED zone:
-   ```json
+   ```json5
    "led_settings": {
      "f1_key": {
        "effect": 1,        // Effect type (1-7)
@@ -152,7 +152,7 @@ Now update the `manifest.json` file with your theme information:
 
 1. Locate the `theme_info` section
 2. Update the metadata:
-   ```json
+   ```json5
    "theme_info": {
      "name": "My Awesome Theme",
      "version": "1.0.0",
@@ -163,7 +163,7 @@ Now update the `manifest.json` file with your theme information:
    ```
 3. The `content` section determines what your theme contains. We need to update it properly so that it will scan your `.theme` package and **_automatically populate_** with the correct settings:
 
-```json
+```json5
 "content": {
     "wallpapers": {
       "present": true, <-- Update
@@ -200,7 +200,7 @@ However, if you're creating a custom file organization, or you're sharing your `
 
 To do this, you may update the `manifest.json` to remove all currently-created mappings, as this will reset the paths and prepare it for another users' device, which would look like this:
 
-```json
+```json5
 "path_mappings": {
   "wallpapers": [],
   "icons": [],
