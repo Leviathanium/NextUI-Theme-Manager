@@ -107,131 +107,113 @@ func BrowseComponentsScreen() (string, int) {
 		return "", 1
 	}
 
-	// Map component type name to type constant and extension
-	componentTypeMap := map[string]string{
-		"Wallpapers": themes.ComponentWallpaper,
-		"Icons":      themes.ComponentIcon,
-		"Accents":    themes.ComponentAccent,
-		"Overlays":   themes.ComponentOverlay,
-		"LEDs":       themes.ComponentLED,
-		"Fonts":      themes.ComponentFont,
-	}
+	// Path to catalog.json
+	catalogPath := filepath.Join(cwd, "Catalog", "catalog.json")
 
-	// Map component type to subdirectory name
-	componentDirMap := map[string]string{
-		"Wallpapers": "Wallpapers",
-		"Icons":      "Icons",
-		"Accents":    "Accents",
-		"Overlays":   "Overlays",
-		"LEDs":       "LEDs",
-		"Fonts":      "Fonts",
-	}
-
-	typeConstant := componentTypeMap[componentType]
-	extension := themes.ComponentExtension[typeConstant]
-	componentSubDir := componentDirMap[componentType]
-
-	// Path to component directory where components are stored (inside Components directory)
-	componentsDir := filepath.Join(cwd, "Components", componentSubDir)
-
-	// Ensure directory exists
-	if err := os.MkdirAll(componentsDir, 0755); err != nil {
-		logging.LogDebug("Error creating components directory: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	// Check if catalog exists
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		logging.LogDebug("Catalog file not found. Ask user to sync first.")
+		ui.ShowMessage(fmt.Sprintf("No %s catalog found. Please sync first.", componentType), "3")
 		return "", 1
 	}
 
-	// List available components of the selected type
-	entries, err := os.ReadDir(componentsDir)
+	// Parse the catalog
+	data, err := os.ReadFile(catalogPath)
 	if err != nil {
-		logging.LogDebug("Error reading components directory: %v", err)
+		logging.LogDebug("Error reading catalog file: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
 
-	// Filter for components of the selected type
-	var components []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasSuffix(entry.Name(), extension) {
-			components = append(components, entry.Name())
-		}
+	var catalog themes.CatalogData
+	if err := json.Unmarshal(data, &catalog); err != nil {
+		logging.LogDebug("Error parsing catalog JSON: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+		return "", 1
 	}
 
-	if len(components) == 0 {
-		logging.LogDebug("No %s found", componentType)
-		ui.ShowMessage(fmt.Sprintf("No %s found in Components/%s directory", componentType, componentSubDir), "3")
+	// Map component type to catalog key
+	componentTypeMap := map[string]string{
+		"Wallpapers": "wallpapers",
+		"Icons":      "icons",
+		"Accents":    "accents",
+		"LEDs":       "leds",
+		"Fonts":      "fonts",
+		"Overlays":   "overlays",
+	}
+
+	catalogType := componentTypeMap[componentType]
+	if catalogType == "" {
+		logging.LogDebug("Unknown component type: %s", componentType)
+		ui.ShowMessage(fmt.Sprintf("Unknown component type: %s", componentType), "3")
+		return "", 1
+	}
+
+	// Get components of the selected type
+	components, exists := catalog.Components[catalogType]
+	if !exists || len(components) == 0 {
+		logging.LogDebug("No %s found in catalog", componentType)
+		ui.ShowMessage(fmt.Sprintf("No %s found in catalog", componentType), "3")
 		return "", 1
 	}
 
 	// Get preview images
 	previewImages := make([]ui.GalleryItem, 0, len(components))
-	for _, component := range components {
-		previewPath := filepath.Join(componentsDir, component, "preview.png")
+	for compName, compInfo := range components {
+		// Get preview path - relative path in catalog needs to be converted to absolute
+		previewPath := filepath.Join(cwd, compInfo.PreviewPath)
 
 		// Skip LEDs which don't have preview images
-		if typeConstant == themes.ComponentLED {
+		if componentType == "LEDs" && (previewPath == "" || !fileExists(previewPath)) {
 			// Just use the component name as text
 			previewImages = append(previewImages, ui.GalleryItem{
-				Text: component,
+				Text: fmt.Sprintf("%s by %s", compName, compInfo.Author),
 				BackgroundImage: "", // No background image
 			})
 			continue
 		}
 
-		// Check if preview exists
-		if _, err := os.Stat(previewPath); err == nil {
-			// Use the preview image
-			previewImages = append(previewImages, ui.GalleryItem{
-				Text: component,
-				BackgroundImage: previewPath,
-			})
-		} else {
-			// No preview image, just use the component name
-			previewImages = append(previewImages, ui.GalleryItem{
-				Text: component,
-				BackgroundImage: "", // No background image
-			})
+		// Create a GalleryItem for this component
+		previewItem := ui.GalleryItem{
+			Text:            fmt.Sprintf("%s by %s", compName, compInfo.Author),
+			BackgroundImage: previewPath,
 		}
+
+		previewImages = append(previewImages, previewItem)
 	}
 
-	// Use DisplayImageGallery from presenter.go to display a gallery of preview images
+	// Use DisplayImageGallery to display a gallery of preview images
 	selection, exitCode := ui.DisplayImageGallery(previewImages, fmt.Sprintf("Browse %s", componentType))
 
 	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
+
+	// Extract component name from selection (remove author info)
+	if selection != "" {
+		parts := strings.Split(selection, " by ")
+		selection = parts[0]
+	}
+
 	return selection, exitCode
 }
 
 // HandleBrowseComponents processes the component selection
 func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 	logging.LogDebug("HandleBrowseComponents called with selection: '%s', exitCode: %d", selection, exitCode)
+	componentType := app.GetSelectedComponentType()
 
 	switch exitCode {
 	case 0:
 		// User selected a component
 		if selection != "" {
-			// Get the component type and map to directory
-			componentType := app.GetSelectedComponentType()
-			componentDirMap := map[string]string{
-				"Wallpapers": "Wallpapers",
-				"Icons":      "Icons",
-				"Accents":    "Accents",
-				"Overlays":   "Overlays",
-				"LEDs":       "LEDs",
-				"Fonts":      "Fonts",
-			}
-			componentSubDir := componentDirMap[componentType]
-
-			// Get the component path
-			cwd, err := os.Getwd()
-			if err != nil {
-				logging.LogDebug("Error getting current directory: %v", err)
+			// First, download the component package
+			if err := themes.DownloadComponentPackage(componentType, selection); err != nil {
+				logging.LogDebug("Error downloading component: %v", err)
 				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 				return app.Screens.ComponentOptions
 			}
 
-			componentPath := filepath.Join(cwd, "Components", componentSubDir, selection)
-
 			// Import/apply the selected component
+			componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
 			if err := themes.ImportComponent(componentPath); err != nil {
 				logging.LogDebug("Error importing component: %v", err)
 				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
@@ -245,6 +227,12 @@ func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 	}
 
 	return app.Screens.BrowseComponents
+}
+
+// Helper function to check if a file exists
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // ExportComponentScreen prompts for component name and exports the selected component type
@@ -302,63 +290,64 @@ func BrowseThemesScreen() (string, int) {
 		return "", 1
 	}
 
-	// Path to Themes directory
-	themesDir := filepath.Join(cwd, "Themes")
+	// Path to catalog.json
+	catalogPath := filepath.Join(cwd, "Catalog", "catalog.json")
 
-	// Ensure directory exists
-	if err := os.MkdirAll(themesDir, 0755); err != nil {
-		logging.LogDebug("Error creating themes directory: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	// Check if catalog exists
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		logging.LogDebug("Catalog file not found. Ask user to sync first.")
+		ui.ShowMessage("No theme catalog found. Please sync themes first.", "3")
 		return "", 1
 	}
 
-	// List available themes
-	entries, err := os.ReadDir(themesDir)
+	// Parse the catalog
+	data, err := os.ReadFile(catalogPath)
 	if err != nil {
-		logging.LogDebug("Error reading themes directory: %v", err)
+		logging.LogDebug("Error reading catalog file: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
 		return "", 1
 	}
 
-	// Filter for theme directories
-	var themes []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".theme") {
-			themes = append(themes, entry.Name())
-		}
+	var catalog themes.CatalogData
+	if err := json.Unmarshal(data, &catalog); err != nil {
+		logging.LogDebug("Error parsing catalog JSON: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+		return "", 1
 	}
 
-	if len(themes) == 0 {
-		logging.LogDebug("No themes found")
-		ui.ShowMessage("No themes found in Themes directory", "3")
+	// Check if there are themes
+	if len(catalog.Themes) == 0 {
+		logging.LogDebug("No themes found in catalog")
+		ui.ShowMessage("No themes found in catalog", "3")
 		return "", 1
 	}
 
 	// Get preview images
-	previewImages := make([]ui.GalleryItem, 0, len(themes))
-	for _, theme := range themes {
-		previewPath := filepath.Join(themesDir, theme, "preview.png")
+	previewImages := make([]ui.GalleryItem, 0, len(catalog.Themes))
+	for themeName, themeInfo := range catalog.Themes {
+		// Get preview path - relative path in catalog needs to be converted to absolute
+		previewPath := filepath.Join(cwd, themeInfo.PreviewPath)
 
-		// Check if preview exists
-		if _, err := os.Stat(previewPath); err == nil {
-			// Use the preview image
-			previewImages = append(previewImages, ui.GalleryItem{
-				Text: theme,
-				BackgroundImage: previewPath,
-			})
-		} else {
-			// No preview image, just use the theme name
-			previewImages = append(previewImages, ui.GalleryItem{
-				Text: theme,
-				BackgroundImage: "", // No background image
-			})
+		// Create a GalleryItem for this theme
+		previewItem := ui.GalleryItem{
+			Text:            fmt.Sprintf("%s by %s", themeName, themeInfo.Author),
+			BackgroundImage: previewPath,
 		}
+
+		previewImages = append(previewImages, previewItem)
 	}
 
-	// Use DisplayImageGallery from presenter.go to display a gallery of preview images
+	// Use DisplayImageGallery to display a gallery of preview images
 	selection, exitCode := ui.DisplayImageGallery(previewImages, "Browse Themes")
 
 	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
+
+	// Extract theme name from selection (remove author info)
+	if selection != "" {
+		parts := strings.Split(selection, " by ")
+		selection = parts[0]
+	}
+
 	return selection, exitCode
 }
 
@@ -370,6 +359,13 @@ func HandleBrowseThemes(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected a theme
 		if selection != "" {
+			// First, download the theme package
+			if err := themes.DownloadThemePackage(selection); err != nil {
+				logging.LogDebug("Error downloading theme: %v", err)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+				return app.Screens.MainMenu
+			}
+
 			// Set the selected theme
 			app.SetSelectedTheme(selection)
 			return app.Screens.ThemeImportConfirm
@@ -384,8 +380,6 @@ func HandleBrowseThemes(selection string, exitCode int) app.Screen {
 	return app.Screens.BrowseThemes
 }
 
-// DownloadThemesScreen and DownloadComponentsScreen are placeholders
-// for future implementation of theme/component downloading
 
 // DownloadThemesScreen is a placeholder for theme downloading
 func DownloadThemesScreen() (string, int) {
