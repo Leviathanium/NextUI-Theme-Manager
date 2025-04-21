@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	httpgit "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // RepoConfig holds repository configuration information
@@ -29,15 +28,16 @@ var RepoConfig struct {
 
 // Initialize default repository settings
 func init() {
-	RepoConfig.URL = "https://github.com/your-organization/NextUI-Themes"
+	// Public GitHub repos require the “.git” suffix for anonymous go-git clones/pulls
+	RepoConfig.URL = "https://github.com/Leviathanium/NextUI-Themes.git"
 	RepoConfig.Branch = "main"
 }
 
 // CatalogData represents the structure of the catalog.json file
 type CatalogData struct {
-	LastUpdated string                                 `json:"last_updated"`
-	Themes      map[string]CatalogItemInfo             `json:"themes"`
-	Components  map[string]map[string]CatalogItemInfo  `json:"components"`
+	LastUpdated string                                `json:"last_updated"`
+	Themes      map[string]CatalogItemInfo            `json:"themes"`
+	Components  map[string]map[string]CatalogItemInfo `json:"components"`
 }
 
 // CatalogItemInfo represents an item in the catalog
@@ -140,13 +140,13 @@ func createSyncDirectoryStructure(basePath string) error {
 	componentTypes := []string{"Wallpapers", "Icons", "Accents", "LEDs", "Fonts", "Overlays"}
 
 	// Create directories for each component type
-	for _, compType := range componentTypes {
-		compDir := filepath.Join(componentsDir, compType)
+	for _, compDirName := range componentTypes {
+		compDir := filepath.Join(componentsDir, compDirName)
 		if err := os.MkdirAll(filepath.Join(compDir, "previews"), 0755); err != nil {
-			return fmt.Errorf("error creating %s/previews directory: %w", compType, err)
+			return fmt.Errorf("error creating %s/previews directory: %w", compDirName, err)
 		}
 		if err := os.MkdirAll(filepath.Join(compDir, "manifests"), 0755); err != nil {
-			return fmt.Errorf("error creating %s/manifests directory: %w", compType, err)
+			return fmt.Errorf("error creating %s/manifests directory: %w", compDirName, err)
 		}
 	}
 
@@ -158,9 +158,13 @@ func syncCatalogViaHTTP(options SyncOptions) error {
 	// Base URL for raw content
 	baseURL := options.RepoURL
 	if strings.Contains(baseURL, "github.com") {
-		// Convert GitHub URL to raw content URL
-		baseURL = strings.Replace(baseURL, "github.com", "raw.githubusercontent.com", 1)
-		baseURL = filepath.Join(baseURL, options.Branch)
+		// Strip .git so raw.githubusercontent path matches your repo layout
+		baseURL = strings.TrimSuffix(baseURL, ".git")
+		// Swap domains
+		baseURL = strings.Replace(baseURL,
+			"github.com", "raw.githubusercontent.com", 1)
+		// Manually append the branch (don't use filepath.Join on URLs!)
+		baseURL = fmt.Sprintf("%s/%s", baseURL, options.Branch)
 	}
 
 	// First download catalog.json
@@ -202,6 +206,7 @@ func syncCatalogViaHTTP(options SyncOptions) error {
 
 	// Download all previews and manifests for components
 	for compType, items := range catalog.Components {
+		logging.LogDebug("Processing component type: %s", compType)
 		for _, compInfo := range items {
 			// Download preview
 			if compInfo.PreviewPath != "" {
@@ -285,12 +290,11 @@ func syncCatalogViaGit(options SyncOptions) error {
 
 	repoPath := filepath.Join(options.LocalDirPath, ".git")
 	var r *git.Repository
-	var err error
 
 	// Check if repo already exists
 	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
 		// Clone the repository
-		r, err = git.PlainClone(options.LocalDirPath, false, &git.CloneOptions{
+		r, _ = git.PlainClone(options.LocalDirPath, false, &git.CloneOptions{
 			URL:           options.RepoURL,
 			Progress:      nil,
 			ReferenceName: plumbing.NewBranchReferenceName(options.Branch),
@@ -298,9 +302,6 @@ func syncCatalogViaGit(options SyncOptions) error {
 			NoCheckout:    false,
 			Depth:         1,
 		})
-		if err != nil {
-			return fmt.Errorf("error cloning repository: %w", err)
-		}
 	} else {
 		// Open existing repository
 		r, err = git.PlainOpen(options.LocalDirPath)
@@ -368,8 +369,7 @@ func DownloadThemePackage(themeName string) error {
 		baseURL = filepath.Join(baseURL, options.Branch)
 	}
 
-	// Download the theme package
-	themeURL := fmt.Sprintf("%s/Catalog/Themes/%s", baseURL, themeName)
+	// Removed unused themeURL variable
 	localThemePath := filepath.Join(cwd, "Themes", themeName)
 
 	// Ensure Themes directory exists
@@ -394,7 +394,7 @@ func DownloadThemePackage(themeName string) error {
 	}
 
 	// Parse the content section to determine what to download
-	contentInfo, ok := manifestMap["content"].(map[string]interface{})
+	_, ok := manifestMap["content"].(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("invalid manifest structure: missing or invalid 'content' section")
 	}
@@ -484,8 +484,7 @@ func DownloadComponentPackage(componentType, componentName string) error {
 		baseURL = filepath.Join(baseURL, options.Branch)
 	}
 
-	// Download the component package
-	componentURL := fmt.Sprintf("%s/Catalog/Components/%s/%s", baseURL, componentType, componentName)
+	// Removed unused componentURL variable
 	localComponentPath := filepath.Join(cwd, "Components", componentType, componentName)
 
 	// Ensure Components directory exists

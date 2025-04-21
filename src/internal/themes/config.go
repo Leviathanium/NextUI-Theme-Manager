@@ -22,7 +22,7 @@ type ConfigData struct {
 
 // Default configuration values
 const (
-	DefaultRepoURL = "https://github.com/your-organization/NextUI-Themes"
+	DefaultRepoURL = "https://github.com/Leviathanium/NextUI-Themes"
 	DefaultBranch  = "main"
 	DefaultVersion = "1.0.0"
 )

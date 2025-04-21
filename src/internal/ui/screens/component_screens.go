@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
+    "encoding/json"
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/themes"
@@ -82,7 +82,7 @@ func HandleComponentOptions(selection string, exitCode int) app.Screen {
 		case "Browse":
 			return app.Screens.BrowseComponents
 		case "Download":
-			return app.Screens.DownloadComponents
+			return app.Screens.SyncComponents
 		case "Export":
 			return app.Screens.ExportComponent
 		}
