@@ -14,12 +14,13 @@ import (
 
 // MainMenuScreen displays the main menu with expanded options
 func MainMenuScreen() (string, int) {
-	// Menu items - expanded with new component functionality
+	// Updated menu items with clearer naming
 	menu := []string{
-		"Browse Themes",
-		"Sync Themes",  // Changed from "Download Themes" to "Sync Themes"
+		"Installed Themes",   // NEW: Browse locally installed themes
+		"Download Themes",    // RENAMED: Browse and download themes from catalog
+		"Sync Catalog",       // RENAMED: Update the entire catalog from repository
 		"Components",
-		"Export", // Renamed from "Export Current Settings" to "Exports"
+		"Export",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
@@ -33,13 +34,17 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected an option
 		switch selection {
-		case "Browse Themes":
-			logging.LogDebug("Selected Browse Themes")
-			return app.Screens.BrowseThemes
+		case "Installed Themes":
+			logging.LogDebug("Selected Installed Themes")
+			return app.Screens.InstalledThemes
 
-		case "Sync Themes":  // Updated to match new menu text
-			logging.LogDebug("Selected Sync Themes")
-			return app.Screens.SyncThemes  // Will need to be defined in app/state.go
+		case "Download Themes":
+			logging.LogDebug("Selected Download Themes")
+			return app.Screens.DownloadThemes
+
+		case "Sync Catalog":
+			logging.LogDebug("Selected Sync Catalog")
+			return app.Screens.SyncCatalog
 
 		case "Components":
 			logging.LogDebug("Selected Components")

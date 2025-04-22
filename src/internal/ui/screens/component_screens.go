@@ -1,5 +1,5 @@
 // src/internal/ui/screens/component_screens.go
-// Implements UI screens for component management
+// Implements UI screens for component management - Updated with Installed/Download distinction
 
 package screens
 
@@ -25,7 +25,7 @@ func ComponentsMenuScreen() (string, int) {
 		"Overlays",
 		"LEDs",
 		"Fonts",
-		"Deconstruct...", // Added back with ellipsis to indicate it performs an action
+		"Deconstruct...",
 	}
 
 	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Components")
@@ -59,9 +59,10 @@ func HandleComponentsMenu(selection string, exitCode int) app.Screen {
 func ComponentOptionsScreen() (string, int) {
 	componentType := app.GetSelectedComponentType()
 
+	// Updated menu options - removed redundant "Sync Catalog" option
 	menu := []string{
-		"Browse",
-		"Download",
+		"Installed",      // Browse locally installed components
+		"Download",       // Browse and download components from catalog
 		"Export",
 	}
 
@@ -79,10 +80,10 @@ func HandleComponentOptions(selection string, exitCode int) app.Screen {
 
 		// Process based on selected option
 		switch selection {
-		case "Browse":
-			return app.Screens.BrowseComponents
+		case "Installed":
+			return app.Screens.InstalledComponents
 		case "Download":
-			return app.Screens.SyncComponents
+			return app.Screens.DownloadComponents
 		case "Export":
 			return app.Screens.ExportComponent
 		}
@@ -95,8 +96,146 @@ func HandleComponentOptions(selection string, exitCode int) app.Screen {
 	return app.Screens.ComponentOptions
 }
 
-// BrowseComponentsScreen displays a browseable list of available components of the selected type
-func BrowseComponentsScreen() (string, int) {
+// InstalledComponentsScreen displays a browseable list of locally installed components of the selected type
+func InstalledComponentsScreen() (string, int) {
+	componentType := app.GetSelectedComponentType()
+
+	// Get current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+		return "", 1
+	}
+
+	// Path to Components directory for the selected type
+	componentsDir := filepath.Join(cwd, "Components", componentType)
+
+	// Check if directory exists
+	if _, err := os.Stat(componentsDir); os.IsNotExist(err) {
+		logging.LogDebug("Components directory not found: %s", componentsDir)
+		ui.ShowMessage(fmt.Sprintf("No %s components found.", componentType), "3")
+		return "", 1
+	}
+
+	// List available components
+	entries, err := os.ReadDir(componentsDir)
+	if err != nil {
+		logging.LogDebug("Error reading components directory: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+		return "", 1
+	}
+
+	// Filter for component directories with appropriate extension
+	componentExt := ""
+	switch componentType {
+	case "Wallpapers":
+		componentExt = ".bg"
+	case "Icons":
+		componentExt = ".icon"
+	case "Accents":
+		componentExt = ".acc"
+	case "LEDs":
+		componentExt = ".led"
+	case "Fonts":
+		componentExt = ".font"
+	case "Overlays":
+		componentExt = ".over"
+	}
+
+	var componentList []string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasSuffix(entry.Name(), componentExt) {
+			componentList = append(componentList, entry.Name())
+		}
+	}
+
+	if len(componentList) == 0 {
+		logging.LogDebug("No %s components found", componentType)
+		ui.ShowMessage(fmt.Sprintf("No installed %s components found.", componentType), "3")
+		return "", 1
+	}
+
+	// Get preview images for gallery display
+	previewImages := make([]ui.GalleryItem, 0, len(componentList))
+	for _, compName := range componentList {
+		compPath := filepath.Join(componentsDir, compName)
+		previewPath := filepath.Join(compPath, "preview.png")
+		manifestPath := filepath.Join(compPath, "manifest.json")
+
+		// Default text in case manifest can't be read
+		text := compName
+
+		// Try to read manifest for author info
+		if fileExists(manifestPath) {
+			if data, err := os.ReadFile(manifestPath); err == nil {
+				var manifest map[string]interface{}
+				if err := json.Unmarshal(data, &manifest); err == nil {
+					if compInfo, ok := manifest["component_info"].(map[string]interface{}); ok {
+						if author, ok := compInfo["author"].(string); ok {
+							text = fmt.Sprintf("%s by %s", compName, author)
+						}
+					}
+				}
+			}
+		}
+
+		// Create gallery item with or without preview image
+		if fileExists(previewPath) {
+			previewImages = append(previewImages, ui.GalleryItem{
+				Text:            text,
+				BackgroundImage: previewPath,
+			})
+		} else {
+			previewImages = append(previewImages, ui.GalleryItem{
+				Text:            text,
+				BackgroundImage: "", // No background image
+			})
+		}
+	}
+
+	// Use DisplayImageGallery to display a gallery of preview images
+	title := fmt.Sprintf("Installed %s", componentType)
+	selection, exitCode := ui.DisplayImageGallery(previewImages, title)
+
+	// Extract component name from selection (remove author info)
+	if selection != "" {
+		parts := strings.Split(selection, " by ")
+		selection = parts[0]
+	}
+
+	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
+	return selection, exitCode
+}
+
+// HandleInstalledComponents processes the selection of an installed component
+func HandleInstalledComponents(selection string, exitCode int) app.Screen {
+	logging.LogDebug("HandleInstalledComponents called with selection: '%s', exitCode: %d", selection, exitCode)
+	componentType := app.GetSelectedComponentType()
+
+	switch exitCode {
+	case 0:
+		// User selected a component to apply
+		if selection != "" {
+			// Import/apply the selected component
+			componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
+			if err := themes.ImportComponent(componentPath); err != nil {
+				logging.LogDebug("Error importing component: %v", err)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			}
+		}
+		return app.Screens.ComponentOptions
+
+	case 1, 2:
+		// User pressed cancel or back
+		return app.Screens.ComponentOptions
+	}
+
+	return app.Screens.InstalledComponents
+}
+
+// DownloadComponentsScreen displays browseable list of components available in the catalog
+func DownloadComponentsScreen() (string, int) {
 	componentType := app.GetSelectedComponentType()
 
 	// Get current directory
@@ -113,7 +252,7 @@ func BrowseComponentsScreen() (string, int) {
 	// Check if catalog exists
 	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
 		logging.LogDebug("Catalog file not found. Ask user to sync first.")
-		ui.ShowMessage(fmt.Sprintf("No %s catalog found. Please sync first.", componentType), "3")
+		ui.ShowMessage(fmt.Sprintf("No %s catalog found. Please sync catalog first.", componentType), "3")
 		return "", 1
 	}
 
@@ -197,7 +336,7 @@ func BrowseComponentsScreen() (string, int) {
 	}
 
 	// Use DisplayImageGallery to display a gallery of preview images
-	selection, exitCode := ui.DisplayImageGallery(previewImages, fmt.Sprintf("Browse %s", componentType))
+	selection, exitCode := ui.DisplayImageGallery(previewImages, fmt.Sprintf("Download %s", componentType))
 
 	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
 
@@ -214,9 +353,9 @@ func BrowseComponentsScreen() (string, int) {
 	return selection, exitCode
 }
 
-// HandleBrowseComponents processes the component selection
-func HandleBrowseComponents(selection string, exitCode int) app.Screen {
-	logging.LogDebug("HandleBrowseComponents called with selection: '%s', exitCode: %d", selection, exitCode)
+// HandleDownloadComponents processes the component download selection
+func HandleDownloadComponents(selection string, exitCode int) app.Screen {
+	logging.LogDebug("HandleDownloadComponents called with selection: '%s', exitCode: %d", selection, exitCode)
 	componentType := app.GetSelectedComponentType()
 
 	switch exitCode {
@@ -238,11 +377,21 @@ func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 				logging.LogDebug("Component '%s' already installed, skipping download", selection)
 			}
 
-			// Import/apply the selected component
-			componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
-			if err := themes.ImportComponent(componentPath); err != nil {
-				logging.LogDebug("Error importing component: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			// Prompt user if they want to apply this component now
+			message := fmt.Sprintf("Apply %s '%s' now?", componentType, selection)
+			options := []string{
+				"Yes",
+				"No",
+			}
+			result, promptCode := ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
+
+			if promptCode == 0 && result == "Yes" {
+				// Import/apply the selected component
+				componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
+				if err := themes.ImportComponent(componentPath); err != nil {
+					logging.LogDebug("Error importing component: %v", err)
+					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+				}
 			}
 		}
 		return app.Screens.ComponentOptions
@@ -252,13 +401,7 @@ func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 		return app.Screens.ComponentOptions
 	}
 
-	return app.Screens.BrowseComponents
-}
-
-// Helper function to check if a file exists
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+	return app.Screens.DownloadComponents
 }
 
 // ExportComponentScreen prompts for component name and exports the selected component type
@@ -306,147 +449,8 @@ func HandleExportComponent(selection string, exitCode int) app.Screen {
 	return app.Screens.ComponentOptions
 }
 
-// BrowseThemesScreen displays a browseable list of available themes
-func BrowseThemesScreen() (string, int) {
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		logging.LogDebug("Error getting current directory: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-		return "", 1
-	}
-
-	// Path to catalog.json
-	catalogPath := filepath.Join(cwd, "Catalog", "catalog.json")
-
-	// Check if catalog exists
-	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
-		logging.LogDebug("Catalog file not found. Ask user to sync first.")
-		ui.ShowMessage("No theme catalog found. Please sync themes first.", "3")
-		return "", 1
-	}
-
-	// Parse the catalog
-	data, err := os.ReadFile(catalogPath)
-	if err != nil {
-		logging.LogDebug("Error reading catalog file: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-		return "", 1
-	}
-
-	var catalog themes.CatalogData
-	if err := json.Unmarshal(data, &catalog); err != nil {
-		logging.LogDebug("Error parsing catalog JSON: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-		return "", 1
-	}
-
-	// Check if there are themes
-	if len(catalog.Themes) == 0 {
-		logging.LogDebug("No themes found in catalog")
-		ui.ShowMessage("No themes found in catalog", "3")
-		return "", 1
-	}
-
-	// Get preview images
-	previewImages := make([]ui.GalleryItem, 0, len(catalog.Themes))
-	for themeName, themeInfo := range catalog.Themes {
-		// Check if theme already exists locally
-		localThemePath := filepath.Join(cwd, "Themes", themeName)
-		alreadyInstalled := fileExists(localThemePath)
-
-		// Get preview path - relative path in catalog needs to be converted to absolute
-		previewPath := filepath.Join(cwd, themeInfo.PreviewPath)
-
-		// Create text with installed indicator if needed
-		text := fmt.Sprintf("%s by %s", themeName, themeInfo.Author)
-		if alreadyInstalled {
-			text = "[Installed] " + text
-		}
-
-		// Create a GalleryItem for this theme
-		previewItem := ui.GalleryItem{
-			Text:            text,
-			BackgroundImage: previewPath,
-		}
-
-		previewImages = append(previewImages, previewItem)
-	}
-
-	// Use DisplayImageGallery to display a gallery of preview images
-	selection, exitCode := ui.DisplayImageGallery(previewImages, "Browse Themes")
-
-	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
-
-	// Extract theme name from selection (remove author info and installed indicator)
-	if selection != "" {
-		// Remove "[Installed] " prefix if present
-		selection = strings.TrimPrefix(selection, "[Installed] ")
-
-		// Split at " by " and take the first part
-		parts := strings.Split(selection, " by ")
-		selection = parts[0]
-	}
-
-	return selection, exitCode
-}
-
-// HandleBrowseThemes processes the theme selection
-func HandleBrowseThemes(selection string, exitCode int) app.Screen {
-	logging.LogDebug("HandleBrowseThemes called with selection: '%s', exitCode: %d", selection, exitCode)
-
-	switch exitCode {
-	case 0:
-		// User selected a theme
-		if selection != "" {
-			// Check if theme already exists locally
-			cwd := app.GetWorkingDir()
-			localThemePath := filepath.Join(cwd, "Themes", selection)
-
-			if !fileExists(localThemePath) {
-				// Download the theme package if not already installed
-				if err := themes.DownloadThemePackage(selection); err != nil {
-					logging.LogDebug("Error downloading theme: %v", err)
-					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-					return app.Screens.MainMenu
-				}
-			} else {
-				logging.LogDebug("Theme '%s' already installed, skipping download", selection)
-			}
-
-			// Set the selected theme
-			app.SetSelectedTheme(selection)
-			return app.Screens.ThemeImportConfirm
-		}
-		return app.Screens.MainMenu
-
-	case 1, 2:
-		// User pressed cancel or back
-		return app.Screens.MainMenu
-	}
-
-	return app.Screens.BrowseThemes
-}
-
-
-// DownloadThemesScreen is a placeholder for theme downloading
-func DownloadThemesScreen() (string, int) {
-	ui.ShowMessage("Theme downloading not implemented yet", "3")
-	return "", 0
-}
-
-// HandleDownloadThemes processes the theme download result
-func HandleDownloadThemes(selection string, exitCode int) app.Screen {
-	return app.Screens.MainMenu
-}
-
-// DownloadComponentsScreen is a placeholder for component downloading
-func DownloadComponentsScreen() (string, int) {
-	ui.ShowMessage("Component downloading not implemented yet", "3")
-	return "", 0
-}
-
-// HandleDownloadComponents processes the component download result
-func HandleDownloadComponents(selection string, exitCode int) app.Screen {
-	return app.Screens.ComponentOptions
+// Helper function to check if a file exists
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

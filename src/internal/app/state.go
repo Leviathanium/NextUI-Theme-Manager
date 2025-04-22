@@ -10,18 +10,20 @@ import (
 // Screen represents the different UI screens
 type Screen int
 
-// Expanded screen constants to include sync-related screens
+// Expanded screen constants to include installed themes and components screens
 const (
 	MainMenu Screen = iota + 1
+	InstalledThemes      // NEW: Browse local themes
+	DownloadThemes       // RENAMED: Browse downloadable themes from catalog
+	SyncCatalog          // RENAMED: Sync the themes catalog
 	ThemeImport
 	ThemeImportConfirm
 	ThemeExport
-	BrowseThemes
-	SyncThemes           // Added SyncThemes instead of DownloadThemes
 	ComponentsMenu
 	ComponentOptions
-	BrowseComponents
-	SyncComponents       // Added SyncComponents instead of DownloadComponents
+	InstalledComponents  // NEW: Browse locally installed components
+	DownloadComponents   // RENAMED: Browse downloadable components from catalog
+	SyncComponents       // UNCHANGED but renamed for clarity
 	ExportComponent
 	Deconstruction
 	DeconstructConfirm
@@ -30,15 +32,17 @@ const (
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
 	MainMenu           Screen
+	InstalledThemes    Screen // NEW
+	DownloadThemes     Screen // RENAMED
+	SyncCatalog        Screen // RENAMED
 	ThemeImport        Screen
 	ThemeImportConfirm Screen
 	ThemeExport        Screen
-	BrowseThemes       Screen
-	SyncThemes         Screen  // Updated from DownloadThemes to SyncThemes
 	ComponentsMenu     Screen
 	ComponentOptions   Screen
-	BrowseComponents   Screen
-	SyncComponents     Screen  // Updated from DownloadComponents to SyncComponents
+	InstalledComponents Screen // NEW
+	DownloadComponents Screen // RENAMED
+	SyncComponents     Screen
 	ExportComponent    Screen
 	Deconstruction     Screen
 	DeconstructConfirm Screen
@@ -56,15 +60,17 @@ type appState struct {
 var (
 	Screens = ScreenEnum{
 		MainMenu:           MainMenu,
+		InstalledThemes:    InstalledThemes,    // NEW
+		DownloadThemes:     DownloadThemes,     // RENAMED
+		SyncCatalog:        SyncCatalog,        // RENAMED
 		ThemeImport:        ThemeImport,
 		ThemeImportConfirm: ThemeImportConfirm,
 		ThemeExport:        ThemeExport,
-		BrowseThemes:       BrowseThemes,
-		SyncThemes:         SyncThemes,         // Updated from DownloadThemes to SyncThemes
 		ComponentsMenu:     ComponentsMenu,
 		ComponentOptions:   ComponentOptions,
-		BrowseComponents:   BrowseComponents,
-		SyncComponents:     SyncComponents,     // Updated from DownloadComponents to SyncComponents
+		InstalledComponents: InstalledComponents, // NEW
+		DownloadComponents: DownloadComponents,   // RENAMED
+		SyncComponents:     SyncComponents,
 		ExportComponent:    ExportComponent,
 		Deconstruction:     Deconstruction,
 		DeconstructConfirm: DeconstructConfirm,

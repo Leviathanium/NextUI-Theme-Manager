@@ -1,5 +1,5 @@
 // src/cmd/theme-manager/main.go
-// Expanded main entry point for the NextUI Theme Manager application
+// Main entry point for the NextUI Theme Manager application
 
 package main
 
@@ -78,123 +78,121 @@ func main() {
 
 	logging.LogDebug("Starting main loop")
 
-	// Part of src/cmd/theme-manager/main.go that needs to be updated
-    // This would replace the existing switch cases in the main application loop
+	// Main application loop
+	for {
+		var selection string
+		var exitCode int
+		var nextScreen app.Screen
 
-    // Main application loop - update with new screens
-    for {
-        var selection string
-        var exitCode int
-        var nextScreen app.Screen
+		// Log current screen
+		currentScreen := app.GetCurrentScreen()
+		logging.LogDebug("Current screen: %d", currentScreen)
 
-        // Log current screen
-        currentScreen := app.GetCurrentScreen()
-        logging.LogDebug("Current screen: %d", currentScreen)
+		// Ensure screen value is valid
+		if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.DeconstructConfirm {
+			logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
+			app.SetCurrentScreen(app.Screens.MainMenu)
+			continue
+		}
 
-        // Ensure screen value is valid
-        if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.DeconstructConfirm {
-            logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
-            app.SetCurrentScreen(app.Screens.MainMenu)
-            continue
-        }
+		// Process current screen
+		switch currentScreen {
+		case app.Screens.MainMenu:
+			logging.LogDebug("Showing main menu")
+			selection, exitCode = screens.MainMenuScreen()
+			nextScreen = screens.HandleMainMenu(selection, exitCode)
 
-        // Process current screen
-        switch currentScreen {
-        case app.Screens.MainMenu:
-            logging.LogDebug("Showing main menu")
-            selection, exitCode = screens.MainMenuScreen()
-            nextScreen = screens.HandleMainMenu(selection, exitCode)
-            logging.LogDebug("Main menu returned next screen: %d", nextScreen)
+		// New and renamed screens
+		case app.Screens.InstalledThemes:
+			logging.LogDebug("Showing installed themes screen")
+			selection, exitCode = screens.InstalledThemesScreen()
+			nextScreen = screens.HandleInstalledThemes(selection, exitCode)
 
-        case app.Screens.ThemeImport:
-            logging.LogDebug("Showing theme import selection")
-            selection, exitCode = screens.ThemeImportScreen()
-            nextScreen = screens.HandleThemeImport(selection, exitCode)
-            logging.LogDebug("Theme import returned next screen: %d", nextScreen)
+		case app.Screens.DownloadThemes:
+			logging.LogDebug("Showing download themes screen")
+			selection, exitCode = screens.DownloadThemesScreen()
+			nextScreen = screens.HandleDownloadThemes(selection, exitCode)
 
-        case app.Screens.ThemeImportConfirm:
-            logging.LogDebug("Showing theme import confirmation")
-            selection, exitCode = screens.ThemeImportConfirmScreen()
-            nextScreen = screens.HandleThemeImportConfirm(selection, exitCode)
-            logging.LogDebug("Theme import confirmation returned next screen: %d", nextScreen)
+		case app.Screens.SyncCatalog:
+			logging.LogDebug("Showing sync catalog screen")
+			selection, exitCode = screens.SyncCatalogScreen()
+			nextScreen = screens.HandleSyncCatalog(selection, exitCode)
 
-        case app.Screens.ThemeExport:
-            logging.LogDebug("Showing theme export screen")
-            selection, exitCode = screens.ThemeExportScreen()
-            nextScreen = screens.HandleThemeExport(selection, exitCode)
-            logging.LogDebug("Theme export returned next screen: %d", nextScreen)
+		// Original screens
+		case app.Screens.ThemeImport:
+			logging.LogDebug("Showing theme import selection")
+			selection, exitCode = screens.ThemeImportScreen()
+			nextScreen = screens.HandleThemeImport(selection, exitCode)
 
-        case app.Screens.BrowseThemes:
-            logging.LogDebug("Showing browse themes screen")
-            selection, exitCode = screens.BrowseThemesScreen()
-            nextScreen = screens.HandleBrowseThemes(selection, exitCode)
-            logging.LogDebug("Browse themes returned next screen: %d", nextScreen)
+		case app.Screens.ThemeImportConfirm:
+			logging.LogDebug("Showing theme import confirmation")
+			selection, exitCode = screens.ThemeImportConfirmScreen()
+			nextScreen = screens.HandleThemeImportConfirm(selection, exitCode)
 
-        case app.Screens.SyncThemes:
-            logging.LogDebug("Showing sync themes screen")
-            selection, exitCode = screens.SyncThemesScreen()
-            nextScreen = screens.HandleSyncThemes(selection, exitCode)
-            logging.LogDebug("Sync themes returned next screen: %d", nextScreen)
+		case app.Screens.ThemeExport:
+			logging.LogDebug("Showing theme export screen")
+			selection, exitCode = screens.ThemeExportScreen()
+			nextScreen = screens.HandleThemeExport(selection, exitCode)
 
-        case app.Screens.ComponentsMenu:
-            logging.LogDebug("Showing components menu screen")
-            selection, exitCode = screens.ComponentsMenuScreen()
-            nextScreen = screens.HandleComponentsMenu(selection, exitCode)
-            logging.LogDebug("Components menu returned next screen: %d", nextScreen)
+		case app.Screens.ComponentsMenu:
+			logging.LogDebug("Showing components menu screen")
+			selection, exitCode = screens.ComponentsMenuScreen()
+			nextScreen = screens.HandleComponentsMenu(selection, exitCode)
 
-        case app.Screens.ComponentOptions:
-            logging.LogDebug("Showing component options screen")
-            selection, exitCode = screens.ComponentOptionsScreen()
-            nextScreen = screens.HandleComponentOptions(selection, exitCode)
-            logging.LogDebug("Component options returned next screen: %d", nextScreen)
+		case app.Screens.ComponentOptions:
+			logging.LogDebug("Showing component options screen")
+			selection, exitCode = screens.ComponentOptionsScreen()
+			nextScreen = screens.HandleComponentOptions(selection, exitCode)
 
-        case app.Screens.BrowseComponents:
-            logging.LogDebug("Showing browse components screen")
-            selection, exitCode = screens.BrowseComponentsScreen()
-            nextScreen = screens.HandleBrowseComponents(selection, exitCode)
-            logging.LogDebug("Browse components returned next screen: %d", nextScreen)
+		// New component screens
+		case app.Screens.InstalledComponents:
+			logging.LogDebug("Showing installed components screen")
+			selection, exitCode = screens.InstalledComponentsScreen()
+			nextScreen = screens.HandleInstalledComponents(selection, exitCode)
 
-        case app.Screens.SyncComponents:
-            logging.LogDebug("Showing sync components screen")
-            selection, exitCode = screens.SyncComponentsScreen()
-            nextScreen = screens.HandleSyncComponents(selection, exitCode)
-            logging.LogDebug("Sync components returned next screen: %d", nextScreen)
+		case app.Screens.DownloadComponents:
+			logging.LogDebug("Showing download components screen")
+			selection, exitCode = screens.DownloadComponentsScreen()
+			nextScreen = screens.HandleDownloadComponents(selection, exitCode)
 
-        case app.Screens.ExportComponent:
-            logging.LogDebug("Showing export component screen")
-            selection, exitCode = screens.ExportComponentScreen()
-            nextScreen = screens.HandleExportComponent(selection, exitCode)
-            logging.LogDebug("Export component returned next screen: %d", nextScreen)
+		// Original component-related screens
+		case app.Screens.SyncComponents:
+			logging.LogDebug("Showing sync components screen")
+			selection, exitCode = screens.SyncComponentsScreen()
+			nextScreen = screens.HandleSyncComponents(selection, exitCode)
 
-        case app.Screens.Deconstruction:
-            logging.LogDebug("Showing deconstruction screen")
-            selection, exitCode = screens.DeconstructionScreen()
-            nextScreen = screens.HandleDeconstruction(selection, exitCode)
-            logging.LogDebug("Deconstruction screen returned next screen: %d", nextScreen)
+		case app.Screens.ExportComponent:
+			logging.LogDebug("Showing export component screen")
+			selection, exitCode = screens.ExportComponentScreen()
+			nextScreen = screens.HandleExportComponent(selection, exitCode)
 
-        case app.Screens.DeconstructConfirm:
-            logging.LogDebug("Showing deconstruction confirmation screen")
-            selection, exitCode = screens.DeconstructConfirmScreen()
-            nextScreen = screens.HandleDeconstructConfirm(selection, exitCode)
-            logging.LogDebug("Deconstruction confirmation returned next screen: %d", nextScreen)
+		case app.Screens.Deconstruction:
+			logging.LogDebug("Showing deconstruction screen")
+			selection, exitCode = screens.DeconstructionScreen()
+			nextScreen = screens.HandleDeconstruction(selection, exitCode)
 
-        default:
-            logging.LogDebug("Unknown screen type: %d, defaulting to MainMenu", currentScreen)
-            nextScreen = app.Screens.MainMenu
-        }
+		case app.Screens.DeconstructConfirm:
+			logging.LogDebug("Showing deconstruction confirmation screen")
+			selection, exitCode = screens.DeconstructConfirmScreen()
+			nextScreen = screens.HandleDeconstructConfirm(selection, exitCode)
 
-        // Add extra debug logging
-        logging.LogDebug("Current screen: %d, Next screen: %d", currentScreen, nextScreen)
+		default:
+			logging.LogDebug("Unknown screen type: %d, defaulting to MainMenu", currentScreen)
+			nextScreen = app.Screens.MainMenu
+		}
 
-        // Verify next screen is valid before setting
-        if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.DeconstructConfirm {
-            logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
-            nextScreen = app.Screens.MainMenu
-        }
+		// Add extra debug logging
+		logging.LogDebug("Current screen: %d, Next screen: %d", currentScreen, nextScreen)
 
-        // Update the current screen - add extra debugging
-        logging.LogDebug("Setting next screen to: %d", nextScreen)
-        app.SetCurrentScreen(nextScreen)
-        logging.LogDebug("Screen set to: %d", app.GetCurrentScreen())
-    }
+		// Verify next screen is valid before setting
+		if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.DeconstructConfirm {
+			logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
+			nextScreen = app.Screens.MainMenu
+		}
+
+		// Update the current screen
+		logging.LogDebug("Setting next screen to: %d", nextScreen)
+		app.SetCurrentScreen(nextScreen)
+		logging.LogDebug("Screen set to: %d", app.GetCurrentScreen())
+	}
 }
