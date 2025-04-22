@@ -58,6 +58,12 @@ func Initialize() error {
 		logging.LogDebug("Error creating Logs directory: %v", err)
 	}
 
+	// Create cache directory for temporary files
+	err = os.MkdirAll(filepath.Join(cwd, ".cache"), 0755)
+	if err != nil {
+		logging.LogDebug("Error creating .cache directory: %v", err)
+	}
+
 	// Explicitly initialize theme directories after logging is set up
 	if err := themes.EnsureThemeDirectoryStructure(); err != nil {
 		logging.LogDebug("Warning: Could not create theme directories: %v", err)
@@ -66,6 +72,11 @@ func Initialize() error {
 	// Create component directories for imports
 	if err := themes.EnsureComponentDirectories(); err != nil {
 		logging.LogDebug("Warning: Could not create component directories: %v", err)
+	}
+
+	// Create Catalog directory
+	if err := os.MkdirAll(filepath.Join(cwd, "Catalog"), 0755); err != nil {
+		logging.LogDebug("Warning: Could not create Catalog directory: %v", err)
 	}
 
 	if err := themes.CreatePlaceholderFiles(); err != nil {

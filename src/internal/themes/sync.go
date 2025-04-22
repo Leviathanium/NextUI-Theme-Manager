@@ -4,6 +4,7 @@
 package themes
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,7 +29,7 @@ var RepoConfig struct {
 
 // Initialize default repository settings
 func init() {
-	// Public GitHub repos require the “.git” suffix for anonymous go-git clones/pulls
+	// Public GitHub repos require the ".git" suffix for anonymous go-git clones/pulls
 	RepoConfig.URL = "https://github.com/Leviathanium/NextUI-Themes.git"
 	RepoConfig.Branch = "main"
 }
@@ -46,6 +47,7 @@ type CatalogItemInfo struct {
 	ManifestPath string `json:"manifest_path"`
 	Author       string `json:"author"`
 	Description  string `json:"description"`
+	URL          string `json:"URL"`  // Added URL field for ZIP download
 }
 
 // SyncOptions contains options for syncing
@@ -148,6 +150,12 @@ func createSyncDirectoryStructure(basePath string) error {
 		if err := os.MkdirAll(filepath.Join(compDir, "manifests"), 0755); err != nil {
 			return fmt.Errorf("error creating %s/manifests directory: %w", compDirName, err)
 		}
+	}
+
+	// Create cache directory for temporary files
+	cacheDir := filepath.Join(basePath, ".cache")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return fmt.Errorf("error creating .cache directory: %w", err)
 	}
 
 	return nil
@@ -340,8 +348,12 @@ func DownloadThemePackage(themeName string) error {
 		return fmt.Errorf("error getting current directory: %w", err)
 	}
 
-	// Default sync options
-	options := GetDefaultSyncOptions()
+	// Check if the theme already exists locally
+	localThemePath := filepath.Join(cwd, "Themes", themeName)
+	if _, err := os.Stat(localThemePath); err == nil {
+		logging.LogDebug("Theme '%s' already exists locally, skipping download", themeName)
+		return nil
+	}
 
 	// Path to catalog.json
 	catalogPath := filepath.Join(cwd, "Catalog", "catalog.json")
@@ -353,75 +365,50 @@ func DownloadThemePackage(themeName string) error {
 	}
 
 	// Check if theme exists in catalog
-	_, exists := catalog.Themes[themeName]
+	themeInfo, exists := catalog.Themes[themeName]
 	if !exists {
 		return fmt.Errorf("theme '%s' not found in catalog", themeName)
+	}
+
+	// Ensure the URL field exists
+	if themeInfo.URL == "" {
+		return fmt.Errorf("no download URL found for theme '%s'", themeName)
 	}
 
 	// Show status message
 	ui.ShowMessage(fmt.Sprintf("Downloading theme '%s'...", themeName), "1")
 
-	// Base URL for raw content
-	baseURL := options.RepoURL
-	if strings.Contains(baseURL, "github.com") {
-		// Convert GitHub URL to raw content URL
-		baseURL = strings.Replace(baseURL, "github.com", "raw.githubusercontent.com", 1)
-		baseURL = filepath.Join(baseURL, options.Branch)
+	// Create cache directory
+	cacheDir := filepath.Join(cwd, ".cache")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return fmt.Errorf("error creating cache directory: %w", err)
 	}
 
-	// Removed unused themeURL variable
-	localThemePath := filepath.Join(cwd, "Themes", themeName)
+	// Create a temporary file for the ZIP
+	zipPath := filepath.Join(cacheDir, fmt.Sprintf("%s.zip", themeName))
+
+	// Download the ZIP file
+	if err := downloadFile(themeInfo.URL, zipPath); err != nil {
+		return fmt.Errorf("error downloading theme ZIP: %w", err)
+	}
 
 	// Ensure Themes directory exists
-	if err := os.MkdirAll(filepath.Join(cwd, "Themes"), 0755); err != nil {
+	themesDir := filepath.Join(cwd, "Themes")
+	if err := os.MkdirAll(themesDir, 0755); err != nil {
 		return fmt.Errorf("error creating Themes directory: %w", err)
 	}
 
-	// Get path to the manifest file
-	manifestPath := filepath.Join(cwd, catalog.Themes[themeName].ManifestPath)
-
-	// Read the manifest to get file structure
-	manifestData, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return fmt.Errorf("error reading manifest file: %w", err)
+	// Extract the ZIP file
+	if err := extractZipFile(zipPath, localThemePath); err != nil {
+		return fmt.Errorf("error extracting theme ZIP: %w", err)
 	}
 
-	// Parse manifest to get file structure - just looking for basic content flags
-	var manifestMap map[string]interface{}
-	err = json.Unmarshal(manifestData, &manifestMap)
-	if err != nil {
-		return fmt.Errorf("error parsing manifest: %w", err)
+	// Clean up the ZIP file
+	if err := os.Remove(zipPath); err != nil {
+		logging.LogDebug("Warning: Failed to remove temporary ZIP file: %v", err)
 	}
 
-	// Parse the content section to determine what to download
-	_, ok := manifestMap["content"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("invalid manifest structure: missing or invalid 'content' section")
-	}
-
-	// Create theme directory
-	if err := os.MkdirAll(localThemePath, 0755); err != nil {
-		return fmt.Errorf("error creating theme directory: %w", err)
-	}
-
-	// First, download preview.png and manifest.json to the theme directory
-	previewURL := fmt.Sprintf("%s/Catalog/Themes/previews/%s.png", baseURL, themeName)
-	localPreviewFile := filepath.Join(localThemePath, "preview.png")
-	if err := downloadFile(previewURL, localPreviewFile); err != nil {
-		logging.LogDebug("Warning: Error downloading preview: %v", err)
-	}
-
-	manifestURL := fmt.Sprintf("%s/Catalog/Themes/manifests/%s.json", baseURL, themeName)
-	localManifestFile := filepath.Join(localThemePath, "manifest.json")
-	if err := downloadFile(manifestURL, localManifestFile); err != nil {
-		logging.LogDebug("Warning: Error downloading manifest: %v", err)
-	}
-
-	// For now, we're keeping this simple and just showing a message that we'd download the theme
-	// In a real implementation, we'd need to recursively download all files in the theme directory
 	ui.ShowMessage(fmt.Sprintf("Theme '%s' downloaded successfully!", themeName), "2")
-
-	// Return theme path for importing
 	return nil
 }
 
@@ -435,8 +422,12 @@ func DownloadComponentPackage(componentType, componentName string) error {
 		return fmt.Errorf("error getting current directory: %w", err)
 	}
 
-	// Default sync options
-	options := GetDefaultSyncOptions()
+	// Check if the component already exists locally
+	localComponentPath := filepath.Join(cwd, "Components", componentType, componentName)
+	if _, err := os.Stat(localComponentPath); err == nil {
+		logging.LogDebug("Component '%s' already exists locally, skipping download", componentName)
+		return nil
+	}
 
 	// Path to catalog.json
 	catalogPath := filepath.Join(cwd, "Catalog", "catalog.json")
@@ -468,52 +459,119 @@ func DownloadComponentPackage(componentType, componentName string) error {
 		return fmt.Errorf("component type '%s' not found in catalog", componentType)
 	}
 
-	_, exists = components[componentName]
+	componentInfo, exists := components[componentName]
 	if !exists {
 		return fmt.Errorf("component '%s' not found in catalog", componentName)
+	}
+
+	// Ensure the URL field exists
+	if componentInfo.URL == "" {
+		return fmt.Errorf("no download URL found for component '%s'", componentName)
 	}
 
 	// Show status message
 	ui.ShowMessage(fmt.Sprintf("Downloading %s component '%s'...", componentType, componentName), "1")
 
-	// Base URL for raw content
-	baseURL := options.RepoURL
-	if strings.Contains(baseURL, "github.com") {
-		// Convert GitHub URL to raw content URL
-		baseURL = strings.Replace(baseURL, "github.com", "raw.githubusercontent.com", 1)
-		baseURL = filepath.Join(baseURL, options.Branch)
+	// Create cache directory
+	cacheDir := filepath.Join(cwd, ".cache")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return fmt.Errorf("error creating cache directory: %w", err)
 	}
 
-	// Removed unused componentURL variable
-	localComponentPath := filepath.Join(cwd, "Components", componentType, componentName)
+	// Create a temporary file for the ZIP
+	zipPath := filepath.Join(cacheDir, fmt.Sprintf("%s.zip", componentName))
+
+	// Download the ZIP file
+	if err := downloadFile(componentInfo.URL, zipPath); err != nil {
+		return fmt.Errorf("error downloading component ZIP: %w", err)
+	}
 
 	// Ensure Components directory exists
-	if err := os.MkdirAll(filepath.Join(cwd, "Components", componentType), 0755); err != nil {
+	componentsDir := filepath.Join(cwd, "Components", componentType)
+	if err := os.MkdirAll(componentsDir, 0755); err != nil {
 		return fmt.Errorf("error creating Components directory: %w", err)
 	}
 
-	// Create component directory
-	if err := os.MkdirAll(localComponentPath, 0755); err != nil {
-		return fmt.Errorf("error creating component directory: %w", err)
+	// Extract the ZIP file
+	if err := extractZipFile(zipPath, localComponentPath); err != nil {
+		return fmt.Errorf("error extracting component ZIP: %w", err)
 	}
 
-	// First, download preview.png and manifest.json to the component directory
-	previewURL := fmt.Sprintf("%s/Catalog/Components/%s/previews/%s.png", baseURL, componentType, componentName)
-	localPreviewFile := filepath.Join(localComponentPath, "preview.png")
-	if err := downloadFile(previewURL, localPreviewFile); err != nil {
-		logging.LogDebug("Warning: Error downloading preview: %v", err)
+	// Clean up the ZIP file
+	if err := os.Remove(zipPath); err != nil {
+		logging.LogDebug("Warning: Failed to remove temporary ZIP file: %v", err)
 	}
 
-	manifestURL := fmt.Sprintf("%s/Catalog/Components/%s/manifests/%s.json", baseURL, componentType, componentName)
-	localManifestFile := filepath.Join(localComponentPath, "manifest.json")
-	if err := downloadFile(manifestURL, localManifestFile); err != nil {
-		logging.LogDebug("Warning: Error downloading manifest: %v", err)
-	}
-
-	// For now, we're keeping this simple and just showing a message that we'd download the component
-	// In a real implementation, we'd need to recursively download all files in the component directory
 	ui.ShowMessage(fmt.Sprintf("%s component '%s' downloaded successfully!", componentType, componentName), "2")
+	return nil
+}
 
-	// Return component path for importing
+// extractZipFile extracts a ZIP archive to the specified destination directory
+func extractZipFile(zipPath, destDir string) error {
+	logging.LogDebug("Extracting ZIP file %s to %s", zipPath, destDir)
+
+	// Open the ZIP file
+	reader, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return fmt.Errorf("error opening ZIP file: %w", err)
+	}
+	defer reader.Close()
+
+	// Create the destination directory if it doesn't exist
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("error creating destination directory: %w", err)
+	}
+
+	// Extract each file in the ZIP archive
+	for _, file := range reader.File {
+		// Skip __MACOSX directories and hidden files
+		if strings.Contains(file.Name, "__MACOSX") || strings.HasPrefix(filepath.Base(file.Name), ".") {
+			continue
+		}
+
+		// Construct the full path for the extracted file
+		path := filepath.Join(destDir, file.Name)
+
+		// Check for directory traversal attacks
+		if !strings.HasPrefix(path, destDir+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", file.Name)
+		}
+
+		// Handle directories
+		if file.FileInfo().IsDir() {
+			if err := os.MkdirAll(path, 0755); err != nil {
+				return fmt.Errorf("error creating directory %s: %w", path, err)
+			}
+			continue
+		}
+
+		// Create the directory structure for the file
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return fmt.Errorf("error creating directory structure: %w", err)
+		}
+
+		// Open the file in the ZIP
+		rc, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("error opening file in ZIP: %w", err)
+		}
+
+		// Create the destination file
+		outFile, err := os.Create(path)
+		if err != nil {
+			rc.Close()
+			return fmt.Errorf("error creating file %s: %w", path, err)
+		}
+
+		// Copy the content
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+		if err != nil {
+			return fmt.Errorf("error extracting file %s: %w", path, err)
+		}
+	}
+
+	logging.LogDebug("ZIP extraction completed successfully")
 	return nil
 }

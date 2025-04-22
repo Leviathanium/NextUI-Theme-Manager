@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-    "encoding/json"
+	"encoding/json"
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/themes"
@@ -160,22 +160,36 @@ func BrowseComponentsScreen() (string, int) {
 	// Get preview images
 	previewImages := make([]ui.GalleryItem, 0, len(components))
 	for compName, compInfo := range components {
+		// Check if component already exists locally
+		localComponentPath := filepath.Join(cwd, "Components", componentType, compName)
+		alreadyInstalled := fileExists(localComponentPath)
+
 		// Get preview path - relative path in catalog needs to be converted to absolute
 		previewPath := filepath.Join(cwd, compInfo.PreviewPath)
 
 		// Skip LEDs which don't have preview images
 		if componentType == "LEDs" && (previewPath == "" || !fileExists(previewPath)) {
-			// Just use the component name as text
+			// Just use the component name as text with installed indicator
+			text := fmt.Sprintf("%s by %s", compName, compInfo.Author)
+			if alreadyInstalled {
+				text = "[Installed] " + text
+			}
+
 			previewImages = append(previewImages, ui.GalleryItem{
-				Text: fmt.Sprintf("%s by %s", compName, compInfo.Author),
+				Text: text,
 				BackgroundImage: "", // No background image
 			})
 			continue
 		}
 
-		// Create a GalleryItem for this component
+		// Create a GalleryItem for this component with installed indicator
+		text := fmt.Sprintf("%s by %s", compName, compInfo.Author)
+		if alreadyInstalled {
+			text = "[Installed] " + text
+		}
+
 		previewItem := ui.GalleryItem{
-			Text:            fmt.Sprintf("%s by %s", compName, compInfo.Author),
+			Text:            text,
 			BackgroundImage: previewPath,
 		}
 
@@ -187,8 +201,12 @@ func BrowseComponentsScreen() (string, int) {
 
 	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
 
-	// Extract component name from selection (remove author info)
+	// Extract component name from selection (remove author info and installed indicator)
 	if selection != "" {
+		// Remove "[Installed] " prefix if present
+		selection = strings.TrimPrefix(selection, "[Installed] ")
+
+		// Split at " by " and take the first part
 		parts := strings.Split(selection, " by ")
 		selection = parts[0]
 	}
@@ -205,11 +223,19 @@ func HandleBrowseComponents(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected a component
 		if selection != "" {
-			// First, download the component package
-			if err := themes.DownloadComponentPackage(componentType, selection); err != nil {
-				logging.LogDebug("Error downloading component: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-				return app.Screens.ComponentOptions
+			// Check if component already exists locally
+			cwd := app.GetWorkingDir()
+			localComponentPath := filepath.Join(cwd, "Components", componentType, selection)
+
+			if !fileExists(localComponentPath) {
+				// Download the component package if not already installed
+				if err := themes.DownloadComponentPackage(componentType, selection); err != nil {
+					logging.LogDebug("Error downloading component: %v", err)
+					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+					return app.Screens.ComponentOptions
+				}
+			} else {
+				logging.LogDebug("Component '%s' already installed, skipping download", selection)
 			}
 
 			// Import/apply the selected component
@@ -325,12 +351,22 @@ func BrowseThemesScreen() (string, int) {
 	// Get preview images
 	previewImages := make([]ui.GalleryItem, 0, len(catalog.Themes))
 	for themeName, themeInfo := range catalog.Themes {
+		// Check if theme already exists locally
+		localThemePath := filepath.Join(cwd, "Themes", themeName)
+		alreadyInstalled := fileExists(localThemePath)
+
 		// Get preview path - relative path in catalog needs to be converted to absolute
 		previewPath := filepath.Join(cwd, themeInfo.PreviewPath)
 
+		// Create text with installed indicator if needed
+		text := fmt.Sprintf("%s by %s", themeName, themeInfo.Author)
+		if alreadyInstalled {
+			text = "[Installed] " + text
+		}
+
 		// Create a GalleryItem for this theme
 		previewItem := ui.GalleryItem{
-			Text:            fmt.Sprintf("%s by %s", themeName, themeInfo.Author),
+			Text:            text,
 			BackgroundImage: previewPath,
 		}
 
@@ -342,8 +378,12 @@ func BrowseThemesScreen() (string, int) {
 
 	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
 
-	// Extract theme name from selection (remove author info)
+	// Extract theme name from selection (remove author info and installed indicator)
 	if selection != "" {
+		// Remove "[Installed] " prefix if present
+		selection = strings.TrimPrefix(selection, "[Installed] ")
+
+		// Split at " by " and take the first part
 		parts := strings.Split(selection, " by ")
 		selection = parts[0]
 	}
@@ -359,11 +399,19 @@ func HandleBrowseThemes(selection string, exitCode int) app.Screen {
 	case 0:
 		// User selected a theme
 		if selection != "" {
-			// First, download the theme package
-			if err := themes.DownloadThemePackage(selection); err != nil {
-				logging.LogDebug("Error downloading theme: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-				return app.Screens.MainMenu
+			// Check if theme already exists locally
+			cwd := app.GetWorkingDir()
+			localThemePath := filepath.Join(cwd, "Themes", selection)
+
+			if !fileExists(localThemePath) {
+				// Download the theme package if not already installed
+				if err := themes.DownloadThemePackage(selection); err != nil {
+					logging.LogDebug("Error downloading theme: %v", err)
+					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+					return app.Screens.MainMenu
+				}
+			} else {
+				logging.LogDebug("Theme '%s' already installed, skipping download", selection)
 			}
 
 			// Set the selected theme
