@@ -1,5 +1,5 @@
 // src/internal/ui/screens/main_menu.go
-// Implementation of the main menu screen - simplified for theme management only
+// Implementation of the main menu screen
 
 package screens
 
@@ -17,7 +17,7 @@ func MainMenuScreen() (string, int) {
 	// Menu items - expanded with new component functionality
 	menu := []string{
 		"Browse Themes",
-		"Download Themes",
+		"Sync Themes",  // Changed from "Download Themes" to "Sync Themes"
 		"Components",
 		"Export", // Renamed from "Export Current Settings" to "Exports"
 	}
@@ -37,9 +37,9 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 			logging.LogDebug("Selected Browse Themes")
 			return app.Screens.BrowseThemes
 
-		case "Download Themes":
-			logging.LogDebug("Selected Download Themes")
-			return app.Screens.DownloadThemes
+		case "Sync Themes":  // Updated to match new menu text
+			logging.LogDebug("Selected Sync Themes")
+			return app.Screens.SyncThemes  // Will need to be defined in app/state.go
 
 		case "Components":
 			logging.LogDebug("Selected Components")

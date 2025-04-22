@@ -10,21 +10,21 @@ import (
 // Screen represents the different UI screens
 type Screen int
 
-// Expanded screen constants to include component-related screens
+// Expanded screen constants to include sync-related screens
 const (
 	MainMenu Screen = iota + 1
 	ThemeImport
 	ThemeImportConfirm
 	ThemeExport
 	BrowseThemes
-	DownloadThemes
+	SyncThemes           // Added SyncThemes instead of DownloadThemes
 	ComponentsMenu
 	ComponentOptions
 	BrowseComponents
-	DownloadComponents
+	SyncComponents       // Added SyncComponents instead of DownloadComponents
 	ExportComponent
-	Deconstruction        // New screen for theme deconstruction
-	DeconstructConfirm    // New screen for deconstruction confirmation
+	Deconstruction
+	DeconstructConfirm
 )
 
 // ScreenEnum holds all available screens
@@ -34,21 +34,21 @@ type ScreenEnum struct {
 	ThemeImportConfirm Screen
 	ThemeExport        Screen
 	BrowseThemes       Screen
-	DownloadThemes     Screen
+	SyncThemes         Screen  // Updated from DownloadThemes to SyncThemes
 	ComponentsMenu     Screen
 	ComponentOptions   Screen
 	BrowseComponents   Screen
-	DownloadComponents Screen
+	SyncComponents     Screen  // Updated from DownloadComponents to SyncComponents
 	ExportComponent    Screen
-	Deconstruction     Screen  // New field for deconstruction screen
-	DeconstructConfirm Screen  // New field for deconstruction confirmation
+	Deconstruction     Screen
+	DeconstructConfirm Screen
 }
 
 // AppState holds the current state of the application
 type appState struct {
-	CurrentScreen          Screen
-	SelectedTheme          string // For theme import/export
-	SelectedComponentType  string // For component operations
+	CurrentScreen           Screen
+	SelectedTheme           string // For theme import/export
+	SelectedComponentType   string // For component operations
 	SelectedComponentOption string // For component operations
 }
 
@@ -60,14 +60,14 @@ var (
 		ThemeImportConfirm: ThemeImportConfirm,
 		ThemeExport:        ThemeExport,
 		BrowseThemes:       BrowseThemes,
-		DownloadThemes:     DownloadThemes,
+		SyncThemes:         SyncThemes,         // Updated from DownloadThemes to SyncThemes
 		ComponentsMenu:     ComponentsMenu,
 		ComponentOptions:   ComponentOptions,
 		BrowseComponents:   BrowseComponents,
-		DownloadComponents: DownloadComponents,
+		SyncComponents:     SyncComponents,     // Updated from DownloadComponents to SyncComponents
 		ExportComponent:    ExportComponent,
-		Deconstruction:     Deconstruction,     // Initialize new screen
-		DeconstructConfirm: DeconstructConfirm, // Initialize new screen
+		Deconstruction:     Deconstruction,
+		DeconstructConfirm: DeconstructConfirm,
 	}
 
 	state appState
