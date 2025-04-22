@@ -522,6 +522,41 @@ func extractZipFile(zipPath, destDir string) error {
 		return fmt.Errorf("error creating destination directory: %w", err)
 	}
 
+	// Analyze the ZIP structure to detect common root directories
+	// This helps prevent issues like Theme/Theme nesting
+	rootDirs := make(map[string]int)
+	totalFiles := 0
+
+	for _, file := range reader.File {
+		// Skip __MACOSX directories and hidden files
+		if strings.Contains(file.Name, "__MACOSX") || strings.HasPrefix(filepath.Base(file.Name), ".") {
+			continue
+		}
+
+		totalFiles++
+
+		// Get the top-level directory from the path
+		pathParts := strings.Split(file.Name, "/")
+		if len(pathParts) > 1 && pathParts[0] != "" {
+			rootDirs[pathParts[0]]++
+		}
+	}
+
+	// Check if all files are in a single root directory
+	var commonRoot string
+	destBaseName := filepath.Base(destDir)
+
+	// Find if there's a single common root directory that contains all files
+	for dir, count := range rootDirs {
+		if count == totalFiles || (float64(count)/float64(totalFiles) > 0.9) {
+			commonRoot = dir
+			break
+		}
+	}
+
+	logging.LogDebug("ZIP analysis - Total files: %d, Common root: %s, Dest dir: %s",
+		totalFiles, commonRoot, destBaseName)
+
 	// Extract each file in the ZIP archive
 	for _, file := range reader.File {
 		// Skip __MACOSX directories and hidden files
@@ -529,24 +564,56 @@ func extractZipFile(zipPath, destDir string) error {
 			continue
 		}
 
-		// Construct the full path for the extracted file
-		path := filepath.Join(destDir, file.Name)
+		// Determine the target path for extraction
+		var targetPath string
 
-		// Check for directory traversal attacks
-		if !strings.HasPrefix(path, destDir+string(os.PathSeparator)) {
+		// If there's a common root that matches the destination directory name or ends with the same extension,
+		// strip it to avoid Theme/Theme nesting
+		if commonRoot != "" && (commonRoot == destBaseName ||
+			(strings.HasSuffix(commonRoot, filepath.Ext(destBaseName)) &&
+			 strings.HasSuffix(destBaseName, filepath.Ext(destBaseName)))) {
+
+			if strings.HasPrefix(file.Name, commonRoot+"/") {
+				// Strip the common root to avoid nesting
+				relativePath := strings.TrimPrefix(file.Name, commonRoot+"/")
+
+				// Special case: if we have an entry for just the directory itself (resulting in empty path)
+				// Skip this entry as we've already created the destination directory
+				if relativePath == "" {
+					logging.LogDebug("Skipping root directory entry: %s", file.Name)
+					continue
+				}
+
+				targetPath = filepath.Join(destDir, relativePath)
+				logging.LogDebug("Stripping common root from: %s to: %s", file.Name, relativePath)
+			} else {
+				// Normal file, not in common root
+				targetPath = filepath.Join(destDir, file.Name)
+				logging.LogDebug("File doesn't have common root prefix: %s", file.Name)
+			}
+		} else {
+			// No common root or it doesn't match destination - extract normally
+			targetPath = filepath.Join(destDir, file.Name)
+			logging.LogDebug("Normal extraction for: %s", file.Name)
+		}
+
+		// Check for directory traversal attacks - only for non-empty paths
+		// The destDir path itself is always safe since we create it explicitly
+		cleanPath := filepath.Clean(targetPath)
+		if cleanPath != destDir && !strings.HasPrefix(cleanPath, destDir+string(os.PathSeparator)) {
 			return fmt.Errorf("illegal file path: %s", file.Name)
 		}
 
 		// Handle directories
 		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(path, 0755); err != nil {
-				return fmt.Errorf("error creating directory %s: %w", path, err)
+			if err := os.MkdirAll(targetPath, 0755); err != nil {
+				return fmt.Errorf("error creating directory %s: %w", targetPath, err)
 			}
 			continue
 		}
 
 		// Create the directory structure for the file
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 			return fmt.Errorf("error creating directory structure: %w", err)
 		}
 
@@ -557,10 +624,10 @@ func extractZipFile(zipPath, destDir string) error {
 		}
 
 		// Create the destination file
-		outFile, err := os.Create(path)
+		outFile, err := os.Create(targetPath)
 		if err != nil {
 			rc.Close()
-			return fmt.Errorf("error creating file %s: %w", path, err)
+			return fmt.Errorf("error creating file %s: %w", targetPath, err)
 		}
 
 		// Copy the content
@@ -568,7 +635,7 @@ func extractZipFile(zipPath, destDir string) error {
 		outFile.Close()
 		rc.Close()
 		if err != nil {
-			return fmt.Errorf("error extracting file %s: %w", path, err)
+			return fmt.Errorf("error extracting file %s: %w", targetPath, err)
 		}
 	}
 

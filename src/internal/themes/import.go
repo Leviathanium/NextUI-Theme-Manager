@@ -109,12 +109,28 @@ func importThemeFiles(themePath string, manifest *ThemeManifest, systemPaths *sy
         }
     }
 
-    // Process icon mappings
+    // Process icon mappings with special handling for system icons
     for _, mapping := range manifest.PathMappings.Icons {
         srcPath := filepath.Join(themePath, mapping.ThemePath)
         dstPath := mapping.SystemPath
 
-        // Copy the file
+        // Get the icon filename
+        iconName := filepath.Base(srcPath)
+
+        // Check if this is a system icon that needs special handling
+        if mapping.Metadata != nil && mapping.Metadata["IconType"] == "System" {
+            // Use our helper function to get proper destination for system icons
+            newDstPath, err := GetSystemIconDestination(srcPath, iconName, dstPath, systemPaths, logger)
+            if err != nil {
+                logger.DebugFn("Warning: Error determining system icon destination: %v", err)
+            } else if newDstPath != dstPath {
+                // Update the destination path if it changed
+                dstPath = newDstPath
+                logger.DebugFn("Updated system icon destination: %s", dstPath)
+            }
+        }
+
+        // Copy the file to the (possibly renamed) destination
         if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
             logger.DebugFn("Warning: Failed to copy icon: %v", err)
             // Continue with other files
@@ -199,6 +215,10 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
         if err != nil {
             logger.DebugFn("Warning: Error reading system icons directory: %v", err)
         } else {
+            // Map to track which system tags we've already processed
+            // This helps us handle duplicate system tags
+            processedSystemTags := make(map[string]bool)
+
             for _, entry := range entries {
                 if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
                     continue
@@ -251,8 +271,33 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
                     if len(matches) >= 2 {
                         systemTag := matches[1]
 
+                        // Skip if we've already processed an icon with this tag and priority handling is enabled
+                        if processedSystemTags[systemTag] {
+                            logger.DebugFn("Skipping duplicate system tag '%s' for icon: %s (already processed)",
+                                systemTag, entry.Name())
+                            continue
+                        }
+                        processedSystemTags[systemTag] = true
+
                         // Full system icon file name
                         iconName := entry.Name()
+
+                        // Look for existing ROM directory with this tag
+                        var exactSystemName string
+                        var matchFound bool
+
+                        for _, system := range systemPaths.Systems {
+                            if system.Tag == systemTag {
+                                exactSystemName = system.Name
+                                matchFound = true
+                                break
+                            }
+                        }
+
+                        // If no exact match found, use original name
+                        if !matchFound {
+                            exactSystemName = strings.TrimSuffix(iconName, ".png")
+                        }
 
                         // System path based on the icon name (with tag)
                         systemPath = filepath.Join(systemPaths.Roms, ".media", iconName)
@@ -260,6 +305,9 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
                             "SystemName": strings.TrimSuffix(iconName, ".png"),
                             "SystemTag": systemTag,
                             "IconType": "System",
+                            // Add match info to metadata
+                            "MatchFound": fmt.Sprintf("%v", matchFound),
+                            "ExactSystemName": exactSystemName,
                         }
                     }
                 }
@@ -283,6 +331,7 @@ func updateIconMappings(themePath string, manifest *ThemeManifest, systemPaths *
         }
     }
 
+    // [Rest of function remains unchanged]
     // Process tool icons
     toolIconsDir := filepath.Join(themePath, "Icons", "ToolIcons")
     if _, err := os.Stat(toolIconsDir); err == nil {

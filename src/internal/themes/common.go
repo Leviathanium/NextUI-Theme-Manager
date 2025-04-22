@@ -8,8 +8,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
+    "regexp"
+    "strings"
 	"nextui-themes/internal/logging"
+	"nextui-themes/internal/system"  // Add this import
+
 )
 
 // CopyFile copies a file from src to dst
@@ -124,4 +127,74 @@ Exported theme packages will be placed here with sequential names (theme_1.theme
 	}
 
 	return nil
+}
+
+// GetSystemIconDestination determines the correct destination path for a system icon
+// It ensures icons are named to match exact ROM directory names based on system tags
+func GetSystemIconDestination(iconSrcPath, iconName, dstPath string, systemPaths *system.SystemPaths, logger *Logger) (string, error) {
+	// Extract system tag from the filename
+	tagRegex := regexp.MustCompile(`\((.*?)\)`)
+	matches := tagRegex.FindStringSubmatch(iconName)
+
+	if len(matches) < 2 || matches[1] == "" {
+		// No tag found, use destination as-is
+		logger.DebugFn("No system tag found in icon name: %s", iconName)
+		return dstPath, nil
+	}
+
+	// Get system tag
+	systemTag := matches[1]
+	logger.DebugFn("Found system tag in icon: %s - Tag: %s", iconName, systemTag)
+
+	// Handle special system icons
+	if iconName == "Recently Played.png" ||
+	   iconName == "Collections.png" ||
+	   iconName == "Tools.png" {
+		// These special icons don't need tag-based renaming
+		logger.DebugFn("Special system icon, no renaming needed: %s", iconName)
+		return dstPath, nil
+	}
+
+	// Look for exact ROM directory matching this tag
+	var exactSystemName string
+	var matchFound bool
+
+	// First pass: look for exact matches
+	for _, system := range systemPaths.Systems {
+		if system.Tag == systemTag {
+			exactSystemName = system.Name
+			matchFound = true
+			logger.DebugFn("Found exact ROM directory match for tag '%s': %s", systemTag, exactSystemName)
+			break
+		}
+	}
+
+	// If no match found, try case-insensitive matching
+	if !matchFound {
+		systemTagLower := strings.ToLower(systemTag)
+		for _, system := range systemPaths.Systems {
+			if strings.ToLower(system.Tag) == systemTagLower {
+				exactSystemName = system.Name
+				matchFound = true
+				logger.DebugFn("Found case-insensitive ROM directory match for tag '%s': %s", systemTag, exactSystemName)
+				break
+			}
+		}
+	}
+
+	// If we found a matching ROM directory, rename the icon to match it exactly
+	if matchFound && exactSystemName != "" {
+		// Get the media directory path
+		mediaDir := filepath.Dir(dstPath)
+
+		// Create the new destination path with the exact ROM directory name
+		newDstPath := filepath.Join(mediaDir, exactSystemName + ".png")
+
+		logger.DebugFn("Renaming system icon from '%s' to match ROM directory: '%s'", iconName, exactSystemName + ".png")
+		return newDstPath, nil
+	}
+
+	// No matching ROM directory found, keep original destination
+	logger.DebugFn("No matching ROM directory found for system tag '%s', using original name", systemTag)
+	return dstPath, nil
 }

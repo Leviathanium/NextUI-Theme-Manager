@@ -161,31 +161,23 @@ func ImportIcons(componentPath string) error {
         srcPath := filepath.Join(componentPath, mapping.ThemePath)
         dstPath := mapping.SystemPath
 
-        // Special handling for system icons that need to match ROM directory names exactly
-        if mapping.Metadata != nil && mapping.Metadata["IconType"] == "System" &&
-           mapping.Metadata["SystemTag"] != "" && mapping.Metadata["RenameRequired"] == "true" {
+        // Get the icon filename
+        iconName := filepath.Base(srcPath)
 
-            // Find the exact ROM directory for this system tag
-            systemTag := mapping.Metadata["SystemTag"]
-            var exactSystemName string
-
-            for _, system := range systemPaths.Systems {
-                if system.Tag == systemTag {
-                    exactSystemName = system.Name
-                    break
-                }
-            }
-
-            if exactSystemName != "" {
-                // Use the exact ROM directory name for the destination filename
-                mediaDir := filepath.Dir(dstPath)
-                dstPath = filepath.Join(mediaDir, exactSystemName + ".png")
-
-                logger.DebugFn("Renaming system icon to match ROM directory: %s", exactSystemName)
+        // Check if this is a system icon that needs special handling
+        if mapping.Metadata != nil && mapping.Metadata["IconType"] == "System" {
+            // Use our helper function to get proper destination for system icons
+            newDstPath, err := GetSystemIconDestination(srcPath, iconName, dstPath, systemPaths, logger)
+            if err != nil {
+                logger.DebugFn("Warning: Error determining system icon destination: %v", err)
+            } else if newDstPath != dstPath {
+                // Update the destination path if it changed
+                dstPath = newDstPath
+                logger.DebugFn("Updated system icon destination: %s", dstPath)
             }
         }
 
-        // Copy the file
+        // Copy the file to the (possibly renamed) destination
         if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
             logger.DebugFn("Warning: Failed to copy icon: %v", err)
             // Continue with other files
