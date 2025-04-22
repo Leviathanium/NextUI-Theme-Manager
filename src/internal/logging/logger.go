@@ -12,9 +12,16 @@ import (
 
 var logFile *os.File
 
-// InitLogger initializes the debug log file
+// Enables or disables logging functionality
+var LoggingEnabled bool = true  // Set to false to disable all logging
+
 // InitLogger initializes the debug log file
 func init() {
+    // If logging is disabled, don't initialize anything
+    if !LoggingEnabled {
+        return
+    }
+
     // Get current directory
     cwd, err := os.Getwd()
     if err != nil {
@@ -49,15 +56,18 @@ func init() {
 
 // CloseLogger closes the log file
 func CloseLogger() {
-	if logFile != nil {
-		LogDebug("=== Theme Manager Closed ===")
-		logFile.Close()
+	if !LoggingEnabled || logFile == nil {
+		return
 	}
+
+	LogDebug("=== Theme Manager Closed ===")
+	logFile.Close()
 }
 
 // LogDebug logs a debug message
 func LogDebug(format string, args ...interface{}) {
-	if logFile == nil {
+	// If logging is disabled or log file isn't initialized, return immediately
+	if !LoggingEnabled || logFile == nil {
 		return
 	}
 

@@ -116,15 +116,25 @@ func GetVersionString() string {
 
 // WriteManifest writes the manifest to a file in the theme directory
 func WriteManifest(themePath string, manifest *ThemeManifest, logger *Logger) error {
-    // Set creation date, version, author and exported_by
+    // Only set creation date and exported_by
     manifest.ThemeInfo.CreationDate = time.Now()
-    manifest.ThemeInfo.Version = "1.0.0"
-    manifest.ThemeInfo.Author = "AuthorName" // Default author name
     manifest.ThemeInfo.ExportedBy = GetVersionString()
 
-    // Extract theme name from directory name
-    themeName := filepath.Base(themePath)
-    manifest.ThemeInfo.Name = themeName
+    // Only set version if not already set
+    if manifest.ThemeInfo.Version == "" {
+        manifest.ThemeInfo.Version = "1.0.0"
+    }
+
+    // Only set author if not already set
+    if manifest.ThemeInfo.Author == "" {
+        manifest.ThemeInfo.Author = "AuthorName" // Default author name only if none exists
+    }
+
+    // Extract theme name from directory name if not set
+    if manifest.ThemeInfo.Name == "" {
+        themeName := filepath.Base(themePath)
+        manifest.ThemeInfo.Name = themeName
+    }
 
     // Use an encoder that doesn't escape HTML characters
     var buf bytes.Buffer

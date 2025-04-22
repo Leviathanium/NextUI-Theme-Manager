@@ -15,51 +15,129 @@ import (
 
 // UpdateComponentManifest updates a component's manifest based on its actual content
 func UpdateComponentManifest(componentPath string) error {
-	// Determine component type from file extension
-	ext := filepath.Ext(componentPath)
+    // Determine component type from file extension
+    ext := filepath.Ext(componentPath)
 
-	var componentType string
-	for cType, cExt := range ComponentExtension {
-		if cExt == ext {
-			componentType = cType
-			break
-		}
-	}
+    var componentType string
+    for cType, cExt := range ComponentExtension {
+        if cExt == ext {
+            componentType = cType
+            break
+        }
+    }
 
-	if componentType == "" {
-		return fmt.Errorf("unknown component type for extension: %s", ext)
-	}
+    if componentType == "" {
+        return fmt.Errorf("unknown component type for extension: %s", ext)
+    }
 
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Updating manifest for component: %s (type: %s)", componentPath, componentType)
+    logger.DebugFn("Updating manifest for component: %s (type: %s)", componentPath, componentType)
 
-	// Create a system paths instance for reference
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		logger.DebugFn("Warning: Error getting system paths: %v", err)
-		// Continue anyway, as we can still update most of the manifest
-	}
+    // Create a system paths instance for reference
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        logger.DebugFn("Warning: Error getting system paths: %v", err)
+        // Continue anyway, as we can still update most of the manifest
+    }
 
-	// Dispatch to specific update function based on component type
-	switch componentType {
-	case ComponentWallpaper:
-		return UpdateWallpaperManifest(componentPath, systemPaths, logger)
-	case ComponentIcon:
-		return UpdateIconManifest(componentPath, systemPaths, logger)
-	case ComponentOverlay:
-		return UpdateOverlayManifest(componentPath, systemPaths, logger)
-	case ComponentFont:
-		return UpdateFontManifest(componentPath, logger)
-	case ComponentAccent:
-		return UpdateAccentManifest(componentPath, logger)
-	case ComponentLED:
-		return UpdateLEDManifest(componentPath, logger)
-	default:
-		return fmt.Errorf("unhandled component type: %s", componentType)
-	}
+    // First try to load the existing manifest to preserve author information
+    var existingAuthor string
+    manifestObj, err := LoadComponentManifest(componentPath)
+    if err == nil {
+        // Extract author from existing manifest based on component type
+        switch componentType {
+        case ComponentWallpaper:
+            if m, ok := manifestObj.(*WallpaperManifest); ok && m.ComponentInfo.Author != "" {
+                existingAuthor = m.ComponentInfo.Author
+            }
+        case ComponentIcon:
+            if m, ok := manifestObj.(*IconManifest); ok && m.ComponentInfo.Author != "" {
+                existingAuthor = m.ComponentInfo.Author
+            }
+        case ComponentOverlay:
+            if m, ok := manifestObj.(*OverlayManifest); ok && m.ComponentInfo.Author != "" {
+                existingAuthor = m.ComponentInfo.Author
+            }
+        case ComponentFont:
+            if m, ok := manifestObj.(*FontManifest); ok && m.ComponentInfo.Author != "" {
+                existingAuthor = m.ComponentInfo.Author
+            }
+        case ComponentAccent:
+            if m, ok := manifestObj.(*AccentManifest); ok && m.ComponentInfo.Author != "" {
+                existingAuthor = m.ComponentInfo.Author
+            }
+        case ComponentLED:
+            if m, ok := manifestObj.(*LEDManifest); ok && m.ComponentInfo.Author != "" {
+                existingAuthor = m.ComponentInfo.Author
+            }
+        }
+    }
+
+    // Dispatch to specific update function based on component type
+    var updateErr error
+    switch componentType {
+    case ComponentWallpaper:
+        updateErr = UpdateWallpaperManifest(componentPath, systemPaths, logger)
+    case ComponentIcon:
+        updateErr = UpdateIconManifest(componentPath, systemPaths, logger)
+    case ComponentOverlay:
+        updateErr = UpdateOverlayManifest(componentPath, systemPaths, logger)
+    case ComponentFont:
+        updateErr = UpdateFontManifest(componentPath, logger)
+    case ComponentAccent:
+        updateErr = UpdateAccentManifest(componentPath, logger)
+    case ComponentLED:
+        updateErr = UpdateLEDManifest(componentPath, logger)
+    default:
+        return fmt.Errorf("unhandled component type: %s", componentType)
+    }
+
+    // If we had an existing author, restore it after the update
+    if existingAuthor != "" && updateErr == nil {
+        // Load the updated manifest
+        updatedManifest, err := LoadComponentManifest(componentPath)
+        if err == nil {
+            // Set the author back to the original value
+            switch componentType {
+            case ComponentWallpaper:
+                if m, ok := updatedManifest.(*WallpaperManifest); ok {
+                    m.ComponentInfo.Author = existingAuthor
+                    // Write the manifest back
+                    WriteComponentManifest(componentPath, m)
+                }
+            case ComponentIcon:
+                if m, ok := updatedManifest.(*IconManifest); ok {
+                    m.ComponentInfo.Author = existingAuthor
+                    WriteComponentManifest(componentPath, m)
+                }
+            case ComponentOverlay:
+                if m, ok := updatedManifest.(*OverlayManifest); ok {
+                    m.ComponentInfo.Author = existingAuthor
+                    WriteComponentManifest(componentPath, m)
+                }
+            case ComponentFont:
+                if m, ok := updatedManifest.(*FontManifest); ok {
+                    m.ComponentInfo.Author = existingAuthor
+                    WriteComponentManifest(componentPath, m)
+                }
+            case ComponentAccent:
+                if m, ok := updatedManifest.(*AccentManifest); ok {
+                    m.ComponentInfo.Author = existingAuthor
+                    WriteComponentManifest(componentPath, m)
+                }
+            case ComponentLED:
+                if m, ok := updatedManifest.(*LEDManifest); ok {
+                    m.ComponentInfo.Author = existingAuthor
+                    WriteComponentManifest(componentPath, m)
+                }
+            }
+        }
+    }
+
+    return updateErr
 }
 
 func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPaths, logger *Logger) error {

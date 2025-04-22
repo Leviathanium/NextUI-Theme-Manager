@@ -118,67 +118,70 @@ type OverlayManifest struct {
 
 // CreateComponentManifest creates a new component manifest of the specified type
 func CreateComponentManifest(componentType string, name string) (interface{}, error) {
-	// Create basic component info
-	info := ComponentInfo{
-		Name:         name,
-		Type:         componentType,
-		Version:      "1.0.0",
-		Author:       "User",
-		CreationDate: time.Now(),
-		ExportedBy:   GetVersionString(),
-	}
+    // Create basic component info
+    info := ComponentInfo{
+        Name:         name,
+        Type:         componentType,
+        Version:      "1.0.0",
+        CreationDate: time.Now(),
+        ExportedBy:   GetVersionString(),
+    }
 
-	// Create manifest based on component type
-	switch componentType {
-	case ComponentWallpaper:
-		var manifest WallpaperManifest
-		manifest.ComponentInfo = info
-		manifest.Content.Count = 0
-		manifest.Content.SystemWallpapers = []string{}
-		manifest.Content.CollectionWallpapers = []string{}
-		manifest.PathMappings = []PathMapping{}
-		return &manifest, nil
+    // Set author to blank - we'll preserve existing author when updating
+    // Instead of hardcoding "User" here
+    info.Author = ""
 
-	case ComponentIcon:
-		var manifest IconManifest
-		manifest.ComponentInfo = info
-		manifest.Content.SystemCount = 0
-		manifest.Content.ToolCount = 0
-		manifest.Content.CollectionCount = 0
-		manifest.Content.SystemIcons = []string{}
-		manifest.Content.ToolIcons = []string{}
-		manifest.Content.CollectionIcons = []string{}
-		manifest.PathMappings = []PathMapping{}
-		return &manifest, nil
+    // Create manifest based on component type
+    switch componentType {
+    case ComponentWallpaper:
+        var manifest WallpaperManifest
+        manifest.ComponentInfo = info
+        manifest.Content.Count = 0
+        manifest.Content.SystemWallpapers = []string{}
+        manifest.Content.CollectionWallpapers = []string{}
+        manifest.PathMappings = []PathMapping{}
+        return &manifest, nil
 
-	case ComponentAccent:
-		var manifest AccentManifest
-		manifest.ComponentInfo = info
-		return &manifest, nil
+    case ComponentIcon:
+        var manifest IconManifest
+        manifest.ComponentInfo = info
+        manifest.Content.SystemCount = 0
+        manifest.Content.ToolCount = 0
+        manifest.Content.CollectionCount = 0
+        manifest.Content.SystemIcons = []string{}
+        manifest.Content.ToolIcons = []string{}
+        manifest.Content.CollectionIcons = []string{}
+        manifest.PathMappings = []PathMapping{}
+        return &manifest, nil
 
-	case ComponentLED:
-		var manifest LEDManifest
-		manifest.ComponentInfo = info
-		return &manifest, nil
+    case ComponentAccent:
+        var manifest AccentManifest
+        manifest.ComponentInfo = info
+        return &manifest, nil
 
-	case ComponentFont:
-		var manifest FontManifest
-		manifest.ComponentInfo = info
-		manifest.Content.OGReplaced = false
-		manifest.Content.NextReplaced = false
-		manifest.PathMappings = make(map[string]PathMapping)
-		return &manifest, nil
+    case ComponentLED:
+        var manifest LEDManifest
+        manifest.ComponentInfo = info
+        return &manifest, nil
 
-	case ComponentOverlay:
-		var manifest OverlayManifest
-		manifest.ComponentInfo = info
-		manifest.Content.Systems = []string{}
-		manifest.PathMappings = []PathMapping{}
-		return &manifest, nil
+    case ComponentFont:
+        var manifest FontManifest
+        manifest.ComponentInfo = info
+        manifest.Content.OGReplaced = false
+        manifest.Content.NextReplaced = false
+        manifest.PathMappings = make(map[string]PathMapping)
+        return &manifest, nil
 
-	default:
-		return nil, fmt.Errorf("unknown component type: %s", componentType)
-	}
+    case ComponentOverlay:
+        var manifest OverlayManifest
+        manifest.ComponentInfo = info
+        manifest.Content.Systems = []string{}
+        manifest.PathMappings = []PathMapping{}
+        return &manifest, nil
+
+    default:
+        return nil, fmt.Errorf("unknown component type: %s", componentType)
+    }
 }
 
 // WriteComponentManifest writes a component manifest to the specified directory
