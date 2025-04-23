@@ -135,157 +135,126 @@ func DeconstructTheme(themeName string) error {
 
 // DeconstructWallpapers extracts wallpapers from a theme package into a standalone component
 func DeconstructWallpapers(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
-	logger.DebugFn("Extracting wallpapers from theme to component: %s", componentName)
+    logger.DebugFn("Extracting wallpapers from theme to component: %s", componentName)
 
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .bg extension
-	if !strings.HasSuffix(componentName, ComponentExtension[ComponentWallpaper]) {
-		componentName = componentName + ComponentExtension[ComponentWallpaper]
-	}
+    // Create export directory path with .bg extension
+    if !strings.HasSuffix(componentName, ComponentExtension[ComponentWallpaper]) {
+        componentName = componentName + ComponentExtension[ComponentWallpaper]
+    }
 
-	// Path where component will be created (in Exports directory)
-	exportPath := filepath.Join(cwd, "Exports", componentName)
+    // Path where component will be created (in Exports directory)
+    exportPath := filepath.Join(cwd, "Exports", componentName)
 
-	// Create directories for the wallpaper component
-	dirPaths := []string{
-		exportPath,
-		filepath.Join(exportPath, "SystemWallpapers"),
-		filepath.Join(exportPath, "CollectionWallpapers"),
-	}
+    // Create directories for the wallpaper component
+    dirPaths := []string{
+        exportPath,
+        filepath.Join(exportPath, "SystemWallpapers"),
+        filepath.Join(exportPath, "CollectionWallpapers"),
+    }
 
-	for _, dirPath := range dirPaths {
-		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			return fmt.Errorf("error creating directory %s: %w", dirPath, err)
-		}
-	}
+    for _, dirPath := range dirPaths {
+        if err := os.MkdirAll(dirPath, 0755); err != nil {
+            return fmt.Errorf("error creating directory %s: %w", dirPath, err)
+        }
+    }
 
-	// Create component manifest
-	manifestObj, err := CreateComponentManifest(ComponentWallpaper, componentName)
-	if err != nil {
-		return fmt.Errorf("error creating wallpaper manifest: %w", err)
-	}
+    // Create minimal component manifest with author from theme
+    manifestObj, err := CreateMinimalComponentManifest(ComponentWallpaper, componentName, manifest.ThemeInfo.Author)
+    if err != nil {
+        return fmt.Errorf("error creating wallpaper manifest: %w", err)
+    }
 
-	wallpaperManifest := manifestObj.(*WallpaperManifest)
+    wallpaperManifest := manifestObj.(*WallpaperManifest)
 
-	// Copy over author information from theme manifest
-	wallpaperManifest.ComponentInfo.Author = manifest.ThemeInfo.Author
+    // Process each wallpaper mapping from the theme manifest
+    // Copy the files but don't populate the component manifest with mappings
+    for _, mapping := range manifest.PathMappings.Wallpapers {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
 
-	// Process each wallpaper mapping from the theme manifest
-	for _, mapping := range manifest.PathMappings.Wallpapers {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
+        // Skip non-existent files
+        if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+            logger.DebugFn("Warning: Source file does not exist: %s", srcPath)
+            continue
+        }
 
-		// Skip non-existent files
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			logger.DebugFn("Warning: Source file does not exist: %s", srcPath)
-			continue
-		}
+        // Determine destination path in component package
+        // The ThemePath is expected to be like "Wallpapers/SystemWallpapers/Name.png"
+        // We strip the initial "Wallpapers/" to get the correct path in our component package
+        relativePath := mapping.ThemePath
+        if strings.HasPrefix(relativePath, "Wallpapers/") {
+            relativePath = relativePath[len("Wallpapers/"):]
+        }
 
-		// Determine destination path in component package
-		// The ThemePath is expected to be like "Wallpapers/SystemWallpapers/Name.png"
-		// We strip the initial "Wallpapers/" to get the correct path in our component package
-		relativePath := mapping.ThemePath
-		if strings.HasPrefix(relativePath, "Wallpapers/") {
-			relativePath = relativePath[len("Wallpapers/"):]
-		}
+        dstPath := filepath.Join(exportPath, relativePath)
 
-		dstPath := filepath.Join(exportPath, relativePath)
+        // Ensure destination directory exists
+        dstDir := filepath.Dir(dstPath)
+        if err := os.MkdirAll(dstDir, 0755); err != nil {
+            logger.DebugFn("Warning: Could not create directory %s: %v", dstDir, err)
+            continue
+        }
 
-		// Ensure destination directory exists
-		dstDir := filepath.Dir(dstPath)
-		if err := os.MkdirAll(dstDir, 0755); err != nil {
-			logger.DebugFn("Warning: Could not create directory %s: %v", dstDir, err)
-			continue
-		}
+        // Copy the file
+        if err := CopyFile(srcPath, dstPath); err != nil {
+            logger.DebugFn("Warning: Could not copy wallpaper: %v", err)
+            continue
+        }
 
-		// Copy the file
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy wallpaper: %v", err)
-			continue
-		}
+        logger.DebugFn("Copied wallpaper: %s", relativePath)
+    }
 
-		// Add to component manifest
-		wallpaperManifest.PathMappings = append(
-			wallpaperManifest.PathMappings,
-			PathMapping{
-				ThemePath:  relativePath,
-				SystemPath: mapping.SystemPath,
-				Metadata:   mapping.Metadata,
-			},
-		)
+    // Create a preview image - try to use a system wallpaper as preview
+    previewPath := filepath.Join(exportPath, "preview.png")
 
-		// Update component manifest content section
-		if strings.HasPrefix(relativePath, "SystemWallpapers/") {
-			filename := filepath.Base(relativePath)
-			wallpaperManifest.Content.SystemWallpapers = append(
-				wallpaperManifest.Content.SystemWallpapers,
-				filename,
-			)
-		} else if strings.HasPrefix(relativePath, "CollectionWallpapers/") {
-			filename := filepath.Base(relativePath)
-			wallpaperManifest.Content.CollectionWallpapers = append(
-				wallpaperManifest.Content.CollectionWallpapers,
-				filename,
-			)
-		}
+    // Look for Recently Played wallpaper first
+    recentlyPlayedPath := filepath.Join(exportPath, "SystemWallpapers", "Recently Played.png")
+    if _, err := os.Stat(recentlyPlayedPath); err == nil {
+        if err := CopyFile(recentlyPlayedPath, previewPath); err != nil {
+            logger.DebugFn("Warning: Could not copy preview image: %v", err)
+            // Create default preview as fallback
+            if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
+                logger.DebugFn("Warning: Could not create default preview: %v", err)
+            }
+        }
+    } else {
+        // If no Recently Played, try to find any wallpaper
+        systemWallpapersDir := filepath.Join(exportPath, "SystemWallpapers")
+        entries, err := os.ReadDir(systemWallpapersDir)
+        if err == nil && len(entries) > 0 {
+            // Use the first wallpaper found
+            for _, entry := range entries {
+                if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    candidatePath := filepath.Join(systemWallpapersDir, entry.Name())
+                    if err := CopyFile(candidatePath, previewPath); err != nil {
+                        logger.DebugFn("Warning: Could not copy preview image: %v", err)
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
 
-		wallpaperManifest.Content.Count++
-		logger.DebugFn("Copied wallpaper: %s", relativePath)
-	}
+        // If no preview yet, create default
+        if _, err := os.Stat(previewPath); os.IsNotExist(err) {
+            if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
+                logger.DebugFn("Warning: Could not create default preview: %v", err)
+            }
+        }
+    }
 
-	// Create a preview image - try to use a system wallpaper as preview
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if wallpaperManifest.Content.Count > 0 {
-		var previewSource string
+    // Write the component manifest
+    if err := WriteComponentManifest(exportPath, wallpaperManifest); err != nil {
+        return fmt.Errorf("error writing wallpaper manifest: %w", err)
+    }
 
-		// Try to find a good candidate for the preview
-		// First try Recently Played since it usually has a good, meaningful image
-		for _, mapping := range wallpaperManifest.PathMappings {
-			if strings.HasSuffix(mapping.ThemePath, "Recently Played.png") {
-				previewSource = filepath.Join(exportPath, mapping.ThemePath)
-				break
-			}
-		}
-
-		// If no preview found yet, use the first wallpaper
-		if previewSource == "" && len(wallpaperManifest.PathMappings) > 0 {
-			previewSource = filepath.Join(exportPath, wallpaperManifest.PathMappings[0].ThemePath)
-		}
-
-		// Copy the preview
-		if previewSource != "" {
-			if err := CopyFile(previewSource, previewPath); err != nil {
-				logger.DebugFn("Warning: Could not copy preview image: %v", err)
-
-				// Create default preview as fallback
-				if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
-					logger.DebugFn("Warning: Could not create default preview: %v", err)
-				}
-			}
-		} else {
-			// Create default preview
-			if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
-				logger.DebugFn("Warning: Could not create default preview: %v", err)
-			}
-		}
-	} else {
-		// No wallpapers found, create a default preview
-		if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
-			logger.DebugFn("Warning: Could not create default preview: %v", err)
-		}
-	}
-
-	// Write the component manifest
-	if err := WriteComponentManifest(exportPath, wallpaperManifest); err != nil {
-		return fmt.Errorf("error writing wallpaper manifest: %w", err)
-	}
-
-	logger.DebugFn("Wallpaper component extraction completed: %d wallpapers", wallpaperManifest.Content.Count)
-	return nil
+    logger.DebugFn("Wallpaper component extraction completed")
+    return nil
 }
 
 // DeconstructIcons extracts icons from a theme package into a standalone component

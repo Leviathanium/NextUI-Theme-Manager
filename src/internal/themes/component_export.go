@@ -36,429 +36,395 @@ func CreateDefaultPreviewImage(outputPath string, componentType string) error {
 
 // ExportWallpapers exports current wallpapers as a .bg component package
 func ExportWallpapers(name string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting wallpaper export: %s", name)
+    logger.DebugFn("Starting wallpaper export: %s", name)
 
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .bg extension
-	if !strings.HasSuffix(name, ComponentExtension[ComponentWallpaper]) {
-		name = name + ComponentExtension[ComponentWallpaper]
-	}
+    // Create export directory path with .bg extension
+    if !strings.HasSuffix(name, ComponentExtension[ComponentWallpaper]) {
+        name = name + ComponentExtension[ComponentWallpaper]
+    }
 
-	exportPath := filepath.Join(cwd, "Exports", name)
+    exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create directories
-	dirPaths := []string{
-		exportPath,
-		filepath.Join(exportPath, "SystemWallpapers"),
-		filepath.Join(exportPath, "CollectionWallpapers"),
-	}
+    // Create directories
+    dirPaths := []string{
+        exportPath,
+        filepath.Join(exportPath, "SystemWallpapers"),
+        filepath.Join(exportPath, "CollectionWallpapers"),
+    }
 
-	for _, dirPath := range dirPaths {
-		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			return fmt.Errorf("error creating directory %s: %w", dirPath, err)
-		}
-	}
+    for _, dirPath := range dirPaths {
+        if err := os.MkdirAll(dirPath, 0755); err != nil {
+            return fmt.Errorf("error creating directory %s: %w", dirPath, err)
+        }
+    }
 
-	// Create component manifest
-	manifest, err := CreateComponentManifest(ComponentWallpaper, name)
-	if err != nil {
-		return fmt.Errorf("error creating wallpaper manifest: %w", err)
-	}
+    // Create minimal component manifest
+    // Try to preserve author from global manifest if available
+    author := ""
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from Wallpapers component if it exists
+        wallpaperComp, err := GetAppliedComponent(ComponentWallpaper)
+        if err == nil && wallpaperComp != "" {
+            // Try to load the component to get author
+            compPath := filepath.Join(cwd, "Components", "Wallpapers", wallpaperComp)
+            manifestObj, err := LoadComponentManifest(compPath)
+            if err == nil {
+                if wm, ok := manifestObj.(*WallpaperManifest); ok && wm.ComponentInfo.Author != "" {
+                    author = wm.ComponentInfo.Author
+                }
+            }
+        }
+    }
 
-	wallpaperManifest := manifest.(*WallpaperManifest)
+    // Create minimal manifest
+    manifestObj, err := CreateMinimalComponentManifest(ComponentWallpaper, name, author)
+    if err != nil {
+        return fmt.Errorf("error creating wallpaper manifest: %w", err)
+    }
 
-	// Get system paths for copying wallpapers
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    wallpaperManifest := manifestObj.(*WallpaperManifest)
 
-	// Export wallpapers (similar to exportWallpapers in export.go but with different directory structure)
-	// Function to export a wallpaper and add it to the manifest
-	exportWallpaper := func(srcPath, relativeDstDir, filename string, metadata map[string]string) error {
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			return nil // Skip if source doesn't exist
-		}
+    // Get system paths for copying wallpapers
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-		dstDir := filepath.Join(exportPath, relativeDstDir)
-		dstPath := filepath.Join(dstDir, filename)
+    // Copy wallpapers to the component package
+    // (Export the actual files but don't add to manifest content or path_mappings)
 
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy wallpaper %s: %v", srcPath, err)
-			return err
-		}
+    // Export root wallpaper
+    rootBg := filepath.Join(systemPaths.Root, "bg.png")
+    if _, err := os.Stat(rootBg); err == nil {
+        destPath := filepath.Join(exportPath, "SystemWallpapers", "Root.png")
+        if err := CopyFile(rootBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy root wallpaper: %v", err)
+        }
+    }
 
-		// Add to manifest
-		themePath := filepath.Join(relativeDstDir, filename)
-		wallpaperManifest.PathMappings = append(
-			wallpaperManifest.PathMappings,
-			PathMapping{
-				ThemePath:  themePath,
-				SystemPath: srcPath,
-				Metadata:   metadata,
-			},
-		)
+    // Export root media wallpaper
+    rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
+    if _, err := os.Stat(rootMediaBg); err == nil {
+        destPath := filepath.Join(exportPath, "SystemWallpapers", "Root-Media.png")
+        if err := CopyFile(rootMediaBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy root media wallpaper: %v", err)
+        }
+    }
 
-		// Add to content list
-		if strings.HasPrefix(relativeDstDir, "SystemWallpapers") {
-			wallpaperManifest.Content.SystemWallpapers = append(
-				wallpaperManifest.Content.SystemWallpapers,
-				filename,
-			)
-		} else {
-			wallpaperManifest.Content.CollectionWallpapers = append(
-				wallpaperManifest.Content.CollectionWallpapers,
-				filename,
-			)
-		}
+    // Export Recently Played wallpaper
+    rpBg := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
+    if _, err := os.Stat(rpBg); err == nil {
+        destPath := filepath.Join(exportPath, "SystemWallpapers", "Recently Played.png")
+        if err := CopyFile(rpBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Recently Played wallpaper: %v", err)
+        }
+    }
 
-		wallpaperManifest.Content.Count++
-		logger.DebugFn("Exported wallpaper: %s", dstPath)
-		return nil
-	}
+    // Export Tools wallpaper
+    toolsBg := filepath.Join(systemPaths.Tools, ".media", "bg.png")
+    if _, err := os.Stat(toolsBg); err == nil {
+        destPath := filepath.Join(exportPath, "SystemWallpapers", "Tools.png")
+        if err := CopyFile(toolsBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Tools wallpaper: %v", err)
+        }
+    }
 
-	// Export root wallpaper
-	rootBg := filepath.Join(systemPaths.Root, "bg.png")
-	exportWallpaper(rootBg, "SystemWallpapers", "Root.png", map[string]string{
-		"SystemName":    "Root",
-		"WallpaperType": "Main",
-	})
+    // Export Collections wallpaper
+    collectionsBg := filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
+    if _, err := os.Stat(collectionsBg); err == nil {
+        destPath := filepath.Join(exportPath, "SystemWallpapers", "Collections.png")
+        if err := CopyFile(collectionsBg, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Collections wallpaper: %v", err)
+        }
+    }
 
-	// Export root media wallpaper
-	rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
-	exportWallpaper(rootMediaBg, "SystemWallpapers", "Root-Media.png", map[string]string{
-		"SystemName":    "Root",
-		"WallpaperType": "Media",
-	})
+    // Export system wallpapers
+    for _, system := range systemPaths.Systems {
+        if system.Tag == "" {
+            continue // Skip systems without tags
+        }
 
-	// Export Recently Played wallpaper
-	rpBg := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
-	exportWallpaper(rpBg, "SystemWallpapers", "Recently Played.png", map[string]string{
-		"SystemName":    "Recently Played",
-		"WallpaperType": "Media",
-	})
+        systemBg := filepath.Join(system.MediaPath, "bg.png")
+        if _, err := os.Stat(systemBg); err == nil {
+            // Create filename with system tag
+            var filename string
+            if strings.Contains(system.Name, fmt.Sprintf("(%s)", system.Tag)) {
+                filename = fmt.Sprintf("%s.png", system.Name)
+            } else {
+                filename = fmt.Sprintf("%s (%s).png", system.Name, system.Tag)
+            }
 
-	// Export Tools wallpaper
-	toolsBg := filepath.Join(systemPaths.Tools, ".media", "bg.png")
-	exportWallpaper(toolsBg, "SystemWallpapers", "Tools.png", map[string]string{
-		"SystemName":    "Tools",
-		"WallpaperType": "Media",
-	})
+            destPath := filepath.Join(exportPath, "SystemWallpapers", filename)
+            if err := CopyFile(systemBg, destPath); err != nil {
+                logger.DebugFn("Warning: Could not copy system wallpaper for %s: %v", system.Name, err)
+            }
+        }
+    }
 
-	// Export Collections wallpaper
-	collectionsBg := filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
-	exportWallpaper(collectionsBg, "SystemWallpapers", "Collections.png", map[string]string{
-		"SystemName":    "Collections",
-		"WallpaperType": "Media",
-	})
+    // Export collection wallpapers
+    collectionsDir := filepath.Join(systemPaths.Root, "Collections")
+    entries, err := os.ReadDir(collectionsDir)
+    if err == nil {
+        for _, entry := range entries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
 
-	// Export system wallpapers
-	for _, system := range systemPaths.Systems {
-		if system.Tag == "" {
-			continue // Skip systems without tags
-		}
+            collectionName := entry.Name()
+            collectionBg := filepath.Join(collectionsDir, collectionName, ".media", "bg.png")
+            if _, err := os.Stat(collectionBg); err == nil {
+                filename := fmt.Sprintf("%s.png", collectionName)
+                destPath := filepath.Join(exportPath, "CollectionWallpapers", filename)
+                if err := CopyFile(collectionBg, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy collection wallpaper for %s: %v", collectionName, err)
+                }
+            }
+        }
+    }
 
-		systemBg := filepath.Join(system.MediaPath, "bg.png")
+    // Create preview image (use Recently Played bg or a default)
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if _, err := os.Stat(rpBg); err == nil {
+        // Use Recently Played bg as preview
+        if err := CopyFile(rpBg, previewPath); err != nil {
+            logger.DebugFn("Warning: Could not copy preview image: %v", err)
+            // Create default preview as fallback
+            if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
+                logger.DebugFn("Warning: Could not create default preview: %v", err)
+            }
+        }
+    } else {
+        // Create default preview
+        if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
+            logger.DebugFn("Warning: Could not create default preview: %v", err)
+        }
+    }
 
-		// Create filename with system tag
-		var filename string
-		if strings.Contains(system.Name, fmt.Sprintf("(%s)", system.Tag)) {
-			filename = fmt.Sprintf("%s.png", system.Name)
-		} else {
-			filename = fmt.Sprintf("%s (%s).png", system.Name, system.Tag)
-		}
+    // Write manifest
+    if err := WriteComponentManifest(exportPath, wallpaperManifest); err != nil {
+        return fmt.Errorf("error writing wallpaper manifest: %w", err)
+    }
 
-		exportWallpaper(systemBg, "SystemWallpapers", filename, map[string]string{
-			"SystemName":    system.Name,
-			"SystemTag":     system.Tag,
-			"WallpaperType": "System",
-		})
-	}
+    logger.DebugFn("Wallpaper export completed: %s", name)
 
-	// Export collection wallpapers
-	collectionsDir := filepath.Join(systemPaths.Root, "Collections")
-	entries, err := os.ReadDir(collectionsDir)
-	if err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-				continue
-			}
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Wallpapers exported to '%s'", name), "3")
 
-			collectionName := entry.Name()
-			collectionBg := filepath.Join(collectionsDir, collectionName, ".media", "bg.png")
-
-			filename := fmt.Sprintf("%s.png", collectionName)
-
-			exportWallpaper(collectionBg, "CollectionWallpapers", filename, map[string]string{
-				"CollectionName": collectionName,
-				"WallpaperType":  "Collection",
-			})
-		}
-	}
-
-	// Create preview image (use Recently Played bg or a default)
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if _, err := os.Stat(rpBg); err == nil {
-		// Use Recently Played bg as preview
-		if err := CopyFile(rpBg, previewPath); err != nil {
-			logger.DebugFn("Warning: Could not copy preview image: %v", err)
-			// Create default preview as fallback
-			if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
-				logger.DebugFn("Warning: Could not create default preview: %v", err)
-			}
-		}
-	} else {
-		// Create default preview
-		if err := CreateDefaultPreviewImage(previewPath, ComponentWallpaper); err != nil {
-			logger.DebugFn("Warning: Could not create default preview: %v", err)
-		}
-	}
-
-	// Write manifest
-	if err := WriteComponentManifest(exportPath, wallpaperManifest); err != nil {
-		return fmt.Errorf("error writing wallpaper manifest: %w", err)
-	}
-
-	logger.DebugFn("Wallpaper export completed: %s", name)
-
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Wallpapers exported to '%s'", name), "3")
-
-	return nil
+    return nil
 }
 
 // ExportIcons exports current icons as a .icon component package
 func ExportIcons(name string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting icon export: %s", name)
+    logger.DebugFn("Starting icon export: %s", name)
 
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .icon extension
-	if !strings.HasSuffix(name, ComponentExtension[ComponentIcon]) {
-		name = name + ComponentExtension[ComponentIcon]
-	}
+    // Create export directory path with .icon extension
+    if !strings.HasSuffix(name, ComponentExtension[ComponentIcon]) {
+        name = name + ComponentExtension[ComponentIcon]
+    }
 
-	exportPath := filepath.Join(cwd, "Exports", name)
+    exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create directories
-	dirPaths := []string{
-		exportPath,
-		filepath.Join(exportPath, "SystemIcons"),
-		filepath.Join(exportPath, "ToolIcons"),
-		filepath.Join(exportPath, "CollectionIcons"),
-	}
+    // Create directories
+    dirPaths := []string{
+        exportPath,
+        filepath.Join(exportPath, "SystemIcons"),
+        filepath.Join(exportPath, "ToolIcons"),
+        filepath.Join(exportPath, "CollectionIcons"),
+    }
 
-	for _, dirPath := range dirPaths {
-		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			return fmt.Errorf("error creating directory %s: %w", dirPath, err)
-		}
-	}
+    for _, dirPath := range dirPaths {
+        if err := os.MkdirAll(dirPath, 0755); err != nil {
+            return fmt.Errorf("error creating directory %s: %w", dirPath, err)
+        }
+    }
 
-	// Create component manifest
-	manifest, err := CreateComponentManifest(ComponentIcon, name)
-	if err != nil {
-		return fmt.Errorf("error creating icon manifest: %w", err)
-	}
+    // Try to preserve author from global manifest if available
+    author := ""
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from Icons component if it exists
+        iconComp, err := GetAppliedComponent(ComponentIcon)
+        if err == nil && iconComp != "" {
+            // Try to load the component to get author
+            compPath := filepath.Join(cwd, "Components", "Icons", iconComp)
+            manifestObj, err := LoadComponentManifest(compPath)
+            if err == nil {
+                if im, ok := manifestObj.(*IconManifest); ok && im.ComponentInfo.Author != "" {
+                    author = im.ComponentInfo.Author
+                }
+            }
+        }
+    }
 
-	iconManifest := manifest.(*IconManifest)
+    // Create minimal component manifest
+    manifestObj, err := CreateMinimalComponentManifest(ComponentIcon, name, author)
+    if err != nil {
+        return fmt.Errorf("error creating icon manifest: %w", err)
+    }
 
-	// Get system paths for copying icons
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    iconManifest := manifestObj.(*IconManifest)
 
-	// Function to export an icon and add it to the manifest
-	exportIcon := func(srcPath, relativeDstDir, filename string, metadata map[string]string) error {
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			return nil // Skip if source doesn't exist
-		}
+    // Get system paths for copying icons
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-		dstDir := filepath.Join(exportPath, relativeDstDir)
-		dstPath := filepath.Join(dstDir, filename)
+    // Copy icons to the component package
+    // (Export the actual files but don't add to manifest content or path_mappings)
 
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy icon %s: %v", srcPath, err)
-			return err
-		}
+    // Export Recently Played icon
+    rpIcon := filepath.Join(systemPaths.Root, ".media", "Recently Played.png")
+    if _, err := os.Stat(rpIcon); err == nil {
+        destPath := filepath.Join(exportPath, "SystemIcons", "Recently Played.png")
+        if err := CopyFile(rpIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Recently Played icon: %v", err)
+        }
+    }
 
-		// Add to manifest
-		themePath := filepath.Join(relativeDstDir, filename)
-		iconManifest.PathMappings = append(
-			iconManifest.PathMappings,
-			PathMapping{
-				ThemePath:  themePath,
-				SystemPath: srcPath,
-				Metadata:   metadata,
-			},
-		)
+    // Export Tools icon
+    toolsParentDir := filepath.Dir(systemPaths.Tools)
+    toolsIcon := filepath.Join(toolsParentDir, ".media", "tg5040.png")
+    if _, err := os.Stat(toolsIcon); err == nil {
+        destPath := filepath.Join(exportPath, "SystemIcons", "Tools.png")
+        if err := CopyFile(toolsIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Tools icon: %v", err)
+        }
+    }
 
-		// Add to content list and update counts
-		switch relativeDstDir {
-		case "SystemIcons":
-			iconManifest.Content.SystemIcons = append(iconManifest.Content.SystemIcons, filename)
-			iconManifest.Content.SystemCount++
-		case "ToolIcons":
-			iconManifest.Content.ToolIcons = append(iconManifest.Content.ToolIcons, filename)
-			iconManifest.Content.ToolCount++
-		case "CollectionIcons":
-			iconManifest.Content.CollectionIcons = append(iconManifest.Content.CollectionIcons, filename)
-			iconManifest.Content.CollectionCount++
-		}
+    // Export Collections icon
+    collectionsIcon := filepath.Join(systemPaths.Root, ".media", "Collections.png")
+    if _, err := os.Stat(collectionsIcon); err == nil {
+        destPath := filepath.Join(exportPath, "SystemIcons", "Collections.png")
+        if err := CopyFile(collectionsIcon, destPath); err != nil {
+            logger.DebugFn("Warning: Could not copy Collections icon: %v", err)
+        }
+    }
 
-		logger.DebugFn("Exported icon: %s", dstPath)
-		return nil
-	}
+    // Export system icons
+    systemIconsDir := filepath.Join(systemPaths.Roms, ".media")
+    if _, err := os.Stat(systemIconsDir); err == nil {
+        entries, err := os.ReadDir(systemIconsDir)
+        if err == nil {
+            for _, entry := range entries {
+                if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                    continue
+                }
 
-	// Export Recently Played icon
-	rpIcon := filepath.Join(systemPaths.Root, ".media", "Recently Played.png")
-	exportIcon(rpIcon, "SystemIcons", "Recently Played.png", map[string]string{
-		"SystemName": "Recently Played",
-		"IconType":   "System",
-	})
+                if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    continue
+                }
 
-	// Export Tools icon
-	toolsParentDir := filepath.Dir(systemPaths.Tools)
-	toolsIcon := filepath.Join(toolsParentDir, ".media", "tg5040.png")
-	exportIcon(toolsIcon, "SystemIcons", "Tools.png", map[string]string{
-		"SystemName": "Tools",
-		"IconType":   "System",
-	})
+                // Skip special icons we already handled
+                if entry.Name() == "Recently Played.png" ||
+                   entry.Name() == "Collections.png" ||
+                   entry.Name() == "tg5040.png" {
+                    continue
+                }
 
-	// Export Collections icon
-	collectionsIcon := filepath.Join(systemPaths.Root, ".media", "Collections.png")
-	exportIcon(collectionsIcon, "SystemIcons", "Collections.png", map[string]string{
-		"SystemName": "Collections",
-		"IconType":   "System",
-	})
+                // Check for system tag pattern
+                tagRegex := regexp.MustCompile(`\((.*?)\)`)
+                if !tagRegex.MatchString(entry.Name()) {
+                    continue
+                }
 
-	// Export system icons
-	systemIconsDir := filepath.Join(systemPaths.Roms, ".media")
-	if _, err := os.Stat(systemIconsDir); err == nil {
-		entries, err := os.ReadDir(systemIconsDir)
-		if err == nil {
-			for _, entry := range entries {
-				if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-					continue
-				}
+                systemIconPath := filepath.Join(systemIconsDir, entry.Name())
+                destPath := filepath.Join(exportPath, "SystemIcons", entry.Name())
+                if err := CopyFile(systemIconPath, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy system icon: %v", err)
+                }
+            }
+        }
+    }
 
-				if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-					continue
-				}
+    // Export tool icons
+    toolsDir := filepath.Join(systemPaths.Tools)
+    toolEntries, err := os.ReadDir(toolsDir)
+    if err == nil {
+        for _, entry := range toolEntries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
 
-				// Skip special icons we already handled
-				if entry.Name() == "Recently Played.png" ||
-				   entry.Name() == "Collections.png" ||
-				   entry.Name() == "tg5040.png" {
-					continue
-				}
+            toolName := entry.Name()
+            toolIcon := filepath.Join(toolsDir, toolName, ".media", toolName+".png")
+            if _, err := os.Stat(toolIcon); err == nil {
+                destPath := filepath.Join(exportPath, "ToolIcons", fmt.Sprintf("%s.png", toolName))
+                if err := CopyFile(toolIcon, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy tool icon: %v", err)
+                }
+            }
+        }
+    }
 
-				// Check for system tag pattern
-				tagRegex := regexp.MustCompile(`\((.*?)\)`)
-				if !tagRegex.MatchString(entry.Name()) {
-					continue
-				}
+    // Export collection icons
+    collectionsDir := filepath.Join(systemPaths.Root, "Collections")
+    colEntries, err := os.ReadDir(collectionsDir)
+    if err == nil {
+        for _, entry := range colEntries {
+            if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+                continue
+            }
 
-				systemIconPath := filepath.Join(systemIconsDir, entry.Name())
+            collectionName := entry.Name()
+            collectionIcon := filepath.Join(collectionsDir, collectionName, ".media", collectionName+".png")
+            if _, err := os.Stat(collectionIcon); err == nil {
+                destPath := filepath.Join(exportPath, "CollectionIcons", fmt.Sprintf("%s.png", collectionName))
+                if err := CopyFile(collectionIcon, destPath); err != nil {
+                    logger.DebugFn("Warning: Could not copy collection icon: %v", err)
+                }
+            }
+        }
+    }
 
-				// Extract system tag for metadata
-				matches := tagRegex.FindStringSubmatch(entry.Name())
-				systemTag := ""
-				if len(matches) >= 2 {
-					systemTag = matches[1]
-				}
+    // Create preview image (use a system icon or default)
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if _, err := os.Stat(collectionsIcon); err == nil {
+        // Use Collections icon as preview
+        if err := CopyFile(collectionsIcon, previewPath); err != nil {
+            if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
+                logger.DebugFn("Warning: Could not create default preview: %v", err)
+            }
+        }
+    } else {
+        // Create default preview
+        if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
+            logger.DebugFn("Warning: Could not create default preview: %v", err)
+        }
+    }
 
-				exportIcon(systemIconPath, "SystemIcons", entry.Name(), map[string]string{
-					"SystemName": strings.TrimSuffix(entry.Name(), ".png"),
-					"SystemTag":  systemTag,
-					"IconType":   "System",
-				})
-			}
-		}
-	}
+    // Write manifest
+    if err := WriteComponentManifest(exportPath, iconManifest); err != nil {
+        return fmt.Errorf("error writing icon manifest: %w", err)
+    }
 
-	// Export tool icons
-	toolsDir := filepath.Join(systemPaths.Tools)
-	toolEntries, err := os.ReadDir(toolsDir)
-	if err == nil {
-		for _, entry := range toolEntries {
-			if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-				continue
-			}
+    logger.DebugFn("Icon export completed: %s", name)
 
-			toolName := entry.Name()
-			toolIcon := filepath.Join(toolsDir, toolName, ".media", toolName+".png")
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Icons exported to '%s'", name), "3")
 
-			exportIcon(toolIcon, "ToolIcons", fmt.Sprintf("%s.png", toolName), map[string]string{
-				"ToolName": toolName,
-				"IconType": "Tool",
-			})
-		}
-	}
-
-	// Export collection icons
-	collectionsDir := filepath.Join(systemPaths.Root, "Collections")
-	colEntries, err := os.ReadDir(collectionsDir)
-	if err == nil {
-		for _, entry := range colEntries {
-			if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-				continue
-			}
-
-			collectionName := entry.Name()
-			collectionIcon := filepath.Join(collectionsDir, collectionName, ".media", collectionName+".png")
-
-			exportIcon(collectionIcon, "CollectionIcons", fmt.Sprintf("%s.png", collectionName), map[string]string{
-				"CollectionName": collectionName,
-				"IconType":       "Collection",
-			})
-		}
-	}
-
-	// Create preview image (use a system icon or default)
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if _, err := os.Stat(collectionsIcon); err == nil {
-		// Use Collections icon as preview
-		if err := CopyFile(collectionsIcon, previewPath); err != nil {
-			if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
-				logger.DebugFn("Warning: Could not create default preview: %v", err)
-			}
-		}
-	} else {
-		// Create default preview
-		if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
-			logger.DebugFn("Warning: Could not create default preview: %v", err)
-		}
-	}
-
-	// Write manifest
-	if err := WriteComponentManifest(exportPath, iconManifest); err != nil {
-		return fmt.Errorf("error writing icon manifest: %w", err)
-	}
-
-	logger.DebugFn("Icon export completed: %s", name)
-
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Icons exported to '%s'", name), "3")
-
-	return nil
+    return nil
 }
 
 // ExportAccents exports current accent settings as a .acc component package

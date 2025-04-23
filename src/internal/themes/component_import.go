@@ -16,44 +16,45 @@ import (
 
 // ImportComponent dispatches to the appropriate import function based on component type
 func ImportComponent(componentPath string) error {
-	// First, determine the component type from the extension
-	ext := filepath.Ext(componentPath)
+    // First, determine the component type from the extension
+    ext := filepath.Ext(componentPath)
 
-	var componentType string
-	for cType, cExt := range ComponentExtension {
-		if cExt == ext {
-			componentType = cType
-			break
-		}
-	}
+    var componentType string
+    for cType, cExt := range ComponentExtension {
+        if cExt == ext {
+            componentType = cType
+            break
+        }
+    }
 
-	if componentType == "" {
-		return fmt.Errorf("unknown component type for extension: %s", ext)
-	}
+    if componentType == "" {
+        return fmt.Errorf("unknown component type for extension: %s", ext)
+    }
 
-	// Update the component's manifest based on its actual content
-	if err := UpdateComponentManifest(componentPath); err != nil {
-		logging.LogDebug("Warning: Error updating component manifest: %v", err)
-		// Continue anyway, as we can still try to import with the existing manifest
-	}
+    // Update the component's manifest based on its actual content
+    // This is critical for minimal manifests to work properly
+    if err := UpdateComponentManifest(componentPath); err != nil {
+        logging.LogDebug("Warning: Error updating component manifest: %v", err)
+        // Continue anyway, as we can still try to import with the existing manifest
+    }
 
-	// Dispatch to specific import function
-	switch componentType {
-	case ComponentWallpaper:
-		return ImportWallpapers(componentPath)
-	case ComponentIcon:
-		return ImportIcons(componentPath)
-	case ComponentAccent:
-		return ImportAccents(componentPath)
-	case ComponentLED:
-		return ImportLEDs(componentPath)
-	case ComponentFont:
-		return ImportFonts(componentPath)
-	case ComponentOverlay:
-		return ImportOverlays(componentPath)
-	default:
-		return fmt.Errorf("unhandled component type: %s", componentType)
-	}
+    // Dispatch to specific import function
+    switch componentType {
+    case ComponentWallpaper:
+        return ImportWallpapers(componentPath)
+    case ComponentIcon:
+        return ImportIcons(componentPath)
+    case ComponentAccent:
+        return ImportAccents(componentPath)
+    case ComponentLED:
+        return ImportLEDs(componentPath)
+    case ComponentFont:
+        return ImportFonts(componentPath)
+    case ComponentOverlay:
+        return ImportOverlays(componentPath)
+    default:
+        return fmt.Errorf("unhandled component type: %s", componentType)
+    }
 }
 
 // ImportWallpapers imports a wallpaper component package
