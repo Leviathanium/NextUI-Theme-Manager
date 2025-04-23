@@ -229,11 +229,21 @@ func HandleDownloadThemes(selection string, exitCode int) app.Screen {
 
 			if !fileExists(localThemePath) {
 				// Download the theme package if not already installed
-				if err := themes.DownloadThemePackage(selection); err != nil {
-					logging.LogDebug("Error downloading theme: %v", err)
-					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+				downloadErr := ui.ShowMessageWithOperation(
+					fmt.Sprintf("Downloading theme '%s'...", selection),
+					func() error {
+						return themes.DownloadThemePackage(selection)
+					},
+				)
+
+				if downloadErr != nil {
+					logging.LogDebug("Error downloading theme: %v", downloadErr)
+					ui.ShowMessage(fmt.Sprintf("Error: %s", downloadErr), "3")
 					return app.Screens.MainMenu
 				}
+
+				// Show success message briefly
+				ui.ShowMessage(fmt.Sprintf("Theme '%s' downloaded successfully!", selection), "2")
 			} else {
 				logging.LogDebug("Theme '%s' already installed, skipping download", selection)
 			}
@@ -247,13 +257,19 @@ func HandleDownloadThemes(selection string, exitCode int) app.Screen {
 			result, promptCode := ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
 
 			if promptCode == 0 && result == "Yes" {
-				// Set the selected theme and go to import confirm
-				app.SetSelectedTheme(selection)
+				// Apply the theme using the new function
+				importErr := ui.ShowMessageWithOperation(
+					fmt.Sprintf("Applying theme '%s'...", selection),
+					func() error {
+						return themes.ImportTheme(selection)
+					},
+				)
 
-				// Import the theme directly
-				if err := themes.ImportTheme(selection); err != nil {
-					logging.LogDebug("Error importing theme: %v", err)
-					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+				if importErr != nil {
+					logging.LogDebug("Error importing theme: %v", importErr)
+					ui.ShowMessage(fmt.Sprintf("Error: %s", importErr), "3")
+				} else {
+					ui.ShowMessage(fmt.Sprintf("Theme '%s' applied successfully!", selection), "2")
 				}
 			}
 		}
@@ -293,10 +309,17 @@ func HandleSyncCatalog(selection string, exitCode int) app.Screen {
 			// Get default sync options
 			options := themes.GetDefaultSyncOptions()
 
-			// Sync catalog
-			if err := themes.SyncThemeCatalog(options); err != nil {
-				logging.LogDebug("Error syncing catalog: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			// Sync catalog with operation message
+			syncErr := ui.ShowMessageWithOperation(
+				"Syncing theme catalog...",
+				func() error {
+					return themes.SyncThemeCatalog(options)
+				},
+			)
+
+			if syncErr != nil {
+				logging.LogDebug("Error syncing catalog: %v", syncErr)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", syncErr), "3")
 			} else {
 				logging.LogDebug("Catalog sync completed successfully")
 				ui.ShowMessage("Catalog synced successfully!", "2")

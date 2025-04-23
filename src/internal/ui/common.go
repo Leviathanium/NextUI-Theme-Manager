@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
+    "time"
 	"nextui-themes/internal/logging"
 )
 
@@ -19,6 +19,48 @@ type Selection struct {
 	Value    string
 	Code     int
 	Error    error
+}
+
+// ShowMessageWithOperation displays a message while performing an operation,
+// then cleans up and returns any error from the operation
+func ShowMessageWithOperation(message string, operation func() error) error {
+	logging.LogDebug("Showing message with operation: %s", message)
+
+	// Get current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		logging.LogDebug("Error getting current directory: %v", err)
+		return err
+	}
+
+	// Use explicit path to minui-presenter
+	minuiPresenterPath := filepath.Join(cwd, "minui-presenter")
+
+	// Start presenter with negative timeout (will stay until killed)
+	cmd := exec.Command(minuiPresenterPath, "--message", message, "--timeout", "-1")
+
+	// Start in background
+	if err := cmd.Start(); err != nil {
+		logging.LogDebug("Error starting minui-presenter: %v", err)
+		return err
+	}
+
+	// Ensure the process gets killed when we're done
+	defer func() {
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+			logging.LogDebug("Killed minui-presenter process")
+		}
+	}()
+
+	// Run the operation
+	operationErr := operation()
+
+	// Small delay to make sure the message is visible for at least a moment
+	// even if the operation is very fast
+	time.Sleep(500 * time.Millisecond)
+
+	return operationErr
 }
 
 // DisplayMinUiList displays a list of items using minui-list

@@ -219,9 +219,19 @@ func HandleInstalledComponents(selection string, exitCode int) app.Screen {
 		if selection != "" {
 			// Import/apply the selected component
 			componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
-			if err := themes.ImportComponent(componentPath); err != nil {
-				logging.LogDebug("Error importing component: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+
+			importErr := ui.ShowMessageWithOperation(
+				fmt.Sprintf("Applying %s component '%s'...", componentType, selection),
+				func() error {
+					return themes.ImportComponent(componentPath)
+				},
+			)
+
+			if importErr != nil {
+				logging.LogDebug("Error importing component: %v", importErr)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", importErr), "3")
+			} else {
+				ui.ShowMessage(fmt.Sprintf("%s component applied successfully!", componentType), "2")
 			}
 		}
 		return app.Screens.ComponentOptions
