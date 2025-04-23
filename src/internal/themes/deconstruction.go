@@ -259,481 +259,420 @@ func DeconstructWallpapers(themePath string, manifest *ThemeManifest, componentN
 
 // DeconstructIcons extracts icons from a theme package into a standalone component
 func DeconstructIcons(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
-	logger.DebugFn("Extracting icons from theme to component: %s", componentName)
+    logger.DebugFn("Extracting icons from theme to component: %s", componentName)
 
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .icon extension
-	if !strings.HasSuffix(componentName, ComponentExtension[ComponentIcon]) {
-		componentName = componentName + ComponentExtension[ComponentIcon]
-	}
+    // Create export directory path with .icon extension
+    if !strings.HasSuffix(componentName, ComponentExtension[ComponentIcon]) {
+        componentName = componentName + ComponentExtension[ComponentIcon]
+    }
 
-	// Path where component will be created (in Exports directory)
-	exportPath := filepath.Join(cwd, "Exports", componentName)
+    // Path where component will be created (in Exports directory)
+    exportPath := filepath.Join(cwd, "Exports", componentName)
 
-	// Create directories for the icon component
-	dirPaths := []string{
-		exportPath,
-		filepath.Join(exportPath, "SystemIcons"),
-		filepath.Join(exportPath, "ToolIcons"),
-		filepath.Join(exportPath, "CollectionIcons"),
-	}
+    // Create directories for the icon component
+    dirPaths := []string{
+        exportPath,
+        filepath.Join(exportPath, "SystemIcons"),
+        filepath.Join(exportPath, "ToolIcons"),
+        filepath.Join(exportPath, "CollectionIcons"),
+    }
 
-	for _, dirPath := range dirPaths {
-		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			return fmt.Errorf("error creating directory %s: %w", dirPath, err)
-		}
-	}
+    for _, dirPath := range dirPaths {
+        if err := os.MkdirAll(dirPath, 0755); err != nil {
+            return fmt.Errorf("error creating directory %s: %w", dirPath, err)
+        }
+    }
 
-	// Create component manifest
-	manifestObj, err := CreateComponentManifest(ComponentIcon, componentName)
-	if err != nil {
-		return fmt.Errorf("error creating icon manifest: %w", err)
-	}
+    // Create minimal component manifest with author from theme
+    manifestObj, err := CreateMinimalComponentManifest(ComponentIcon, componentName, manifest.ThemeInfo.Author)
+    if err != nil {
+        return fmt.Errorf("error creating icon manifest: %w", err)
+    }
 
-	iconManifest := manifestObj.(*IconManifest)
+    iconManifest := manifestObj.(*IconManifest)
 
-	// Copy over author information from theme manifest
-	iconManifest.ComponentInfo.Author = manifest.ThemeInfo.Author
+    // Process each icon mapping from the theme manifest
+    // Copy the files but don't populate the component manifest with mappings
+    for _, mapping := range manifest.PathMappings.Icons {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
 
-	// Process each icon mapping from the theme manifest
-	for _, mapping := range manifest.PathMappings.Icons {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
+        // Skip non-existent files
+        if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+            logger.DebugFn("Warning: Source file does not exist: %s", srcPath)
+            continue
+        }
 
-		// Skip non-existent files
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			logger.DebugFn("Warning: Source file does not exist: %s", srcPath)
-			continue
-		}
+        // Determine destination path in component package
+        // The ThemePath is expected to be like "Icons/SystemIcons/Name.png"
+        // We strip the initial "Icons/" to get the correct path in our component package
+        relativePath := mapping.ThemePath
+        if strings.HasPrefix(relativePath, "Icons/") {
+            relativePath = relativePath[len("Icons/"):]
+        }
 
-		// Determine destination path in component package
-		// The ThemePath is expected to be like "Icons/SystemIcons/Name.png"
-		// We strip the initial "Icons/" to get the correct path in our component package
-		relativePath := mapping.ThemePath
-		if strings.HasPrefix(relativePath, "Icons/") {
-			relativePath = relativePath[len("Icons/"):]
-		}
+        dstPath := filepath.Join(exportPath, relativePath)
 
-		dstPath := filepath.Join(exportPath, relativePath)
+        // Ensure destination directory exists
+        dstDir := filepath.Dir(dstPath)
+        if err := os.MkdirAll(dstDir, 0755); err != nil {
+            logger.DebugFn("Warning: Could not create directory %s: %v", dstDir, err)
+            continue
+        }
 
-		// Ensure destination directory exists
-		dstDir := filepath.Dir(dstPath)
-		if err := os.MkdirAll(dstDir, 0755); err != nil {
-			logger.DebugFn("Warning: Could not create directory %s: %v", dstDir, err)
-			continue
-		}
+        // Copy the file
+        if err := CopyFile(srcPath, dstPath); err != nil {
+            logger.DebugFn("Warning: Could not copy icon: %v", err)
+            continue
+        }
 
-		// Copy the file
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy icon: %v", err)
-			continue
-		}
+        logger.DebugFn("Copied icon: %s", relativePath)
+    }
 
-		// Add to component manifest
-		iconManifest.PathMappings = append(
-			iconManifest.PathMappings,
-			PathMapping{
-				ThemePath:  relativePath,
-				SystemPath: mapping.SystemPath,
-				Metadata:   mapping.Metadata,
-			},
-		)
+    // Create a preview image - try to use a system icon as preview
+    previewPath := filepath.Join(exportPath, "preview.png")
 
-		// Update component manifest content section and counters
-		filename := filepath.Base(relativePath)
-		if strings.HasPrefix(relativePath, "SystemIcons/") {
-			iconManifest.Content.SystemIcons = append(
-				iconManifest.Content.SystemIcons,
-				filename,
-			)
-			iconManifest.Content.SystemCount++
-		} else if strings.HasPrefix(relativePath, "ToolIcons/") {
-			iconManifest.Content.ToolIcons = append(
-				iconManifest.Content.ToolIcons,
-				filename,
-			)
-			iconManifest.Content.ToolCount++
-		} else if strings.HasPrefix(relativePath, "CollectionIcons/") {
-			iconManifest.Content.CollectionIcons = append(
-				iconManifest.Content.CollectionIcons,
-				filename,
-			)
-			iconManifest.Content.CollectionCount++
-		}
+    // Try to find a good candidate for the preview
+    // First try Collections icon since it usually has a good, representative icon
+    collectionsIconPath := filepath.Join(exportPath, "SystemIcons", "Collections.png")
+    if _, err := os.Stat(collectionsIconPath); err == nil {
+        if err := CopyFile(collectionsIconPath, previewPath); err != nil {
+            logger.DebugFn("Warning: Could not copy preview image: %v", err)
+            // Create default preview as fallback
+            if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
+                logger.DebugFn("Warning: Could not create default preview: %v", err)
+            }
+        }
+    } else {
+        // If no Collections icon, try any icon in SystemIcons
+        systemIconsDir := filepath.Join(exportPath, "SystemIcons")
+        entries, err := os.ReadDir(systemIconsDir)
+        if err == nil && len(entries) > 0 {
+            // Use the first icon found
+            for _, entry := range entries {
+                if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+                    candidatePath := filepath.Join(systemIconsDir, entry.Name())
+                    if err := CopyFile(candidatePath, previewPath); err != nil {
+                        logger.DebugFn("Warning: Could not copy preview image: %v", err)
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
 
-		logger.DebugFn("Copied icon: %s", relativePath)
-	}
+        // If no preview yet, create default
+        if _, err := os.Stat(previewPath); os.IsNotExist(err) {
+            if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
+                logger.DebugFn("Warning: Could not create default preview: %v", err)
+            }
+        }
+    }
 
-	// Create a preview image - try to use a system icon as preview
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if iconManifest.Content.SystemCount > 0 ||
-	   iconManifest.Content.ToolCount > 0 ||
-	   iconManifest.Content.CollectionCount > 0 {
-		var previewSource string
+    // Write the component manifest
+    if err := WriteComponentManifest(exportPath, iconManifest); err != nil {
+        return fmt.Errorf("error writing icon manifest: %w", err)
+    }
 
-		// Try to find a good candidate for the preview
-		// First try Collections icon since it usually has a good, representative icon
-		for _, mapping := range iconManifest.PathMappings {
-			if strings.HasSuffix(mapping.ThemePath, "Collections.png") {
-				previewSource = filepath.Join(exportPath, mapping.ThemePath)
-				break
-			}
-		}
-
-		// If no preview found yet, use the first icon
-		if previewSource == "" && len(iconManifest.PathMappings) > 0 {
-			previewSource = filepath.Join(exportPath, iconManifest.PathMappings[0].ThemePath)
-		}
-
-		// Copy the preview
-		if previewSource != "" {
-			if err := CopyFile(previewSource, previewPath); err != nil {
-				logger.DebugFn("Warning: Could not copy preview image: %v", err)
-
-				// Create default preview as fallback
-				if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
-					logger.DebugFn("Warning: Could not create default preview: %v", err)
-				}
-			}
-		} else {
-			// Create default preview
-			if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
-				logger.DebugFn("Warning: Could not create default preview: %v", err)
-			}
-		}
-	} else {
-		// No icons found, create a default preview
-		if err := CreateDefaultPreviewImage(previewPath, ComponentIcon); err != nil {
-			logger.DebugFn("Warning: Could not create default preview: %v", err)
-		}
-	}
-
-	// Write the component manifest
-	if err := WriteComponentManifest(exportPath, iconManifest); err != nil {
-		return fmt.Errorf("error writing icon manifest: %w", err)
-	}
-
-	logger.DebugFn("Icon component extraction completed: %d system, %d tool, %d collection icons",
-		iconManifest.Content.SystemCount,
-		iconManifest.Content.ToolCount,
-		iconManifest.Content.CollectionCount)
-	return nil
+    logger.DebugFn("Icon component extraction completed")
+    return nil
 }
 
 // DeconstructOverlays extracts overlays from a theme package into a standalone component
 func DeconstructOverlays(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
-	logger.DebugFn("Extracting overlays from theme to component: %s", componentName)
+    logger.DebugFn("Extracting overlays from theme to component: %s", componentName)
 
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .over extension
-	if !strings.HasSuffix(componentName, ComponentExtension[ComponentOverlay]) {
-		componentName = componentName + ComponentExtension[ComponentOverlay]
-	}
+    // Create export directory path with .over extension
+    if !strings.HasSuffix(componentName, ComponentExtension[ComponentOverlay]) {
+        componentName = componentName + ComponentExtension[ComponentOverlay]
+    }
 
-	// Path where component will be created (in Exports directory)
-	exportPath := filepath.Join(cwd, "Exports", componentName)
+    // Path where component will be created (in Exports directory)
+    exportPath := filepath.Join(cwd, "Exports", componentName)
 
-	// Create the root directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create the root directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create the Systems directory
-	systemsDir := filepath.Join(exportPath, "Systems")
-	if err := os.MkdirAll(systemsDir, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", systemsDir, err)
-	}
+    // Create the Systems directory
+    systemsDir := filepath.Join(exportPath, "Systems")
+    if err := os.MkdirAll(systemsDir, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", systemsDir, err)
+    }
 
-	// Create component manifest
-	manifestObj, err := CreateComponentManifest(ComponentOverlay, componentName)
-	if err != nil {
-		return fmt.Errorf("error creating overlay manifest: %w", err)
-	}
+    // Create minimal component manifest with author from theme
+    manifestObj, err := CreateMinimalComponentManifest(ComponentOverlay, componentName, manifest.ThemeInfo.Author)
+    if err != nil {
+        return fmt.Errorf("error creating overlay manifest: %w", err)
+    }
 
-	overlayManifest := manifestObj.(*OverlayManifest)
+    overlayManifest := manifestObj.(*OverlayManifest)
 
-	// Copy over author information from theme manifest
-	overlayManifest.ComponentInfo.Author = manifest.ThemeInfo.Author
+    // Copy over the systems list but as a blank list - will be populated during import
+    overlayManifest.Content.Systems = []string{}
 
-	// Copy over the systems list
-	overlayManifest.Content.Systems = append([]string{}, manifest.Content.Overlays.Systems...)
+    // Process each overlay mapping from the theme manifest
+    for _, mapping := range manifest.PathMappings.Overlays {
+        srcPath := filepath.Join(themePath, mapping.ThemePath)
 
-	// Process each overlay mapping from the theme manifest
-	for _, mapping := range manifest.PathMappings.Overlays {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
+        // Skip non-existent files
+        if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+            logger.DebugFn("Warning: Source file does not exist: %s", srcPath)
+            continue
+        }
 
-		// Skip non-existent files
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			logger.DebugFn("Warning: Source file does not exist: %s", srcPath)
-			continue
-		}
+        // Determine destination path in component package
+        // The ThemePath is expected to be like "Overlays/SYSTEM/file.png"
+        relativePath := mapping.ThemePath
+        if strings.HasPrefix(relativePath, "Overlays/") {
+            relativePath = "Systems/" + relativePath[len("Overlays/"):]
+        }
 
-		// Determine destination path in component package
-		// The ThemePath is expected to be like "Overlays/SYSTEM/file.png"
-		relativePath := mapping.ThemePath
-		if strings.HasPrefix(relativePath, "Overlays/") {
-			relativePath = "Systems/" + relativePath[len("Overlays/"):]
-		}
+        dstPath := filepath.Join(exportPath, relativePath)
 
-		dstPath := filepath.Join(exportPath, relativePath)
+        // Ensure destination directory exists
+        dstDir := filepath.Dir(dstPath)
+        if err := os.MkdirAll(dstDir, 0755); err != nil {
+            logger.DebugFn("Warning: Could not create directory %s: %v", dstDir, err)
+            continue
+        }
 
-		// Ensure destination directory exists
-		dstDir := filepath.Dir(dstPath)
-		if err := os.MkdirAll(dstDir, 0755); err != nil {
-			logger.DebugFn("Warning: Could not create directory %s: %v", dstDir, err)
-			continue
-		}
+        // Copy the file
+        if err := CopyFile(srcPath, dstPath); err != nil {
+            logger.DebugFn("Warning: Could not copy overlay: %v", err)
+            continue
+        }
 
-		// Copy the file
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy overlay: %v", err)
-			continue
-		}
+        logger.DebugFn("Copied overlay: %s", relativePath)
 
-		// Add to component manifest
-		overlayManifest.PathMappings = append(
-			overlayManifest.PathMappings,
-			PathMapping{
-				ThemePath:  relativePath,
-				SystemPath: mapping.SystemPath,
-				Metadata:   mapping.Metadata,
-			},
-		)
+        // Extract system tag from path
+        // This is just for tracking which systems we've processed
+        pathParts := strings.Split(relativePath, "/")
+        if len(pathParts) >= 2 {
+            systemTag := pathParts[1]
 
-		logger.DebugFn("Copied overlay: %s", relativePath)
-	}
+            // Add system to the list if not already present
+            systemFound := false
+            for _, tag := range overlayManifest.Content.Systems {
+                if tag == systemTag {
+                    systemFound = true
+                    break
+                }
+            }
 
-	// Create a default preview image
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if err := CreateDefaultPreviewImage(previewPath, ComponentOverlay); err != nil {
-		logger.DebugFn("Warning: Could not create default preview: %v", err)
-	}
+            if !systemFound {
+                overlayManifest.Content.Systems = append(overlayManifest.Content.Systems, systemTag)
+            }
+        }
+    }
 
-	// Write the component manifest
-	if err := WriteComponentManifest(exportPath, overlayManifest); err != nil {
-		return fmt.Errorf("error writing overlay manifest: %w", err)
-	}
+    // Create a default preview image
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if err := CreateDefaultPreviewImage(previewPath, ComponentOverlay); err != nil {
+        logger.DebugFn("Warning: Could not create default preview: %v", err)
+    }
 
-	logger.DebugFn("Overlay component extraction completed for %d systems", len(overlayManifest.Content.Systems))
-	return nil
+    // Write the component manifest
+    if err := WriteComponentManifest(exportPath, overlayManifest); err != nil {
+        return fmt.Errorf("error writing overlay manifest: %w", err)
+    }
+
+    logger.DebugFn("Overlay component extraction completed")
+    return nil
 }
 
 // DeconstructFonts extracts fonts from a theme package into a standalone component
 func DeconstructFonts(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
-	logger.DebugFn("Extracting fonts from theme to component: %s", componentName)
+    logger.DebugFn("Extracting fonts from theme to component: %s", componentName)
 
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
-
-	// Create export directory path with .font extension
-	if !strings.HasSuffix(componentName, ComponentExtension[ComponentFont]) {
-		componentName = componentName + ComponentExtension[ComponentFont]
-	}
-
-	// Path where component will be created (in Exports directory)
-	exportPath := filepath.Join(cwd, "Exports", componentName)
-
-	// Create the root directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
-
-	// Create component manifest
-	manifestObj, err := CreateComponentManifest(ComponentFont, componentName)
-	if err != nil {
-		return fmt.Errorf("error creating font manifest: %w", err)
-	}
-
-	fontManifest := manifestObj.(*FontManifest)
-
-	// Copy over author information from theme manifest
-	fontManifest.ComponentInfo.Author = manifest.ThemeInfo.Author
-
-	// Copy content flags
-	fontManifest.Content.OGReplaced = manifest.Content.Fonts.OGReplaced
-	fontManifest.Content.NextReplaced = manifest.Content.Fonts.NextReplaced
-
-	// Process fonts from the theme
-	fontPaths := []string{
-		"Fonts/OG.ttf",
-		"Fonts/Next.ttf",
-		"Fonts/OG.backup.ttf",
-		"Fonts/Next.backup.ttf",
-	}
-
-	fontNames := []string{
-		"OG",
-		"Next",
-		"OG.backup",
-		"Next.backup",
-	}
-
-    // Define system paths for fonts - CORRECTED PATHS
-    systemPaths := map[string]string{
-        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
-        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",  // Corrected extension
-        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
-        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",  // Corrected extension
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
     }
 
-	for i, fontPath := range fontPaths {
-		fontName := fontNames[i]
+    // Create export directory path with .font extension
+    if !strings.HasSuffix(componentName, ComponentExtension[ComponentFont]) {
+        componentName = componentName + ComponentExtension[ComponentFont]
+    }
 
-		srcPath := filepath.Join(themePath, fontPath)
-		dstPath := filepath.Join(exportPath, fontName + ".ttf")
+    // Path where component will be created (in Exports directory)
+    exportPath := filepath.Join(cwd, "Exports", componentName)
 
-		// Skip non-existent files
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			logger.DebugFn("Font file does not exist in theme: %s", srcPath)
-			continue
-		}
+    // Create the root directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-		// Copy the font file
-		if err := CopyFile(srcPath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy font %s: %v", fontName, err)
-			continue
-		}
+    // Create minimal component manifest with author from theme
+    manifestObj, err := CreateMinimalComponentManifest(ComponentFont, componentName, manifest.ThemeInfo.Author)
+    if err != nil {
+        return fmt.Errorf("error creating font manifest: %w", err)
+    }
 
-		// Add to component manifest
-		fontManifest.PathMappings[fontName] = PathMapping{
-			ThemePath:  fontName + ".ttf",
-			SystemPath: systemPaths[fontName],
-		}
+    fontManifest := manifestObj.(*FontManifest)
 
-		logger.DebugFn("Copied font: %s", fontName)
-	}
+    // Process fonts from the theme
+    fontPaths := []string{
+        "Fonts/OG.ttf",
+        "Fonts/Next.ttf",
+        "Fonts/OG.backup.ttf",
+        "Fonts/Next.backup.ttf",
+    }
 
-	// Create a default preview image
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if err := CreateDefaultPreviewImage(previewPath, ComponentFont); err != nil {
-		logger.DebugFn("Warning: Could not create default preview: %v", err)
-	}
+    fontNames := []string{
+        "OG",
+        "Next",
+        "OG.backup",
+        "Next.backup",
+    }
 
-	// Write the component manifest
-	if err := WriteComponentManifest(exportPath, fontManifest); err != nil {
-		return fmt.Errorf("error writing font manifest: %w", err)
-	}
+    for i, fontPath := range fontPaths {
+        fontName := fontNames[i]
 
-	logger.DebugFn("Font component extraction completed")
-	return nil
+        srcPath := filepath.Join(themePath, fontPath)
+        dstPath := filepath.Join(exportPath, fontName + ".ttf")
+
+        // Skip non-existent files
+        if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+            logger.DebugFn("Font file does not exist in theme: %s", srcPath)
+            continue
+        }
+
+        // Copy the font file
+        if err := CopyFile(srcPath, dstPath); err != nil {
+            logger.DebugFn("Warning: Could not copy font %s: %v", fontName, err)
+            continue
+        }
+
+        logger.DebugFn("Copied font: %s", fontName)
+    }
+
+    // Create a default preview image
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if err := CreateDefaultPreviewImage(previewPath, ComponentFont); err != nil {
+        logger.DebugFn("Warning: Could not create default preview: %v", err)
+    }
+
+    // Write the component manifest
+    if err := WriteComponentManifest(exportPath, fontManifest); err != nil {
+        return fmt.Errorf("error writing font manifest: %w", err)
+    }
+
+    logger.DebugFn("Font component extraction completed")
+    return nil
 }
 
 // DeconstructAccents extracts accent settings from a theme package into a standalone component
 func DeconstructAccents(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
-	logger.DebugFn("Extracting accent settings from theme to component: %s", componentName)
+    logger.DebugFn("Extracting accent settings from theme to component: %s", componentName)
 
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .acc extension
-	if !strings.HasSuffix(componentName, ComponentExtension[ComponentAccent]) {
-		componentName = componentName + ComponentExtension[ComponentAccent]
-	}
+    // Create export directory path with .acc extension
+    if !strings.HasSuffix(componentName, ComponentExtension[ComponentAccent]) {
+        componentName = componentName + ComponentExtension[ComponentAccent]
+    }
 
-	// Path where component will be created (in Exports directory)
-	exportPath := filepath.Join(cwd, "Exports", componentName)
+    // Path where component will be created (in Exports directory)
+    exportPath := filepath.Join(cwd, "Exports", componentName)
 
-	// Create the root directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create the root directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create component manifest
-	manifestObj, err := CreateComponentManifest(ComponentAccent, componentName)
-	if err != nil {
-		return fmt.Errorf("error creating accent manifest: %w", err)
-	}
+    // Create minimal component manifest with author from theme
+    manifestObj, err := CreateMinimalComponentManifest(ComponentAccent, componentName, manifest.ThemeInfo.Author)
+    if err != nil {
+        return fmt.Errorf("error creating accent manifest: %w", err)
+    }
 
-	accentManifest := manifestObj.(*AccentManifest)
+    accentManifest := manifestObj.(*AccentManifest)
 
-	// Copy over author information from theme manifest
-	accentManifest.ComponentInfo.Author = manifest.ThemeInfo.Author
+    // Copy accent colors from theme manifest
+    accentManifest.AccentColors.Color1 = manifest.AccentColors.Color1
+    accentManifest.AccentColors.Color2 = manifest.AccentColors.Color2
+    accentManifest.AccentColors.Color3 = manifest.AccentColors.Color3
+    accentManifest.AccentColors.Color4 = manifest.AccentColors.Color4
+    accentManifest.AccentColors.Color5 = manifest.AccentColors.Color5
+    accentManifest.AccentColors.Color6 = manifest.AccentColors.Color6
 
-	// Copy accent colors from theme manifest
-	accentManifest.AccentColors.Color1 = manifest.AccentColors.Color1
-	accentManifest.AccentColors.Color2 = manifest.AccentColors.Color2
-	accentManifest.AccentColors.Color3 = manifest.AccentColors.Color3
-	accentManifest.AccentColors.Color4 = manifest.AccentColors.Color4
-	accentManifest.AccentColors.Color5 = manifest.AccentColors.Color5
-	accentManifest.AccentColors.Color6 = manifest.AccentColors.Color6
+    // Create a default preview image
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if err := CreateDefaultPreviewImage(previewPath, ComponentAccent); err != nil {
+        logger.DebugFn("Warning: Could not create default preview: %v", err)
+    }
 
-	// Create a default preview image
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if err := CreateDefaultPreviewImage(previewPath, ComponentAccent); err != nil {
-		logger.DebugFn("Warning: Could not create default preview: %v", err)
-	}
+    // Write the component manifest
+    if err := WriteComponentManifest(exportPath, accentManifest); err != nil {
+        return fmt.Errorf("error writing accent manifest: %w", err)
+    }
 
-	// Write the component manifest
-	if err := WriteComponentManifest(exportPath, accentManifest); err != nil {
-		return fmt.Errorf("error writing accent manifest: %w", err)
-	}
-
-	logger.DebugFn("Accent settings component extraction completed")
-	return nil
+    logger.DebugFn("Accent settings component extraction completed")
+    return nil
 }
 
 // DeconstructLEDs extracts LED settings from a theme package into a standalone component
 func DeconstructLEDs(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
-	logger.DebugFn("Extracting LED settings from theme to component: %s", componentName)
+    logger.DebugFn("Extracting LED settings from theme to component: %s", componentName)
 
-	// Get current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .led extension
-	if !strings.HasSuffix(componentName, ComponentExtension[ComponentLED]) {
-		componentName = componentName + ComponentExtension[ComponentLED]
-	}
+    // Create export directory path with .led extension
+    if !strings.HasSuffix(componentName, ComponentExtension[ComponentLED]) {
+        componentName = componentName + ComponentExtension[ComponentLED]
+    }
 
-	// Path where component will be created (in Exports directory)
-	exportPath := filepath.Join(cwd, "Exports", componentName)
+    // Path where component will be created (in Exports directory)
+    exportPath := filepath.Join(cwd, "Exports", componentName)
 
-	// Create the root directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create the root directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create component manifest
-	manifestObj, err := CreateComponentManifest(ComponentLED, componentName)
-	if err != nil {
-		return fmt.Errorf("error creating LED manifest: %w", err)
-	}
+    // Create minimal component manifest with author from theme
+    manifestObj, err := CreateMinimalComponentManifest(ComponentLED, componentName, manifest.ThemeInfo.Author)
+    if err != nil {
+        return fmt.Errorf("error creating LED manifest: %w", err)
+    }
 
-	ledManifest := manifestObj.(*LEDManifest)
+    ledManifest := manifestObj.(*LEDManifest)
 
-	// Copy over author information from theme manifest
-	ledManifest.ComponentInfo.Author = manifest.ThemeInfo.Author
+    // Copy LED settings from theme manifest
+    ledManifest.LEDSettings.F1Key = manifest.LEDSettings.F1Key
+    ledManifest.LEDSettings.F2Key = manifest.LEDSettings.F2Key
+    ledManifest.LEDSettings.TopBar = manifest.LEDSettings.TopBar
+    ledManifest.LEDSettings.LRTriggers = manifest.LEDSettings.LRTriggers
 
-	// Copy LED settings from theme manifest
-	ledManifest.LEDSettings.F1Key = manifest.LEDSettings.F1Key
-	ledManifest.LEDSettings.F2Key = manifest.LEDSettings.F2Key
-	ledManifest.LEDSettings.TopBar = manifest.LEDSettings.TopBar
-	ledManifest.LEDSettings.LRTriggers = manifest.LEDSettings.LRTriggers
+    // Note: LEDs don't have a preview image by design
 
-	// Note: LEDs don't have a preview image by design
+    // Write the component manifest
+    if err := WriteComponentManifest(exportPath, ledManifest); err != nil {
+        return fmt.Errorf("error writing LED manifest: %w", err)
+    }
 
-	// Write the component manifest
-	if err := WriteComponentManifest(exportPath, ledManifest); err != nil {
-		return fmt.Errorf("error writing LED manifest: %w", err)
-	}
-
-	logger.DebugFn("LED settings component extraction completed")
-	return nil
+    logger.DebugFn("LED settings component extraction completed")
+    return nil
 }

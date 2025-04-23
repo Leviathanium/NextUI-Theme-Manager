@@ -224,7 +224,6 @@ func ExportWallpapers(name string) error {
     return nil
 }
 
-// ExportIcons exports current icons as a .icon component package
 func ExportIcons(name string) error {
     logger := &Logger{
         DebugFn: logging.LogDebug,
@@ -429,481 +428,526 @@ func ExportIcons(name string) error {
 
 // ExportAccents exports current accent settings as a .acc component package
 func ExportAccents(name string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting accent export: %s", name)
+    logger.DebugFn("Starting accent export: %s", name)
 
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .acc extension
-	if !strings.HasSuffix(name, ComponentExtension[ComponentAccent]) {
-		name = name + ComponentExtension[ComponentAccent]
-	}
+    // Create export directory path with .acc extension
+    if !strings.HasSuffix(name, ComponentExtension[ComponentAccent]) {
+        name = name + ComponentExtension[ComponentAccent]
+    }
 
-	exportPath := filepath.Join(cwd, "Exports", name)
+    exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create export directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create export directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create component manifest
-	manifest, err := CreateComponentManifest(ComponentAccent, name)
-	if err != nil {
-		return fmt.Errorf("error creating accent manifest: %w", err)
-	}
+    // Try to preserve author from global manifest if available
+    author := ""
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from Accents component if it exists
+        accentComp, err := GetAppliedComponent(ComponentAccent)
+        if err == nil && accentComp != "" {
+            // Try to load the component to get author
+            compPath := filepath.Join(cwd, "Components", "Accents", accentComp)
+            manifestObj, err := LoadComponentManifest(compPath)
+            if err == nil {
+                if am, ok := manifestObj.(*AccentManifest); ok && am.ComponentInfo.Author != "" {
+                    author = am.ComponentInfo.Author
+                }
+            }
+        }
+    }
 
-	accentManifest := manifest.(*AccentManifest)
+    // Create minimal component manifest
+    manifestObj, err := CreateMinimalComponentManifest(ComponentAccent, name, author)
+    if err != nil {
+        return fmt.Errorf("error creating accent manifest: %w", err)
+    }
 
-	// Read current accent settings
-	settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-		return fmt.Errorf("accent settings file not found: %s", settingsPath)
-	}
+    accentManifest := manifestObj.(*AccentManifest)
 
-	// Read settings file
-	content, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return fmt.Errorf("error reading accent settings file: %w", err)
-	}
+    // Read current accent settings
+    settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
+    if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+        return fmt.Errorf("accent settings file not found: %s", settingsPath)
+    }
 
-	// Parse settings
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+    // Read settings file
+    content, err := os.ReadFile(settingsPath)
+    if err != nil {
+        return fmt.Errorf("error reading accent settings file: %w", err)
+    }
 
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
+    // Parse settings
+    lines := strings.Split(string(content), "\n")
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
 
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
+            continue
+        }
 
-		// Store color values in manifest
-		switch key {
-		case "color1":
-			accentManifest.AccentColors.Color1 = value
-		case "color2":
-			accentManifest.AccentColors.Color2 = value
-		case "color3":
-			accentManifest.AccentColors.Color3 = value
-		case "color4":
-			accentManifest.AccentColors.Color4 = value
-		case "color5":
-			accentManifest.AccentColors.Color5 = value
-		case "color6":
-			accentManifest.AccentColors.Color6 = value
-		}
-	}
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
 
-	// Create preview image (default for now)
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if err := CreateDefaultPreviewImage(previewPath, ComponentAccent); err != nil {
-		logger.DebugFn("Warning: Could not create default preview: %v", err)
-	}
+        // Store color values in manifest
+        switch key {
+        case "color1":
+            accentManifest.AccentColors.Color1 = value
+        case "color2":
+            accentManifest.AccentColors.Color2 = value
+        case "color3":
+            accentManifest.AccentColors.Color3 = value
+        case "color4":
+            accentManifest.AccentColors.Color4 = value
+        case "color5":
+            accentManifest.AccentColors.Color5 = value
+        case "color6":
+            accentManifest.AccentColors.Color6 = value
+        }
+    }
 
-	// Write manifest
-	if err := WriteComponentManifest(exportPath, accentManifest); err != nil {
-		return fmt.Errorf("error writing accent manifest: %w", err)
-	}
+    // Create preview image (default for now)
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if err := CreateDefaultPreviewImage(previewPath, ComponentAccent); err != nil {
+        logger.DebugFn("Warning: Could not create default preview: %v", err)
+    }
 
-	logger.DebugFn("Accent export completed: %s", name)
+    // Write manifest
+    if err := WriteComponentManifest(exportPath, accentManifest); err != nil {
+        return fmt.Errorf("error writing accent manifest: %w", err)
+    }
 
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Accent colors exported to '%s'", name), "3")
+    logger.DebugFn("Accent export completed: %s", name)
 
-	return nil
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Accent colors exported to '%s'", name), "3")
+
+    return nil
 }
 
 // ExportLEDs exports current LED settings as a .led component package
 func ExportLEDs(name string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting LED export: %s", name)
+    logger.DebugFn("Starting LED export: %s", name)
 
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .led extension
-	if !strings.HasSuffix(name, ComponentExtension[ComponentLED]) {
-		name = name + ComponentExtension[ComponentLED]
-	}
+    // Create export directory path with .led extension
+    if !strings.HasSuffix(name, ComponentExtension[ComponentLED]) {
+        name = name + ComponentExtension[ComponentLED]
+    }
 
-	exportPath := filepath.Join(cwd, "Exports", name)
+    exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create export directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create export directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create component manifest
-	manifest, err := CreateComponentManifest(ComponentLED, name)
-	if err != nil {
-		return fmt.Errorf("error creating LED manifest: %w", err)
-	}
+    // Try to preserve author from global manifest if available
+    author := ""
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from LEDs component if it exists
+        ledComp, err := GetAppliedComponent(ComponentLED)
+        if err == nil && ledComp != "" {
+            // Try to load the component to get author
+            compPath := filepath.Join(cwd, "Components", "LEDs", ledComp)
+            manifestObj, err := LoadComponentManifest(compPath)
+            if err == nil {
+                if lm, ok := manifestObj.(*LEDManifest); ok && lm.ComponentInfo.Author != "" {
+                    author = lm.ComponentInfo.Author
+                }
+            }
+        }
+    }
 
-	ledManifest := manifest.(*LEDManifest)
+    // Create minimal component manifest
+    manifestObj, err := CreateMinimalComponentManifest(ComponentLED, name, author)
+    if err != nil {
+        return fmt.Errorf("error creating LED manifest: %w", err)
+    }
 
-	// Read current LED settings
-	settingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-		return fmt.Errorf("LED settings file not found: %s", settingsPath)
-	}
+    ledManifest := manifestObj.(*LEDManifest)
 
-	// Read settings file
-	content, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return fmt.Errorf("error reading LED settings file: %w", err)
-	}
+    // Read current LED settings
+    settingsPath := "/mnt/SDCARD/.userdata/shared/ledsettings_brick.txt"
+    if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+        return fmt.Errorf("LED settings file not found: %s", settingsPath)
+    }
 
-	// Parse settings
-	lines := strings.Split(string(content), "\n")
-	var currentLED *LEDSetting
-	var currentSection string
+    // Read settings file
+    content, err := os.ReadFile(settingsPath)
+    if err != nil {
+        return fmt.Errorf("error reading LED settings file: %w", err)
+    }
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+    // Parse settings
+    lines := strings.Split(string(content), "\n")
+    var currentLED *LEDSetting
+    var currentSection string
 
-		// Check for section header [X]
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			currentSection = line[1 : len(line)-1]
+    for _, line := range lines {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
 
-			// Determine which LED setting to update
-			switch currentSection {
-			case "F1 key":
-				currentLED = &ledManifest.LEDSettings.F1Key
-			case "F2 key":
-				currentLED = &ledManifest.LEDSettings.F2Key
-			case "Top bar":
-				currentLED = &ledManifest.LEDSettings.TopBar
-			case "L&R triggers":
-				currentLED = &ledManifest.LEDSettings.LRTriggers
-			default:
-				currentLED = nil
-			}
-			continue
-		}
+        // Check for section header [X]
+        if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+            currentSection = line[1 : len(line)-1]
 
-		// If not in a valid section, skip
-		if currentLED == nil {
-			continue
-		}
+            // Determine which LED setting to update
+            switch currentSection {
+            case "F1 key":
+                currentLED = &ledManifest.LEDSettings.F1Key
+            case "F2 key":
+                currentLED = &ledManifest.LEDSettings.F2Key
+            case "Top bar":
+                currentLED = &ledManifest.LEDSettings.TopBar
+            case "L&R triggers":
+                currentLED = &ledManifest.LEDSettings.LRTriggers
+            default:
+                currentLED = nil
+            }
+            continue
+        }
 
-		// Parse key=value
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
+        // If not in a valid section, skip
+        if currentLED == nil {
+            continue
+        }
 
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+        // Parse key=value
+        parts := strings.SplitN(line, "=", 2)
+        if len(parts) != 2 {
+            continue
+        }
 
-		// Update LED setting based on key
-		switch key {
-		case "effect":
-			currentLED.Effect, _ = strconv.Atoi(value)
-		case "color1":
-			currentLED.Color1 = value
-		case "color2":
-			currentLED.Color2 = value
-		case "speed":
-			currentLED.Speed, _ = strconv.Atoi(value)
-		case "brightness":
-			currentLED.Brightness, _ = strconv.Atoi(value)
-		case "trigger":
-			currentLED.Trigger, _ = strconv.Atoi(value)
-		case "inbrightness":
-			currentLED.InBrightness, _ = strconv.Atoi(value)
-		}
-	}
+        key := strings.TrimSpace(parts[0])
+        value := strings.TrimSpace(parts[1])
 
-	// Note: LEDs don't have a preview image by design
+        // Update LED setting based on key
+        switch key {
+        case "effect":
+            currentLED.Effect, _ = strconv.Atoi(value)
+        case "color1":
+            currentLED.Color1 = value
+        case "color2":
+            currentLED.Color2 = value
+        case "speed":
+            currentLED.Speed, _ = strconv.Atoi(value)
+        case "brightness":
+            currentLED.Brightness, _ = strconv.Atoi(value)
+        case "trigger":
+            currentLED.Trigger, _ = strconv.Atoi(value)
+        case "inbrightness":
+            currentLED.InBrightness, _ = strconv.Atoi(value)
+        }
+    }
 
-	// Write manifest
-	if err := WriteComponentManifest(exportPath, ledManifest); err != nil {
-		return fmt.Errorf("error writing LED manifest: %w", err)
-	}
+    // Note: LEDs don't have a preview image by design
 
-	logger.DebugFn("LED export completed: %s", name)
+    // Write manifest
+    if err := WriteComponentManifest(exportPath, ledManifest); err != nil {
+        return fmt.Errorf("error writing LED manifest: %w", err)
+    }
 
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("LED settings exported to '%s'", name), "3")
+    logger.DebugFn("LED export completed: %s", name)
 
-	return nil
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("LED settings exported to '%s'", name), "3")
+
+    return nil
 }
 
 // ExportFonts exports current fonts as a .font component package
 func ExportFonts(name string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting font export: %s", name)
+    logger.DebugFn("Starting font export: %s", name)
 
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .font extension
-	if !strings.HasSuffix(name, ComponentExtension[ComponentFont]) {
-		name = name + ComponentExtension[ComponentFont]
-	}
+    // Create export directory path with .font extension
+    if !strings.HasSuffix(name, ComponentExtension[ComponentFont]) {
+        name = name + ComponentExtension[ComponentFont]
+    }
 
-	exportPath := filepath.Join(cwd, "Exports", name)
+    exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create export directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create export directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create component manifest
-	manifest, err := CreateComponentManifest(ComponentFont, name)
-	if err != nil {
-		return fmt.Errorf("error creating font manifest: %w", err)
-	}
+    // Try to preserve author from global manifest if available
+    author := ""
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from Fonts component if it exists
+        fontComp, err := GetAppliedComponent(ComponentFont)
+        if err == nil && fontComp != "" {
+            // Try to load the component to get author
+            compPath := filepath.Join(cwd, "Components", "Fonts", fontComp)
+            manifestObj, err := LoadComponentManifest(compPath)
+            if err == nil {
+                if fm, ok := manifestObj.(*FontManifest); ok && fm.ComponentInfo.Author != "" {
+                    author = fm.ComponentInfo.Author
+                }
+            }
+        }
+    }
 
-	fontManifest := manifest.(*FontManifest)
+    // Create minimal component manifest
+    manifestObj, err := CreateMinimalComponentManifest(ComponentFont, name, author)
+    if err != nil {
+        return fmt.Errorf("error creating font manifest: %w", err)
+    }
 
-	// Define font paths
-	fontPaths := map[string]string{
+    fontManifest := manifestObj.(*FontManifest)
+
+    // Define font paths
+    fontPaths := map[string]string{
         "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
         "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",
         "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
         "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",
-	}
+    }
 
-	// Export each font and update manifest
-	for fontName, sourcePath := range fontPaths {
-		if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
-			logger.DebugFn("Font file not found: %s", sourcePath)
-			continue
-		}
+    // Export each font and update manifest
+    for fontName, sourcePath := range fontPaths {
+        if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+            logger.DebugFn("Font file not found: %s", sourcePath)
+            continue
+        }
 
-		dstPath := filepath.Join(exportPath, fontName+".ttf")
+        dstPath := filepath.Join(exportPath, fontName+".ttf")
 
-		if err := CopyFile(sourcePath, dstPath); err != nil {
-			logger.DebugFn("Warning: Could not copy font %s: %v", fontName, err)
-			continue
-		}
+        if err := CopyFile(sourcePath, dstPath); err != nil {
+            logger.DebugFn("Warning: Could not copy font %s: %v", fontName, err)
+            continue
+        }
 
-		// Add to manifest
-		fontManifest.PathMappings[fontName] = PathMapping{
-			ThemePath:  fontName + ".ttf",
-			SystemPath: sourcePath,
-		}
+        logger.DebugFn("Exported font: %s", dstPath)
+    }
 
-		// Update content flags
-		if fontName == "OG" {
-			fontManifest.Content.OGReplaced = true
-		} else if fontName == "Next" {
-			fontManifest.Content.NextReplaced = true
-		}
+    // Create preview image (default for now)
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if err := CreateDefaultPreviewImage(previewPath, ComponentFont); err != nil {
+        logger.DebugFn("Warning: Could not create default preview: %v", err)
+    }
 
-		logger.DebugFn("Exported font: %s", dstPath)
-	}
+    // Write manifest
+    if err := WriteComponentManifest(exportPath, fontManifest); err != nil {
+        return fmt.Errorf("error writing font manifest: %w", err)
+    }
 
-	// Create preview image (default for now)
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if err := CreateDefaultPreviewImage(previewPath, ComponentFont); err != nil {
-		logger.DebugFn("Warning: Could not create default preview: %v", err)
-	}
+    logger.DebugFn("Font export completed: %s", name)
 
-	// Write manifest
-	if err := WriteComponentManifest(exportPath, fontManifest); err != nil {
-		return fmt.Errorf("error writing font manifest: %w", err)
-	}
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Fonts exported to '%s'", name), "3")
 
-	logger.DebugFn("Font export completed: %s", name)
-
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Fonts exported to '%s'", name), "3")
-
-	return nil
+    return nil
 }
 
 // ExportOverlays exports current overlays as a .over component package
 func ExportOverlays(name string) error {
-	logger := &Logger{
-		DebugFn: logging.LogDebug,
-	}
+    logger := &Logger{
+        DebugFn: logging.LogDebug,
+    }
 
-	logger.DebugFn("Starting overlay export: %s", name)
+    logger.DebugFn("Starting overlay export: %s", name)
 
-	// Get the current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current directory: %w", err)
-	}
+    // Get the current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        return fmt.Errorf("error getting current directory: %w", err)
+    }
 
-	// Create export directory path with .over extension
-	if !strings.HasSuffix(name, ComponentExtension[ComponentOverlay]) {
-		name = name + ComponentExtension[ComponentOverlay]
-	}
+    // Create export directory path with .over extension
+    if !strings.HasSuffix(name, ComponentExtension[ComponentOverlay]) {
+        name = name + ComponentExtension[ComponentOverlay]
+    }
 
-	exportPath := filepath.Join(cwd, "Exports", name)
+    exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create the root directory
-	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
-	}
+    // Create the root directory
+    if err := os.MkdirAll(exportPath, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+    }
 
-	// Create the Systems directory
-	systemsDir := filepath.Join(exportPath, "Systems")
-	if err := os.MkdirAll(systemsDir, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", systemsDir, err)
-	}
+    // Create the Systems directory
+    systemsDir := filepath.Join(exportPath, "Systems")
+    if err := os.MkdirAll(systemsDir, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", systemsDir, err)
+    }
 
-	// Create component manifest
-	manifest, err := CreateComponentManifest(ComponentOverlay, name)
-	if err != nil {
-		return fmt.Errorf("error creating overlay manifest: %w", err)
-	}
+    // Try to preserve author from global manifest if available
+    author := ""
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from Overlays component if it exists
+        overlayComp, err := GetAppliedComponent(ComponentOverlay)
+        if err == nil && overlayComp != "" {
+            // Try to load the component to get author
+            compPath := filepath.Join(cwd, "Components", "Overlays", overlayComp)
+            manifestObj, err := LoadComponentManifest(compPath)
+            if err == nil {
+                if om, ok := manifestObj.(*OverlayManifest); ok && om.ComponentInfo.Author != "" {
+                    author = om.ComponentInfo.Author
+                }
+            }
+        }
+    }
 
-	overlayManifest := manifest.(*OverlayManifest)
+    // Create minimal component manifest
+    manifestObj, err := CreateMinimalComponentManifest(ComponentOverlay, name, author)
+    if err != nil {
+        return fmt.Errorf("error creating overlay manifest: %w", err)
+    }
 
-	// Get system paths
-	systemPaths, err := system.GetSystemPaths()
-	if err != nil {
-		return fmt.Errorf("error getting system paths: %w", err)
-	}
+    overlayManifest := manifestObj.(*OverlayManifest)
 
-	// Check for overlays directory
-	overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
-	if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
-		logger.DebugFn("Overlays directory not found: %s", overlaysDir)
-		return fmt.Errorf("overlays directory not found: %s", overlaysDir)
-	}
+    // Get system paths
+    systemPaths, err := system.GetSystemPaths()
+    if err != nil {
+        return fmt.Errorf("error getting system paths: %w", err)
+    }
 
-	// List system directories in Overlays
-	entries, err := os.ReadDir(overlaysDir)
-	if err != nil {
-		logger.DebugFn("Error reading Overlays directory: %v", err)
-		return fmt.Errorf("error reading overlays directory: %w", err)
-	}
+    // Check for overlays directory
+    overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
+    if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
+        logger.DebugFn("Overlays directory not found: %s", overlaysDir)
+        return fmt.Errorf("overlays directory not found: %s", overlaysDir)
+    }
 
-	// Process each system's overlays
-	hasOverlays := false
-	for _, entry := range entries {
-		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-			continue
-		}
+    // List system directories in Overlays
+    entries, err := os.ReadDir(overlaysDir)
+    if err != nil {
+        logger.DebugFn("Error reading Overlays directory: %v", err)
+        return fmt.Errorf("error reading overlays directory: %w", err)
+    }
 
-		systemTag := entry.Name()
-		systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
-		exportSystemDir := filepath.Join(systemsDir, systemTag)
+    // Process each system's overlays
+    hasOverlays := false
+    for _, entry := range entries {
+        if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+            continue
+        }
 
-		// Create system directory in export
-		if err := os.MkdirAll(exportSystemDir, 0755); err != nil {
-			logger.DebugFn("Error creating system overlay directory: %v", err)
-			continue
-		}
+        systemTag := entry.Name()
+        systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
+        exportSystemDir := filepath.Join(systemsDir, systemTag)
 
-		// List overlay files for this system
-		overlayFiles, err := os.ReadDir(systemOverlaysPath)
-		if err != nil {
-			logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
-			continue
-		}
+        // Create system directory in export
+        if err := os.MkdirAll(exportSystemDir, 0755); err != nil {
+            logger.DebugFn("Error creating system overlay directory: %v", err)
+            continue
+        }
 
-		var systemHasOverlays bool
+        // List overlay files for this system
+        overlayFiles, err := os.ReadDir(systemOverlaysPath)
+        if err != nil {
+            logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
+            continue
+        }
 
-		// Copy each overlay file
-		for _, file := range overlayFiles {
-			if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
-				continue
-			}
+        var systemHasOverlays bool
 
-			// Only process PNG files
-			if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
-				continue
-			}
+        // Copy each overlay file
+        for _, file := range overlayFiles {
+            if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+                continue
+            }
 
-			srcPath := filepath.Join(systemOverlaysPath, file.Name())
-			dstPath := filepath.Join(exportSystemDir, file.Name())
+            // Only process PNG files
+            if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+                continue
+            }
 
-			// Copy the overlay file
-			if err := CopyFile(srcPath, dstPath); err != nil {
-				logger.DebugFn("Warning: Could not copy overlay %s: %v", file.Name(), err)
-				continue
-			}
+            srcPath := filepath.Join(systemOverlaysPath, file.Name())
+            dstPath := filepath.Join(exportSystemDir, file.Name())
 
-			// Add to manifest
-			themePath := filepath.Join("Systems", systemTag, file.Name())
-			overlayManifest.PathMappings = append(
-				overlayManifest.PathMappings,
-				PathMapping{
-					ThemePath:  themePath,
-					SystemPath: srcPath,
-					Metadata: map[string]string{
-						"SystemTag":   systemTag,
-						"OverlayName": file.Name(),
-					},
-				},
-			)
+            // Copy the overlay file
+            if err := CopyFile(srcPath, dstPath); err != nil {
+                logger.DebugFn("Warning: Could not copy overlay %s: %v", file.Name(), err)
+                continue
+            }
 
-			systemHasOverlays = true
-			hasOverlays = true
-			logger.DebugFn("Exported overlay %s for system %s", file.Name(), systemTag)
-		}
+            systemHasOverlays = true
+            hasOverlays = true
+            logger.DebugFn("Exported overlay %s for system %s", file.Name(), systemTag)
+        }
 
-		// If this system had overlays, add it to the systems list
-		if systemHasOverlays {
-			// Check if system is already in the list
-			var systemExists bool
-			for _, sys := range overlayManifest.Content.Systems {
-				if sys == systemTag {
-					systemExists = true
-					break
-				}
-			}
+        // If this system had overlays, add it to the systems list
+        if systemHasOverlays {
+            // Check if system is already in the list
+            var systemExists bool
+            for _, sys := range overlayManifest.Content.Systems {
+                if sys == systemTag {
+                    systemExists = true
+                    break
+                }
+            }
 
-			if !systemExists {
-				overlayManifest.Content.Systems = append(overlayManifest.Content.Systems, systemTag)
-			}
-		}
-	}
+            if !systemExists {
+                overlayManifest.Content.Systems = append(overlayManifest.Content.Systems, systemTag)
+            }
+        }
+    }
 
-	if !hasOverlays {
-		return fmt.Errorf("no overlays found to export")
-	}
+    if !hasOverlays {
+        return fmt.Errorf("no overlays found to export")
+    }
 
-	// Create preview image (default for now)
-	previewPath := filepath.Join(exportPath, "preview.png")
-	if err := CreateDefaultPreviewImage(previewPath, ComponentOverlay); err != nil {
-		logger.DebugFn("Warning: Could not create default preview: %v", err)
-	}
+    // Create preview image (default for now)
+    previewPath := filepath.Join(exportPath, "preview.png")
+    if err := CreateDefaultPreviewImage(previewPath, ComponentOverlay); err != nil {
+        logger.DebugFn("Warning: Could not create default preview: %v", err)
+    }
 
-	// Write manifest
-	if err := WriteComponentManifest(exportPath, overlayManifest); err != nil {
-		return fmt.Errorf("error writing overlay manifest: %w", err)
-	}
+    // Write manifest
+    if err := WriteComponentManifest(exportPath, overlayManifest); err != nil {
+        return fmt.Errorf("error writing overlay manifest: %w", err)
+    }
 
-	logger.DebugFn("Overlay export completed: %s", name)
+    logger.DebugFn("Overlay export completed: %s", name)
 
-	// Show success message
-	ui.ShowMessage(fmt.Sprintf("Overlays exported to '%s'", name), "3")
+    // Show success message
+    ui.ShowMessage(fmt.Sprintf("Overlays exported to '%s'", name), "3")
 
-	return nil
+    return nil
 }
 
 // Helper function to ensure component directories exist for importing
