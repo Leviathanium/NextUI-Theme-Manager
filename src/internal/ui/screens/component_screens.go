@@ -395,14 +395,25 @@ func HandleDownloadComponents(selection string, exitCode int) app.Screen {
 			}
 			result, promptCode := ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
 
-			if promptCode == 0 && result == "Yes" {
-				// Import/apply the selected component
-				componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
-				if err := themes.ImportComponent(componentPath); err != nil {
-					logging.LogDebug("Error importing component: %v", err)
-					ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-				}
-			}
+            // Inside HandleDownloadComponents where component is applied:
+            if promptCode == 0 && result == "Yes" {
+                // Import/apply the selected component with operation message
+                componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
+
+                importErr := ui.ShowMessageWithOperation(
+                    fmt.Sprintf("Applying %s component '%s'...", componentType, selection),
+                    func() error {
+                        return themes.ImportComponent(componentPath)
+                    },
+                )
+
+                if importErr != nil {
+                    logging.LogDebug("Error importing component: %v", importErr)
+                    ui.ShowMessage(fmt.Sprintf("Error: %s", importErr), "3")
+                } else {
+                    ui.ShowMessage(fmt.Sprintf("%s component applied successfully!", componentType), "2")
+                }
+            }
 		}
 		return app.Screens.ComponentOptions
 
@@ -440,10 +451,17 @@ func ExportComponentScreen() (string, int) {
 		return "", 1
 	}
 
-	// Export the component
-	if err := exportFunc(exportName); err != nil {
-		logging.LogDebug("Error exporting component: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+	// Export the component with operation message
+	exportErr := ui.ShowMessageWithOperation(
+		fmt.Sprintf("Exporting %s component...", componentType),
+		func() error {
+			return exportFunc(exportName)
+		},
+	)
+
+	if exportErr != nil {
+		logging.LogDebug("Error exporting component: %v", exportErr)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", exportErr), "3")
 		return "", 1
 	}
 

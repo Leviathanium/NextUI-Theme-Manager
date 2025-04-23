@@ -36,16 +36,23 @@ func HandleSyncComponents(selection string, exitCode int) app.Screen {
 	switch exitCode {
 	case 0:
 		if selection == "Yes" {
-			// Perform component sync
+			// Perform component sync with operation message
 			logging.LogDebug("Starting component catalog sync for %s", componentType)
 
 			// Get default sync options
 			options := themes.GetDefaultSyncOptions()
 
-			// Sync catalog
-			if err := themes.SyncThemeCatalog(options); err != nil {
-				logging.LogDebug("Error syncing component catalog: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			// Sync catalog with operation message
+			syncErr := ui.ShowMessageWithOperation(
+				fmt.Sprintf("Syncing %s catalog...", componentType),
+				func() error {
+					return themes.SyncThemeCatalog(options)
+				},
+			)
+
+			if syncErr != nil {
+				logging.LogDebug("Error syncing component catalog: %v", syncErr)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", syncErr), "3")
 			} else {
 				logging.LogDebug("Component catalog sync completed successfully")
 				ui.ShowMessage(fmt.Sprintf("%s catalog synced successfully!", componentType), "2")

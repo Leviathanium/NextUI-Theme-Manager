@@ -127,11 +127,19 @@ func HandleDeconstructConfirm(selection string, exitCode int) app.Screen {
 	switch exitCode {
 	case 0:
 		if selection == "Yes" {
-			// Deconstruct the selected theme
+			// Deconstruct the selected theme with operation message
 			themeName := app.GetSelectedTheme()
-			if err := themes.DeconstructTheme(themeName); err != nil {
-				logging.LogDebug("Error deconstructing theme: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+
+			deconstructErr := ui.ShowMessageWithOperation(
+				fmt.Sprintf("Deconstructing theme '%s'...", themeName),
+				func() error {
+					return themes.DeconstructTheme(themeName)
+				},
+			)
+
+			if deconstructErr != nil {
+				logging.LogDebug("Error deconstructing theme: %v", deconstructErr)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", deconstructErr), "3")
 			}
 		}
 		// Return to components menu

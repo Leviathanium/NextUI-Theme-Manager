@@ -91,10 +91,6 @@ func SetRepoBranch(branch string) {
 func SyncThemeCatalog(options SyncOptions) error {
 	logging.LogDebug("Starting theme catalog sync from %s", options.RepoURL)
 
-	if options.UI {
-		ui.ShowMessage("Syncing theme catalog...", "1")
-	}
-
 	// Create directory structure if it doesn't exist
 	err := createSyncDirectoryStructure(options.LocalDirPath)
 	if err != nil {

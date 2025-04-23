@@ -422,11 +422,20 @@ func HandleThemeImportConfirm(selection string, exitCode int) app.Screen {
 		if selection == "Yes" {
 			// Import the selected theme
 			themeName := app.GetSelectedTheme()
-			if err := themes.ImportTheme(themeName); err != nil {
-				logging.LogDebug("Error importing theme: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+
+			// Use ShowMessageWithOperation for better user feedback
+			importErr := ui.ShowMessageWithOperation(
+				fmt.Sprintf("Applying theme '%s'...", themeName),
+				func() error {
+					return themes.ImportTheme(themeName)
+				},
+			)
+
+			if importErr != nil {
+				logging.LogDebug("Error importing theme: %v", importErr)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", importErr), "3")
 			} else {
-				ui.ShowMessage(fmt.Sprintf("Theme '%s' imported successfully!", themeName), "3")
+				ui.ShowMessage(fmt.Sprintf("Theme '%s' applied successfully!", themeName), "3")
 			}
 		}
 		// Return to main menu
@@ -459,10 +468,17 @@ func HandleThemeExport(selection string, exitCode int) app.Screen {
 	switch exitCode {
 	case 0:
 		if selection == "Yes" {
-			// Perform theme export
-			if err := themes.ExportTheme(); err != nil {
-				logging.LogDebug("Error exporting theme: %v", err)
-				ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+			// Perform theme export with operation message
+			exportErr := ui.ShowMessageWithOperation(
+				"Exporting current theme...",
+				func() error {
+					return themes.ExportTheme()
+				},
+			)
+
+			if exportErr != nil {
+				logging.LogDebug("Error exporting theme: %v", exportErr)
+				ui.ShowMessage(fmt.Sprintf("Error: %s", exportErr), "3")
 			} else {
 				ui.ShowMessage("Theme exported successfully!", "3")
 			}
