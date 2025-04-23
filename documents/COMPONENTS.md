@@ -41,7 +41,7 @@ component_name.bg/
    └─ Handhelds.png
 ```
 
-The manifest will contain:
+When installed, the manifest will contain:
 ```json5
 {
   "component_info": {
@@ -88,7 +88,7 @@ component_name.icon/
    └─ Favorites.png
 ```
 
-The manifest will contain:
+When installed, the manifest will contain:
 ```json5
 {
   "component_info": {
@@ -121,6 +121,48 @@ The manifest will contain:
 }
 ```
 
+### Overlay Components (`.over`)
+
+```
+component_name.over/
+├─ manifest.json
+├─ preview.png
+└─ Systems/
+   ├─ MGBA/
+   │  ├─ overlay1.png
+   │  └─ overlay2.png
+   └─ [other systems]/
+      └─ [overlay files].png
+```
+
+When installed, the manifest will contain:
+```json5
+{
+  "component_info": {
+    "name": "component_name",
+    "type": "overlay",
+    "version": "1.0.0",
+    "author": "AuthorName",
+    "creation_date": "2025-04-13T12:00:00Z",
+    "exported_by": "Theme Manager v1.0"
+  },
+  "content": {
+    "systems": ["MGBA", "SFC", "MD"]
+  },
+  "path_mappings": [
+    {
+      "theme_path": "Systems/MGBA/overlay1.png",
+      "system_path": "/mnt/SDCARD/Overlays/MGBA/overlay1.png",
+      "metadata": {
+        "SystemTag": "MGBA",
+        "OverlayName": "overlay1.png"
+      }
+    },
+    /* Additional overlay mappings */
+  ]
+}
+```
+
 ### Accent Components (`.acc`)
 
 ```
@@ -129,7 +171,7 @@ component_name.acc/
 └─ preview.png
 ```
 
-The manifest will contain:
+The manifest will always contain:
 ```json5
 {
   "component_info": {
@@ -158,7 +200,7 @@ component_name.led/
 └─ manifest.json
 ```
 
-The manifest will contain:
+The manifest will always contain:
 ```json5
 {
   "component_info": {
@@ -204,7 +246,7 @@ component_name.font/
 └─ Next.backup.ttf
 ```
 
-The manifest will contain:
+When installed, the manifest will contain:
 ```json5
 {
   "component_info": {
@@ -240,47 +282,7 @@ The manifest will contain:
 }
 ```
 
-### Overlay Components (`.over`)
 
-```
-component_name.over/
-├─ manifest.json
-├─ preview.png
-└─ Systems/
-   ├─ MGBA/
-   │  ├─ overlay1.png
-   │  └─ overlay2.png
-   └─ [other systems]/
-      └─ [overlay files].png
-```
-
-The manifest will contain:
-```json5
-{
-  "component_info": {
-    "name": "component_name",
-    "type": "overlay",
-    "version": "1.0.0",
-    "author": "AuthorName",
-    "creation_date": "2025-04-13T12:00:00Z",
-    "exported_by": "Theme Manager v1.0"
-  },
-  "content": {
-    "systems": ["MGBA", "SFC", "MD"]
-  },
-  "path_mappings": [
-    {
-      "theme_path": "Systems/MGBA/overlay1.png",
-      "system_path": "/mnt/SDCARD/Overlays/MGBA/overlay1.png",
-      "metadata": {
-        "SystemTag": "MGBA",
-        "OverlayName": "overlay1.png"
-      }
-    },
-    /* Additional overlay mappings */
-  ]
-}
-```
 
 ## Creating Component Packages
 
