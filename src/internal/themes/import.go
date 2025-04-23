@@ -48,6 +48,7 @@ func ImportTheme(themeName string) error {
     }
 
     // Update manifest based on theme content - now passing systemPaths
+    // This is critical for minimal manifests to work properly
     if err := UpdateManifestFromThemeContent(themePath, manifest, systemPaths, logger); err != nil {
         logger.DebugFn("Warning: Error updating manifest from theme content: %v", err)
         // Continue anyway with the original manifest

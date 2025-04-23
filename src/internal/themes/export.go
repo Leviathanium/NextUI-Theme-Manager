@@ -87,8 +87,26 @@ func ExportTheme() error {
 
     logger.DebugFn("Created theme directory: %s", themePath)
 
-    // Initialize manifest
-    manifest := &ThemeManifest{}
+    // Get theme name from directory
+    themeName := filepath.Base(themePath)
+
+    // Try to determine author from global manifest if available
+    author := "AuthorName" // Default
+    globalManifest, err := LoadGlobalManifest()
+    if err == nil && globalManifest != nil {
+        // Try to get author from current theme if it exists
+        if globalManifest.CurrentTheme != "" {
+            // Try to load the theme to get author
+            currThemePath := filepath.Join(filepath.Dir(themePath), "..", "Themes", globalManifest.CurrentTheme)
+            currManifest, err := ValidateTheme(currThemePath, logger)
+            if err == nil && currManifest.ThemeInfo.Author != "" {
+                author = currManifest.ThemeInfo.Author
+            }
+        }
+    }
+
+    // Initialize minimal manifest
+    manifest := CreateMinimalThemeManifest(themeName, author)
 
     // Get system paths
     systemPaths, err := system.GetSystemPaths()
@@ -96,6 +114,8 @@ func ExportTheme() error {
         logger.DebugFn("Error getting system paths: %v", err)
         return fmt.Errorf("error getting system paths: %w", err)
     }
+
+    // Copy the actual files but don't add to manifest content or path_mappings
 
     // Export wallpapers
     exportWallpapers(themePath, manifest, systemPaths, logger)
@@ -106,7 +126,7 @@ func ExportTheme() error {
     // Export overlays
     exportOverlays(themePath, manifest, systemPaths, logger)
 
-    // Export fonts - add this line
+    // Export fonts
     exportFonts(themePath, manifest, logger)
 
     // Read and include accent settings directly in manifest
@@ -128,7 +148,7 @@ func ExportTheme() error {
     logger.DebugFn("Theme export completed successfully: %s", themePath)
 
     // Show success message to user
-    themeName := filepath.Base(themePath)
+    themeName = filepath.Base(themePath)
     ui.ShowMessage(fmt.Sprintf("Theme exported successfully: %s", themeName), "3")
 
     return nil
