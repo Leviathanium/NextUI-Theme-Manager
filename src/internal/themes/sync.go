@@ -239,41 +239,55 @@ func syncCatalogViaHTTP(options SyncOptions) error {
 	return nil
 }
 
-// downloadFile downloads a file from a URL to a local path
+// Modified downloadFile function for src/internal/themes/sync.go
+// Increases timeout and adds better error handling
+
 func downloadFile(url string, localPath string) error {
-	// Create the directory structure for the file
-	dir := filepath.Dir(localPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("error creating directory %s: %w", dir, err)
-	}
+    // Create the directory structure for the file
+    dir := filepath.Dir(localPath)
+    if err := os.MkdirAll(dir, 0755); err != nil {
+        return fmt.Errorf("error creating directory %s: %w", dir, err)
+    }
 
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+    // Create HTTP client with extended timeout (5 minutes instead of 30 seconds)
+    client := &http.Client{
+        Timeout: 5 * time.Minute,
+    }
 
-	// Download the file
-	resp, err := client.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+    // Download the file
+    resp, err := client.Get(url)
+    if err != nil {
+        // Provide more specific error message for timeout
+        if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "deadline") {
+            return fmt.Errorf("download timed out - try again or download manually: %w", err)
+        }
+        return fmt.Errorf("download error: %w", err)
+    }
+    defer resp.Body.Close()
 
-	// Check status code
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("HTTP error: %s", resp.Status)
-	}
+    // Check status code
+    if resp.StatusCode != 200 {
+        return fmt.Errorf("HTTP error: %s", resp.Status)
+    }
 
-	// Create the local file
-	out, err := os.Create(localPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+    // Create the local file
+    out, err := os.Create(localPath)
+    if err != nil {
+        return fmt.Errorf("error creating local file: %w", err)
+    }
+    defer out.Close()
 
-	// Copy the content
-	_, err = io.Copy(out, resp.Body)
-	return err
+    // Copy the content
+    _, err = io.Copy(out, resp.Body)
+
+    if err != nil {
+        // Clean up partial downloads on error
+        out.Close()
+        os.Remove(localPath)
+        return fmt.Errorf("error during download: %w", err)
+    }
+
+    return nil
 }
 
 // parseCatalogJSON parses the catalog.json file
