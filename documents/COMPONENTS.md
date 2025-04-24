@@ -1,10 +1,12 @@
 # Component Packages Documentation
 
-The NextUI Theme Manager uses component packages to manage specific aspects of device customization. This modular approach allows you to mix and match elements from different themes.
+The NextUI Theme Manager uses component packages to manage specific aspects of device customization. This modular approach allows you to mix and match elements from different themes, or build just one component, like overlays or wallpapers, and distribute them as an individual package.
+
+Before reading about component packages it is **highly recommended** you start with `.theme` packages to fully understand how each component works. You can find that here in the [Theme Documentation](../documents/THEMES.md).
 
 ## What Are Component Packages?
 
-Component packages are located in `Theme-Manager.pak/Components` and they are specialized theme elements that focus on a specific customization aspect. Unlike full themes, they only modify a particular part of your device's appearance.
+Component packages are located in `Theme-Manager.pak/Components` and they are specialized theme elements that focus on a specific customization aspect. Unlike full themes, they only modify a single part of your device's appearance.
 
 There are six types of component packages:
 
@@ -22,6 +24,8 @@ Each component package is a directory with the appropriate extension (e.g., `.bg
 1. **manifest.json** - Component metadata and mappings
 2. **preview.png** - Component preview image 
 3. **Files specific to the component type** (wallpapers, icons, fonts, etc.)
+
+Individual components are structured **identically** to the way they are stored in `.theme` packs. The only difference is that each component has **it's own `manifest.json` and `preview.png`** so that it can be installed and applied as its own package. 
 
 ## Detailed Component Structures
 
@@ -282,61 +286,85 @@ When installed, the manifest will contain:
 }
 ```
 
+---
 
+## Exporting
 
-## Creating Component Packages
+_Exporting_ is the process of copying the **currently applied components** on your device and generating a component package with those resources, located in `Theme-Manager.pak/Exports`. When exporting, the package is given a hash and shows up in this directory. You can export any component you'd like in the Theme Manager under `Components -> (component) -> Export`.
+
+Let's say you wanted to export the current wallpapers active on your device:
+
+```
+- Theme-Manager.pak
+   - Exports
+      - wallpaper_90283742982734.bg <--- Newly exported wallpaper pack, you can name this whatever you'd like!
+```
+
+To then re-import it on its own, you may **move this pack to its respective folder** inside `Theme-Manager.pak/Components`, then browse to it inside the Theme Manager and apply it:
+
+```
+- Theme-Manager.pak
+   - Components
+      - Wallpapers
+         - MyWallpaperPack.bg <--- Theme Manager will be able to find this pack!
+```
+
+This approach allows you to mix and match the components on your device to make it however you'd like!
+
+For details on how to submit and share your component packages, read the [Component Creation Guide](../documents/COMPONENT_BUILDING.md).
+
+---
+
+## Deconstruction
+
+_Deconstruction_
+ is the process of breaking a full `.theme` package into supported component packages (`.bg`, `.icon`, `.overlay`, etc.)
+You can find this option in `Components -> Deconstruct...` in the Theme Manager. It will allow you to select a currently installed `.theme` package inside your `Theme-Manager.pak/Themes` directory and deconstruct it. Keep in mind, the `.theme` pack **does not need to be active for this to work**. You just need the `.theme` package to be located on your device.
+
+When deconstructing, ALL components created will be found inside your `Theme-Manager.pak/Exports` directory upon completion:
+
+```
+- Theme-Manager.pak
+   - Themes
+      - Consolized.theme <--- Let's say we wanted to deconstruct @Gamrnd's excellent Consolized .theme pack into component packages.
+   - Exports
+      - Consolized.acc   <--- Here is the accent package.
+      - Consolized.bg    <--- Here is the wallpaper package.
+      - Consolized.icon  <--- Here is the icon package.
+      - ...
+```
+It's important to consider that deconstruction only creates these packages for components inside the deconstructed `.theme`. For example, there won't be a `.icon` pack if a `.theme` doesn't contain icons to begin with!
+
+If you'd like to re-import these components packages or work with them, you **must move them** to their respective directory inside `Theme-Manager.pak/Components` to be able to re-import them. You can't just re-import them from the `Exports` directory!
+
+---
+
+## Important Component Package Notes
 
 Component packages can be created in three ways:
 
 1. **Export from Theme Manager**: Use the Components menu to export any component type from your current setup
 2. **Deconstruct an existing theme**: Select a theme in the Components menu and choose "Deconstruct..." to break it into components
-3. **Manual creation**: Create the directory structure and manifest manually
+3. **Manual creation**: Create the directory structure and manifest manually (not recommended though!)
 
 **NOTE:** Exporting and Deconstructing will place all components in the `Exports` directory of the Theme Manager. They must be moved to re-import them. This is done to prevent unnecessary clutter.
 
-## Using Component Packages
 
-### Importing Components
+
+### Applying Components
 
 1. Place the component package in `Tools/tg5040/Theme-Manager.pak/Components/[Type]` where `[Type]` is the component type folder (Wallpapers, Icons, etc.)
 2. Launch Theme Manager
-3. Navigate to **Components → [Component Type] → Browse**
+3. Navigate to **Components → [Component Type] → Installed**
 4. Select the component to import
 5. The component will be applied immediately
 
-### Exporting Components
+---
 
-1. Launch Theme Manager
-2. Navigate to **Components → [Component Type] → Export**
-3. The current configuration for that component will be saved as a package in the `Exports` directory
+## Index
+- [README](../README.md)
+- [Theme Documentation](../documents/THEMES.md)
+- [Theme Creation Guide](../documents/THEME_BUILDING.md)
+- [Component Creation Guide](../documents/COMPONENT_BUILDING.md)
 
-### Mixing Components
-
-The modular design allows you to mix and match:
-
-1. Apply a full theme as a base
-2. Override specific aspects with component packages
-3. For instance, apply one theme's wallpapers with another theme's icons and a third theme's accent colors
-
-## Best Practices
-
-1. **Naming conventions**: Follow the naming conventions for files (especially for system wallpapers and icons)
-2. **Preview images**: Include a representative preview.png
-3. **Resolutions**: Match your device's screen resolution for wallpapers
-4. **Font backups**: Always include font backups when creating font components
-5. **Metadata**: Include accurate author and version information in your manifests
-
-## Troubleshooting
-
-If a component fails to apply:
-1. Check the manifest.json for errors
-2. Ensure files are in the correct directories
-3. Verify system tags match your system
-4. Make sure file permissions allow reading
-
-## Known Issues
-
-1. `preview.png` images are essential for your component to be browsed properly. If you're having trouble with it displaying:
-    - Try a different color space. Sometimes the image space makes a difference. In Photoshop, try `Image -> Mode -> RGB Color`
-    - If the background is white, you likely need to apply transparency. Check your prefered image editing software for how to properly do this!
-    - Image permissions can sometimes be buggy. If you've been editing/renaming images directly on an SD card or over SSH, try doing so directly on your computer, then moving the complete `preview.png` to the correct directory.
+---

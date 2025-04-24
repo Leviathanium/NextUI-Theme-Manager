@@ -2,290 +2,172 @@
 
 This guide will walk you through the process of creating a custom theme for NextUI devices using the Theme Manager. We'll start by exporting your current setup and then modify it to create a completely custom theme.
 
-## Getting Started: Export Your Current Setup
+## 1. Export Your Current Setup
 
-First, let's export your current configuration to use as a template:
+First, let's export your current configuration to use as a starting point:
 
 1. Launch Theme Manager from the Tools menu
 2. Select **Export** from the main menu
 3. The app will create a new theme package in `Tools/tg5040/Theme-Manager.pak/Exports/` (typically named `theme_1.theme`, `theme_2.theme`, etc.)
 
-This exported theme contains your current wallpapers, icons, accent colors, and other settings, providing an excellent starting point.
+This exported `.theme` contains your current wallpapers, icons, accent colors, and other settings, providing an excellent starting point.
 
-## Understanding Your Theme Directory
+## 2. Update Components
 
-Navigate to the exported theme on your device or connect your SD card to a computer. You'll see a directory structure like this:
+Once you've exported your `.theme`, move it to your computer and start working on fine tuning any components you want to add. For help, take a look at the detailed [Theme Documentation.](documents/THEMES.md)
+
+## 3. Update Metadata
+
+Once you've updated the components, it's time to update the metadata:
+- `preview.png` is essential for people to browse your theme. This image should ideally be `1024x768px` and can represent your theme however you'd like. Screenshots are a recommended starting point.
+- `manifest.json` is slightly more involved. The best practice for doing this is to use the [template manifest.json here](https://github.com/Leviathanium/Template.theme/blob/main/manifest.json) _instead of_ the one created during export, since its heavily populated with your device's specific metadata.
+
+After downloading the template, here are the recommended changes you may make to that `manifest.json`:
 
 ```
-theme_1.theme/
-├─ manifest.json
-├─ preview.png
-├─ Wallpapers/
-│  ├─ SystemWallpapers/
-│  └─ CollectionWallpapers/
-├─ Icons/
-│  ├─ SystemIcons/
-│  ├─ ToolIcons/
-│  └─ CollectionIcons/
-├─ Fonts/
-└─ Overlays/
-```
-
-## Creating Custom Wallpapers
-
-Let's start by customizing the wallpapers:
-
-1. Prepare your wallpaper images:
-    - Create or obtain PNG images that match your device's resolution (1024x768 for TrimUI Brick)
-    - Ensure your images are visually appealing and not too cluttered
-    - Consider creating a cohesive set of wallpapers with a consistent style or theme
-
-2. Replace the existing wallpapers:
-    - For a global NextUI wallpaper: Add/replace `Wallpapers/SystemWallpapers/Root.png`
-    - For system-specific wallpapers: Add files to `Wallpapers/SystemWallpapers/` following the naming convention `System Name (TAG).png`, e.g., `Game Boy Advance (GBA).png`
-    - For collection wallpapers: Add files to `Wallpapers/CollectionWallpapers/` named after your collections, e.g., `Favorites.png`
-
-3. Important wallpaper files to consider:
-    - `Root.png` - Main menu background
-    - `Recently Played.png` - Background for the recently played games list
-    - `Tools.png` - Background for the tools menu
-    - `Collections.png` - Background for the collections menu
-
-## Designing Custom Icons
-
-Next, let's create custom icons:
-
-1. Prepare your icon images:
-    - Create PNG images with transparency
-    - Recommended size is at least 200x200 pixels (the system will resize as needed)
-    - Use a consistent style for all icons to maintain visual harmony
-
-2. Replace the existing icons:
-    - For system icons: Add files to `Icons/SystemIcons/` with the same naming convention used for wallpapers
-    - For tool icons: Add files to `Icons/ToolIcons/` named ***literally*** after the tools, e.g., `Settings.png` for the `Settings.pak` package.
-    - For collection icons: Add files to `Icons/CollectionIcons/` named after your collections
-
-3. Critical system icons:
-    - `Collections.png` - Icon for the collections menu
-    - `Recently Played.png` - Icon for the recently played list
-    - `Tools.png` - Icon for the tools menu
-
-## Creating Custom Accent Colors
-
-To customize the UI color scheme:
-
-1. Open `manifest.json` in a text editor
-2. Locate the `accent_colors` section
-3. Modify the color values (in hexadecimal format) for each element:
-   ```json5
-   "accent_colors": {
-     "color1": "0xFFFFFF", // Main UI color
-     "color2": "0x9B2257", // Primary accent color
-     "color3": "0x1E2329", // Secondary accent color
-     "color4": "0xFFFFFF", // List text color
-     "color5": "0x000000", // Selected list text color
-     "color6": "0xFFFFFF"  // Hint text color
-   }
-   ```
-4. Save the file
-
-## Customizing LED Settings (TrimUI Brick)
-
-If you're creating a theme for the TrimUI Brick, you can customize the LED settings:
-
-1. Locate the `led_settings` section in `manifest.json`
-2. Modify the settings for each LED zone:
-   ```json5
-   "led_settings": {
-     "f1_key": {
-       "effect": 1,        // Effect type (1-7)
-       "color1": "0xFFFFFF", // Primary color
-       "color2": "0x000000", // Secondary color
-       "speed": 1000,      // Animation speed
-       "brightness": 100,  // Brightness (0-100)
-       "trigger": 1,       // Trigger event
-       "in_brightness": 100 // Info brightness
-     },
-     /* Repeat for f2_key, top_bar, and lr_triggers */
-   }
-   ```
-3. Save the file
-
-## Adding Custom Fonts
-
-To replace the system fonts:
-
-1. Prepare your font files in TTF format
-2. Add them to the `Fonts/` directory with these names:
-    - `OG.ttf` - Replacement for font2.ttf (original system font)
-    - `Next.ttf` - Replacement for font1.ttf (alternative system font)
-3. If you have the original font backups, include them as:
-    - `OG.backup.ttf` - Backup of the original font2.ttf
-    - `Next.backup.ttf` - Backup of the original font1.ttf
-
-## Creating System Overlays
-
-If you want to add custom overlays for specific systems:
-
-1. Create PNG overlay images
-2. Organize them by system tag **_without parenthesis_** in the `Overlays/` directory:
-   ```
-   Overlays/
-   ├─ MGBA/
-   │  ├─ overlay1.png
-   │  └─ overlay2.png
-   └─ SFC/
-      └─ overlay1.png
-   ```
-
-## Creating a Preview Image
-
-A good preview image is essential for your theme:
-
-1. Create a `preview.png` image in the root of your theme directory
-2. Recommended size is 640×480 pixels
-3. The preview should represent the overall style of your theme
-
-## Updating the Manifest
-
-Now update the `manifest.json` file with your theme information:
-
-1. Locate the `theme_info` section
-2. Update the metadata:
-   ```json5
-   "theme_info": {
-     "name": "My Awesome Theme",
-     "version": "1.0.0",
-     "author": "Your Name",
-     "creation_date": "2025-04-13T12:00:00Z",
-     "exported_by": "Theme Manager v1.0"
-   }
-   ```
-3. The `content` section determines what your theme contains. We need to update it properly so that it will scan your `.theme` package and **_automatically populate_** with the correct settings:
-
-```json5
-"content": {
-    "wallpapers": {
-      "present": true, <-- Update
-      "count": 1
-    },
+{
+  "theme_info": {
+    "name": "My Theme Template",               <-------- Update your .theme name here
+    "version": "1.0.0",
+    "author": "Your Name",                     <-------- Update your preferred author name
+    "creation_date": "2025-04-22T00:00:00Z", 
+    "exported_by": "Theme Manager v1.0.0"
+  },
+  "content": {                                 <-------- You may SAFELY IGNORE the "content"
+    "wallpapers": {                                      section here, REGARDLESS of if you
+      "present": false,                                  have any of these components. These
+      "count": 0                                         will populate automatically when
+    },                                                   the .theme pack is installed.
     "icons": {
-      "present": false, <-- Update
+      "present": false,
       "system_count": 0,
       "tool_count": 0,
       "collection_count": 0
     },
     "overlays": {
-      "present": false, <-- Update
+      "present": false,
       "systems": []
     },
     "fonts": {
-      "present": true, <-- Update
-      "og_replaced": true,
-      "next_replaced": true
+      "present": true,
+      "og_replaced": false,
+      "next_replaced": false
     },
     "settings": {
-      "accents_included": true, <-- Update
-      "leds_included": true <-- Update
+      "accents_included": true,               
+      "leds_included": true                   
     }
-```
-
-4. Save the file
-
-## Clearing/Updating Path Mappings
-
-The `path_mappings` section of the manifest defines where each file in your theme should be copied when applied. In most cases, you won't need to modify these mappings if you're using the correct file names and directory structure because the `manifest.json` gets updated automatically when we apply the theme to match each user's device.
-
-However, if you're creating a custom file organization, or you're sharing your `.theme` with others, it's wise to clear the current path mappings specifically for wallpapers, icons, and overlays so that they will properly populate on a new users' device. This can also be a way to troubleshoot any issues you may have with applying themes (Rom directories not working, etc.)
-
-To do this, you may update the `manifest.json` to remove all currently-created mappings, as this will reset the paths and prepare it for another users' device, which would look like this:
-
-```json5
-"path_mappings": {
-  "wallpapers": [],
-  "icons": [],
-  "overlays": [],
-  "fonts": {...
-  
-  // Fonts, Accents, and LEDs can be ignored. Font paths are required, and LEDs/Accents don't have paths.
-```
-
-
-## Testing Your Theme
-
-Time to test your creation:
-
-1. Copy your `.theme` directory to `Tools/tg5040/Theme-Manager.pak/Themes/` on your device
-2. Launch Theme Manager
-3. Select **Browse Themes** from the main menu
-4. Find and select your theme
-5. Confirm to apply it
-6. Navigate through your device to see how your theme looks
-
-## Iterative Refinement
-
-After seeing your theme in action, you may want to make adjustments:
-
-1. Make changes to the files in your theme directory
-2. Re-apply the theme using Theme Manager
-3. Keep an eye on the `manifest.json` to confirm everything is working correctly
-3. Repeat until you're satisfied with the results
-
-## Sharing Your Theme
-
-Once your theme is complete, you can share it with others:
-
-1. Update the `manifest.json` with your AuthorName, and clear the path mappings (recommended for maximum compatibility)
-2. Confirm your `preview.png` works when browsing your theme and that the theme applies correctly from scratch.
-3. Create a ZIP archive of your theme directory
-4. Share the ZIP file
-5. Recipients can extract it to their `Tools/tg5040/Theme-Manager.pak/Themes/` directory
-
-## Theme Component Separation
-
-For more flexibility, you can also break your theme into component packages:
-
-1. Launch Theme Manager
-2. Navigate to **Components → Deconstruction...**
-3. Select your theme
-4. The app will create separate component packages for wallpapers, icons, accents, etc.
-
-This allows others to use specific parts of your theme while keeping their existing preferences for other aspects.
-
-**NOTE:** For complete`.theme` packs, if you choose to deconstruct current theme packages into components to build your own theme, you may **_carefully discard_** each component's `preview.png` and `manifest.json` that gets created when you deconstruct a `.theme` package. Those are exclusively for those wanting to focus on one type of component.
-
-For example, if you deconstructed a `.theme` because you just wanted the `wallpaper.bg` package containing all the wallpapers:
+  },
+  "path_mappings": {},                        <-------- You may also SAFELY IGNORE adding path mappings
+  "accent_colors": {                          <-------- If you are adding accent colors, you SHOULD update
+    "color1": "0xFFFFFF",                               them here. 
+    "color2": "0x9B2257",                               
+    "color3": "0x1E2329",                               If you are NOT adding accent colors, you may SAFELY
+    "color4": "0xFFFFFF",                               REMOVE everything inside the squiggly brackets to look like:
+    "color5": "0x000000",
+    "color6": "0xFFFFFF"                                "accent_colors": {}
+  },
+  "led_settings": {                           <-------- Similar to accent_colors. You SHOULD update
+    "f1_key": {                                         them here if you are adding them. Otherwise update them:
+      "effect": 1,
+      "color1": "0xFFFFFF",                             "led_settings": {}
+      "color2": "0x000000",
+      "speed": 1000,
+      "brightness": 100,
+      "trigger": 1,
+      "in_brightness": 100
+    },
+    "f2_key": {
+      "effect": 1,
+      "color1": "0xFFFFFF",
+      "color2": "0x000000",
+      "speed": 1000,
+      "brightness": 100,
+      "trigger": 1,
+      "in_brightness": 100
+    },
+    "top_bar": {
+      "effect": 1,
+      "color1": "0xFFFFFF",
+      "color2": "0x000000",
+      "speed": 1000,
+      "brightness": 100,
+      "trigger": 1,
+      "in_brightness": 100
+    },
+    "lr_triggers": {
+      "effect": 1,
+      "color1": "0xFFFFFF",
+      "color2": "0x000000",
+      "speed": 1000,
+      "brightness": 100,
+      "trigger": 1,
+      "in_brightness": 100
+    }
+  }
+}
 
 ```
-Deconstructed-Theme-Name.bg/
-├─ manifest.json <-- Can safely disregard.
-├─ preview.png <-- Can safely disregard.
-├─ SystemWallpapers/
-│  ├─ Root.png
-│  ├─ Recently Played.png
-│  ├─ Tools.png
-│  ├─ Collections.png
-│  └─ Game Boy Advance (GBA).png
-└─ CollectionWallpapers/
-   └─ Handhelds.png
+Then, place this new `manifest.json` inside your `.theme`. Additionally, create a **backup** of the above `manifest.json`. You'll see why in a moment.
+
+---
+
+## 4. Fine-Tuning
+
+When creating `.theme` packs, importing is a one-way process because your device will **_populate the manifest.json_** when you import the `.theme` for the first time. And you don't want that fully-filled `manifest.json` to get sent with your theme because it can cause compatibility issues.
+
+Here's the best practice for fine-tuning your `.theme`:
+1. Once you've filled out the template `manifest.json`, create a backup of it.
+2. Place that filled out `manifest.json` inside your `.theme` pack, along with the `preview.png`
+3. Attempt a fresh import with the Theme Manager
+4. Analyze how accurately the `.theme` imported
+5. If something is missing or went wrong, you can take a look at the now-populated `manifest.json` to see what might have gone wrong
+6. Repeat this process until you're confident all `.theme` components are working correctly!
+
+**Bonus:** you may also use the [Default.theme](https://github.com/Leviathanium/NextUI-Themes/raw/main/Uploads/Themes/Default.theme.zip) if you'd like to reset your components as you're fine-tuning!
+
+## 5. Sharing and Submitting
+
+There are two ways to share and submit your finished theme:
+1. By creating a `.zip` archive of your `.theme` pack and sharing it directly
+2. By creating a Gihub repository hosting your `.theme` pack
+
+Both work perfectly fine! If you just wanted the `.zip`, you're all set. This guide will continue for those that are familiar with GitHub repositories and would like to host their own `.theme` for use with the [NextUI Themes Repo.](https://github.com/Leviathanium/NextUI-Themes)
+
+## 6. Create A New Github Repository
+
+To make `.theme` submission/hosting easier, there is a `.theme` template available on GitHub that you can use to properly create/submit your themes:
+1. Create a GitHub account if you don't have one yet
+2. Navigate to the  [Theme Template Repo here](https://github.com/Leviathanium/Template.theme).
+3. Select `Use This Template -> Create a New Repository`
+4. Create the repository, ideally with a `.theme` extension like the template
+
+
+## 7. Clone Your New Repository
+
+Now we need to get your repository onto your computer to work on it:
+
 ```
-## Tips and Best Practices
+git clone https://github.com/your.theme.git
+cd your.theme
+git pull
+```
+The template `.theme` repository should look very similar to the `.theme` pack you've already created. Carefully replace all of the files in your repository, commit, and push:
 
-- **System compatibility**: Ensure your system wallpapers and icons use the correct system tags
-- **Consistent styling**: Maintain a cohesive visual style across all elements
-- **Font legibility**: Test custom fonts thoroughly to ensure they're readable at various sizes
-- **Color harmony**: Choose accent colors that work well together
-- **File naming**: Follow the naming conventions strictly to ensure proper application
-- **Backups**: Always keep backups of your original system fonts
-- **Testing**: Test your theme on the actual device, as some elements may look different on-screen
-- **Optimization**: Keep file sizes reasonable for faster theme switching
-- **Documentation**: Include a README.txt in your theme with any special instructions or credits
+```
+git add .
+git commit -m "Initial commit"
+git push -u origin main
+```
 
-## Known Issues
+## 8. Submitting Your Theme
 
-1. `preview.png` images are essential for your `.theme` to be browsed properly. If you're having trouble with it displaying:
-   - Try a different color space. Sometimes the image space makes a difference. In Photoshop, try `Image -> Mode -> RGB Color`
-   - If the background is white, you likely need to apply transparency. Check your prefered image editing software for how to properly do this!
-   - Image permissions can sometimes be buggy. If you've been editing/renaming images directly on an SD card or over SSH, try doing so directly on your computer, then moving the complete `preview.png` to the correct directory.
+You can submit your `.theme` through the various channels available on the NextUI official Discord using your GitHub repo link. We can take it from there!
 
-By following this guide, you'll be able to create beautiful custom themes that enhance your NextUI device experience. Happy theming!
+---
+## Index
+- [README](../README.md)
+- [Theme Documentation](../documents/THEMES.md)
+- [Component Documentation](../documents/COMPONENTS.md)
+- [Component Creation Guide](../documents/COMPONENT_BUILDING.md)
+- ---

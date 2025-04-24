@@ -18,15 +18,17 @@ A theme package is a directory with a `.theme` extension containing:
 The fastest way to understand themes:
 
 1. Open Theme Manager
-2. Go to **Export** from the main menu
+2. Go to **Export** from the main menu and export your device's current configuration
 3. Navigate to `Tools/tg5040/Theme-Manager.pak/Exports` on your device
-4. Explore the newly created theme package to see how files are organized.
+4. Explore the newly created theme package to see how files are organized
+
+---
 
 ## Detailed Theme Structure
 
 ### `manifest.json`
 
-This file contains essential metadata about your theme:
+This file contains essential metadata about your theme. It will look something like this when exported:
 
 ```json5
 {
@@ -87,12 +89,52 @@ This file contains essential metadata about your theme:
   }
 }
 ```
+### Important Manifest Notes
 
 The manifest helps Theme Manager understand where files should be copied during import and contains useful metadata like your author name and theme version.
- 
-### Wallpapers
 
-Wallpapers directory structure:
+- When you first download/install a `.theme` and apply it, the `"content"` and `"path_mappings"` properties of the theme's `manifest.json` will **_automatically update_** to reflect your device. You should not need to tweak anything to get the manifest to work.
+- The `"theme_info"`, `"accent_colors"`, and `"led_settings"` will always stay the same and will never update.
+- If you're ever having trouble with a `.theme` pack not working correctly, you can always look at the `manifest.json` to see if the `"path_mappings"` are going to the right place. That's what it's there for!
+- When you _**export**_ a `.theme` pack, the manifest will be heavily populated. Some of these properties should be kept, and some can be safely removed. For more details on how to export and create theme packs, check out the [Theme Creation Guide](documents/THEME_BUILDING.md) for best practices on how to do this.
+
+---
+
+## System Tags
+
+System tags are crucial for correctly mapping files to systems. The are regex text expressions located **_at the end_** of folder and file names. Common system tags include:
+
+- (GB) - Game Boy
+- (NES) - Nintendo Entertainment System
+- (MD) - Sega Genesis/Mega Drive
+- (PS) - PlayStation
+- (FBN) - FinalBurn Neo
+
+Some systems support multiple system tags, like Game Boy Advance and Super Nintendo Entertainment system. This is to allow users to specify which emulator they'd like to use for those specific systems.
+
+- (MGBA) Game Boy Advance, using the MGBA emulator
+- (GBA) Game Boy Advance, using the alternative emulator
+- (SUPA) Super Nintendo Entertainment System, using the Supafaust emulator
+- (SFC) Super Nintendo Entertainment System, using the alternative emulator
+
+Regardless of which emulator you choose, **_it is crucial to understand which systems have multiple tags like this_** because `.theme` components should encapsulate **_all possible Rom systems._** For example:
+
+```
+- Roms
+    - Super Nintendo Entertainment System (SUPA)
+    - Super Nintendo Entertainment System (SFC)
+    - Game Boy Advance (GBA)
+    - Game Boy Advance (MGBA)
+    
+Regardless of which Rom folder gets populated, ALL components should support ALL folders!
+```
+Read below for details on how to do this for each `.theme` component.
+
+---
+
+## Wallpapers
+
+
 
 ```
 Wallpapers/
@@ -106,14 +148,84 @@ Wallpapers/
    └─ Handhelds.png           # Named after collection folders
 ```
 
-**Important notes:**
-- System wallpapers must can be named whatever you want, but they **MUST** contain their respective system tag in parentheses, like (PS), (MGBA), (MD), save for `Root`, `Recently Played`, `Tools`, and `Collections`, which are named literally as above.
-- Resolution should ideally match your device's screen resolution (1024x768 for TrimUI Brick)
-- PNG format is required
+### Important Wallpaper Notes
+When a `.theme` is applied, we:
+1. Scan the `Roms` directory on your SD card
+2. Match each Rom folder's system tag with the respective `.png` image
+3. Move the `.png` image inside a `.media` folder inside that Rom directory
+4. Rename the image to `bg.png`
+5. Additionally, if a `.theme` does NOT have wallpapers, we delete any previously applied wallpapers.
 
-### Icons
 
-Icons directory structure:
+Here's an example that shows what file names work and **do not work** for wallpapers:
+
+```
+In our Wallpaper Directory:
+
+- Wallpapers
+    - SystemWallpapers
+        - (MGBA).png             <--- Recomended naming convention. Simple and works.
+        - Sega Genesis (MD).png  <--- Also valid, contains system tag at the end.
+        - Final Burn Neo.png     <--- This WILL NOT WORK. There is no system tag included at the end.
+        - 01). Game Boy (GB).png <--- This ALSO WILL NOT WORK. You must REMOVE the "01)" from the .png name for it to work. Remember, we will AUTOMATICALLY find the system tag, so don't worry about adding order numbers to the .png images!
+
+
+When we go to apply the wallpapers:
+
+
+- Roms
+    - Game Boy Advance (MGBA) <--- (MGBA).png would go inside here
+    - Sega Genesis (MD)       <--- Megadrive (MD).png would also work, since we have the matching system tag "(MD)"
+    - Arcade (FBN)            <--- Final Burn Neo.png would NOT WORK because there is no system tag in that .png name
+
+
+Final result after wallpaper application:
+
+
+- Roms
+    - Game Boy Advance (MGBA)
+        - .media
+            - .bg.png <--- Previously (MGBA).png
+    - Sega Genesis (MD)
+        - .media
+            - .bg.png <--- Previously Sega Genesis (MD).png
+    - Arcade (FBN)    <--- Completely fails. No image.
+
+```
+
+Additionally, remember ***additional emulator tags for duplicate systems in NextUI***. If some wallpapers aren't working it might be because the `.png` image provided isn't getting duplicated to the correct Rom folder. For example:
+
+```
+In our Wallpaper Directory:
+
+- Wallpapers
+    - SystemWallpapers
+        - (SUPA).png   <--- For the Supafaust Super Nintendo emulator
+        - (SFC).png    <--- For the alternative Super Nintendo emulator
+        - (MGBA).png   <--- For the MGBA Game Boy Advance emulator
+        - (GBA).png    <--- For the alternative Game Boy Advance emulator
+
+Make sure you include BOTH .png images for wallpapers so that you cover users that might prefer one emulator over the other. Otherwise:
+
+
+- Roms
+    - Super Nintendo (SUPA)
+        - Chrono Trigger
+        - Super Mario RPG
+        - etc...
+        - .media
+            - .bg  <--- Here, the (SUPA).png went to the directory with all the Roms in it, for users that prefer Supafaust.
+    - Super Nintendo (SFC)
+        - (EMPTY ROM DIRECTORY)
+        - .media
+            - .bg  <--- But we also place the (SFC).png image here if the directory exists. See how we cover users with multiple emulators like this?
+
+In this case, the user is covered through BOTH Super Nintendo emulators.
+```
+
+---
+
+## Icons
 
 ```
 Icons/
@@ -128,32 +240,74 @@ Icons/
    └─ Favorites.png         # Named as shown in Collections
 ```
 
-**Important notes:**
-- System icons should include the system tag in parentheses, save for `Tools`, `Recently Played`, and `Collections`, which are named literally.
-- Any tool-specific icons also need to be named literally, for instance, `Battery.png` for the `Battery.pak` tool on your device.
-- Icon format should be PNG with transparency
-- Recommended size is a square of at least 200x200 px, as NextUI will resize the image.
+### Important Icon Notes
 
-### Fonts
+Icons follow a lot of the same rules as wallpapers, but with some exceptions. When a `.theme` is applied we:
+1. Scan the Rom directory for all available systems by system tag
+2. Copy the `.png` images over to their respective folders inside a `.media` folder.
+3. We **_rename_** the icons according to the name of the appropriate Rom directory so that they match.
+4. Additionally, if a `.theme` does NOT have any icons, we delete any previously applied icons.
 
-Fonts directory structure:
+Here are some examples of the process. It's very similar to how wallpapers work:
 
 ```
-Fonts/
-├─ OG.ttf                   # Your replacement for font2.ttf
-├─ Next.ttf                 # Your replacement for font1.ttf
-├─ OG.backup.ttf            # Backup of original font2.ttf
-└─ Next.backup.ttf          # Backup of original font1.ttf
+In our icon directory:
+
+- Icons
+    - SystemIcons
+        - (MGBA).png             <--- Recomended naming convention. Simple and works.
+        - Sega Genesis (MD).png  <--- Also valid, contains system tag at the end.
+        - Arcade (FBN).png       <--- Valid name too.
+
+When we go to apply the icons:
+
+
+- Roms
+    - Game Boy Advance (MGBA)
+    - Megadrive (MD)
+    - 01). Arcade (FBN)
+    - .media
+        - Game Boy Advance (MGBA).png  <--- RENAMED "(MGBA).png" to "Game Boy Advance (MGBA).png" to MATCH the Rom directory name. This icon should work.
+        - Megadrive (MD).png           <--- RENAMED "Sega Genesis (MD).png" to "Megadrive (MD).png" to MATCH the Rom directory name. This icon should work.
+        - 01). Arcade (FBN).png        <--- RENAMED "Arcade (FBN).png" to "01). Arcade (FBN).png" to MATCH the Rom directory name. This icon should work.
+
+```
+Additionally, Tools can have their own icons as well.
+
+Just like wallpapers, make sure to remember ***additional emulator tags for duplicate systems in NextUI:*** 
+
+```
+In our Icon Directory:
+
+- Icons
+    - SystemIcons
+        - (SUPA).png   <--- For the Supafaust Super Nintendo emulator
+        - (SFC).png    <--- For the alternative Super Nintendo emulator
+        - (MGBA).png   <--- For the MGBA Game Boy Advance emulator
+        - (GBA).png    <--- For the alternative Game Boy Advance emulator
+
+Make sure you include BOTH .png images for icons so that you cover users that might prefer one emulator over the other:
+
+
+- Roms
+    - .media
+        - Super Nintendo (SUPA).png  <--- This icon goes to the SNES directory that uses the Supafaust emulator, which is populated with Roms in this example.
+        - Super Nintendo (SFC).png   <--- This icon would go to SNES directory that uses the alternative emulator, with NO ROMS in it. This means that this icon will not be displayed.
+    - Super Nintendo (SUPA)
+        - Chrono Trigger
+        - Super Mario RPG
+        - Super Mario World
+        - etc...
+    - Super Nintendo (SFC)
+        - (EMPTY ROM DIRECTORY)
+
+
+In this case, the user is covered through BOTH Super Nintendo emulators.
 ```
 
-**Why we save backups:**
-Font backups are crucial for restoring the system to its original state if a custom font causes issues. When you replace a font in the Settings app, Theme Manager automatically creates a backup of the original font. These backups are included in theme packages to ensure a complete restoration is possible when importing.
+## Overlays
 
-To change the available themes in the font, simply replace the `OG.ttf` and/or `Next.ttf` font files with whatever you'd like, and the user will be able to cycle between either of them in their `Settings.pak`.
 
-### Overlays
-
-Overlays directory structure:
 
 ```
 Overlays/
@@ -164,20 +318,76 @@ Overlays/
    └─ [overlay files].png
 ```
 
-## System Tags
+### Important Overlay  Notes
 
-System tags are crucial for correctly mapping files to systems. Common system tags include:
+When a `.theme` is applied, we:
+1. Copy the `Overlays` directly onto the root of the SD card, where Overlays are stored.
+2. That's it!
+3. Additionally, if a `.theme` does NOT contain overlays, we delete any previously applied overlays.
 
-- (GBA) - Game Boy Advance
-- (SFC)/(SUPA) - Super Nintendo
-- (NES) - Nintendo Entertainment System
-- (MD) - Sega Genesis/Mega Drive
-- (PS) - PlayStation
-- (FBN) - FinalBurn Neo
+Note that the directories containing systems **DO NOT** have parenthesis. That's just how NextUI overlays are stored:
 
-## Accent Colors
+```
+~/SD
+    - Overlays
+        - MGBA               <--- This will work for the (MGBA) emulator. Note the LACK of parenthesis.
+            - overlay1.png
+            - overlay2.png
+            - ...
+        - (SUPA)             <--- This will NOT work at all. Parenthesis break overlays!
+            - overlay1.png
+            - overlay2.png
+            - ...
+```
 
-Accent colors define the UI color scheme:
+Any applied overlays can be tweaked by going to `Settings -> Frontend` while in your game of choice and selecting the preferred overlay.
+
+---
+
+## Fonts
+
+
+
+```
+Fonts/
+├─ OG.ttf                   # Your replacement for font2.ttf
+├─ Next.ttf                 # Your replacement for font1.ttf
+├─ OG.backup.ttf            # Backup of original font2.ttf
+└─ Next.backup.ttf          # Backup of original font1.ttf
+```
+
+### Important Fonts Notes
+
+When a `.theme` is applied, we:
+
+1. Copy all four of the above files to `.system/res` on the SD card
+2. That's it!
+
+NextUI currently supports 2 fonts, tweakable in the `Settings.pak` tool. 
+To change the available themes in the font, simply replace the `OG.ttf` and/or `Next.ttf` font files with whatever you'd like, and the user will be able to cycle between either of them in their `Settings.pak`.
+
+It's important to consider that not all `.pak` apps with NextUI actually _use this system font._ Many use their own hard-coded font. So if some apps don't update the font, this is the reason!
+
+To revert back to the original fonts, just rename the backups in the `.system/res` directory.
+
+---
+
+## Other Settings
+
+In the `manifest.json`, you there are other optional settings that can be stored in a `.theme` pack:
+
+### Accent Colors
+
+```json5
+  "accent_colors": {
+    "color1": "#FFFFFF",
+    "color2": "#9B2257",
+    "color3": "#1E2329",
+    "color4": "#FFFFFF", 
+    "color5": "#000000",
+    "color6": "#FFFFFF"
+  }
+```
 
 - **color1** - Main UI color
 - **color2** - Primary accent color
@@ -186,10 +396,20 @@ Accent colors define the UI color scheme:
 - **color5** - Selected list text color
 - **color6** - Hint/information text color
 
-## LED Settings
+### LED Settings
 
-LED settings control the behavior of the device's LED lights:
-
+```json5
+  "led_settings": {
+    "f1_key": {
+      "effect": 1,
+      "color1": "0xFFFFFF",
+      "color2": "0x000000",
+      "speed": 1000,
+      "brightness": 100,
+      "trigger": 1,
+      "in_brightness": 100
+    }
+```
 - **effect** - Lighting effect type (1-7)
 - **color1/color2** - Primary and secondary colors (hex format)
 - **speed** - Animation speed in milliseconds
@@ -197,13 +417,32 @@ LED settings control the behavior of the device's LED lights:
 - **trigger** - Button/event that activates the LED (1-14)
 - **inbrightness** - Information LED brightness (0-100)
 
-## Importing Themes
+**NOTE:** Themes can include settings for **ALL FOUR LEDs.**
 
-To import a theme:
+---
+
+## Exporting Themes
+
+_Theme Exporting_ involves the full process of locating all six components on your device (if they exist), and copying them to a `.theme` folder inside `Theme-Manager.pak/Exports`. When exporting, we do the following:
+1. For wallpapers, we traverse the filesystem in search of all possible `bg.png` files, place them inside `.theme/Wallpapers`, and then _rename them_ according to the directory they came from, like (MGBA), Root, Recently Played, etc.
+2. For icons, we traverse the filesystem similarly to wallpapers, looking for all relevant `.png` images that are either literal like `Tools.png`, `Recently Played.png`, or by system tag, like `(MGBA).png`, `Super Nintendo Entertainment System (SUPA).png`, etc, and place them inside `.theme/Icons`.
+3. For overlays, we simply pull the `~Overlays` directory and place it inside `.theme/Overlays/Systems`.
+4. For fonts, we pull the font files in `./system/res` and place them in `.theme/Fonts`.
+5. For accents and LEDs, we pull the settings directly from `.userdata/shared/minuisettings.txt` and `.userdata/shared/ledsettings_brick.txt` and place them inside the `.theme/manifest.json`.
+
+You may then rename the `.theme` folder whatever you'd like, and you can re-import the `.theme` by placing it inside `Theme-Manager.pak/Themes` and applying it via `Installed Themes` in the Theme Manager.
+
+For more details on how to submit/share `.theme` packs, take a look at the [Theme Creation Guide](../documents/THEME_BUILDING.md).
+
+---
+
+## Applying Themes
+
+To apply a theme:
 
 1. Place your `.theme` package in `Tools/tg5040/Theme-Manager.pak/Themes/`
 2. Open Theme Manager
-3. Navigate to **Browse Themes**
+3. Navigate to **Installed Themes**
 4. Select your theme from the list
 5. Confirm the import
 
@@ -214,15 +453,13 @@ During import, Theme Manager will:
 - Create backups of fonts if necessary
 - Apply accent and LED settings if included
 
-## Exporting Themes
-
-To export your current device setup:
-
-1. Open Theme Manager
-2. Navigate to **Export** from the main menu
-3. Theme Manager will create a new theme package in `Tools/tg5040/Theme-Manager.pak/Exports/`
-
-Exported themes are named sequentially (theme_1.theme, theme_2.theme, etc.)
+---
+## Index
+- [README](../README.md)
+- [Theme Creation Guide](../documents/THEME_BUILDING.md)
+- [Component Documentation](../documents/COMPONENTS.md)
+- [Component Creation Guide](../documents/COMPONENT_BUILDING.md)
+---
 
 ## Troubleshooting
 
@@ -233,10 +470,3 @@ Exported themes are named sequentially (theme_1.theme, theme_2.theme, etc.)
 - **Manifest Errors**: Check manifest.json for syntax errors
 - **System Tags**: Verify system tags in parentheses match your system
 - **Logging**: Theme Manager comes with a detailed logger in `Logs/theme-manager.log`. You can always take a look here if there are any issues. Keep in mind this file fills up quickly, so make sure to clear it every once in awhile!
-
-### Font Problems
-
-If a custom font causes display issues:
-
-1. You can restore the original fonts by applying the `Default.font` package in `Components -> Fonts -> Browse`
-2. You can also manually place the backed up `.ttf` files in `.system/res` as `Next.ttf` and `OG.ttf` 
