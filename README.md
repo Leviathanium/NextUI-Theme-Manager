@@ -3,18 +3,19 @@
 A comprehensive theming solution for your NextUI device that lets you customize virtually every visual aspect of your handheld. No more manual file copying or tedious background swapping!
 
 ---
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-  <div style="text-align: center;">
-    <img src="/documents/previews/Consolized.theme.png" width="100%" />
-    <p>Consolized Theme</p>
+
+<div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+  <div style="flex: 0 1 30%; text-align: center;">
+    <img src="/documents/previews/Consolized.theme.png" width="100%" alt="Consolized Theme" />
+    <p><strong>Consolized Theme</strong></p>
   </div>
-  <div style="text-align: center;">
-    <img src="/documents/previews/Deep-Space.theme.png" width="100%" />
-    <p>Deep Space Theme</p>
+  <div style="flex: 0 1 30%; text-align: center;">
+    <img src="/documents/previews/Deep-Space.theme.png" width="100%" alt="Deep Space Theme" />
+    <p><strong>Deep Space Theme</strong></p>
   </div>
-  <div style="text-align: center;">
-    <img src="/documents/previews/Default.theme.png" width="100%" />
-    <p>Default Theme</p>
+  <div style="flex: 0 1 30%; text-align: center;">
+    <img src="/documents/previews/Default.theme.png" width="100%" alt="Default Theme" />
+    <p><strong>Default Theme</strong></p>
   </div>
 </div>
 
