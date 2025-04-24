@@ -489,11 +489,13 @@ MyAwesomeLEDs.led/
 
 Unlike other components, LED packages typically don't include a preview image.
 
-## Sharing and Submitting Your Components
+---
+
+# Sharing and Submitting Your Components
 
 Once you've created your component package, you can share it with the community. Here's how:
 
-### 1. Testing Your Component
+## 1. Testing Your Component
 
 Before sharing, test your component:
 
@@ -504,28 +506,36 @@ Before sharing, test your component:
 3. Navigate to **Components → [Component Type] → Installed**
 4. Apply your component and verify everything works correctly
 
-### 2. Package for Sharing
+## 2. Package for Sharing
 
 There are two ways to share your components:
 
-#### Option 1: Direct Zip Sharing
+### Option 1: Direct Zip Sharing
 
 1. Create a ZIP archive of your component folder (keeping the extension in the filename):
    - For example: `MyAwesomeOverlays.over.zip` (not just `MyAwesomeOverlays.zip`)
 2. Share this ZIP file with others, who can extract it to their Components directory
 
-#### Option 2: GitHub Repository (Recommended)
+### Option 2: GitHub Template Repository (Recommended)
 
-Using GitHub allows you to easily update your component and provides a clear home for documentation.
+We've provided six different templates, one for each component type, so you have an easy place to start when creating your own Git repository:
+- [Wallpaper Template](https://github.com/Leviathanium/Template.bg)
+- [Icon Template](https://github.com/Leviathanium/Template.icon)
+- [Overlay Template](https://github.com/Leviathanium/Template.over)
+- [Font Template](https://github.com/Leviathanium/Template.font)
+- [Accent Template](https://github.com/Leviathanium/Template.acc)
+- [LED Template](https://github.com/Leviathanium/Template.led)
 
-1. Create a GitHub account if you don't have one
-2. Use one of the available component templates on GitHub
 
-#### Example: Creating an Overlay Component Repository
+
+
+
+
+### Example: Creating an Overlay Component Repository
 
 Here's how to create a repository for an overlay component:
 
-1. Navigate to the Template.over repository
+1. Navigate to the `Template.over` repository
 2. Select "Use This Template → Create a New Repository"
 3. Name your repository (e.g., `MyAwesomeOverlays.over`)
 4. Clone your new repository to your computer:
@@ -546,7 +556,7 @@ Here's how to create a repository for an overlay component:
 
 The Template.over repository is structured identically to a regular exported `.over` package, making it easy to transition from your exported component to a hosted repository.
 
-### 3. Submitting to the Community
+## 3. Submitting to the Community
 
 You can submit your component through various channels:
 
