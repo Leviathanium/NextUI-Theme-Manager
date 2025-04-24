@@ -170,4 +170,14 @@ You can submit your `.theme` through the various channels available on the NextU
 - [Theme Documentation](../documents/THEMES.md)
 - [Component Documentation](../documents/COMPONENTS.md)
 - [Component Creation Guide](../documents/COMPONENT_BUILDING.md)
+
+## Templates
+- [Theme Template](https://github.com/Leviathanium/Template.theme)
+- [Wallpaper Template](https://github.com/Leviathanium/Template.bg)
+- [Icon Template](https://github.com/Leviathanium/Template.icon)
+- [Overlay Template](https://github.com/Leviathanium/Template.over)
+- [Font Template](https://github.com/Leviathanium/Template.font)
+- [Accent Template](https://github.com/Leviathanium/Template.acc)
+- [LED Template](https://github.com/Leviathanium/Template.led)
+
 - ---

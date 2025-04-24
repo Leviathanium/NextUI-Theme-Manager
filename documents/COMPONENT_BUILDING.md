@@ -571,4 +571,13 @@ You can submit your component through various channels:
 - [Theme Documentation](../documents/THEMES.md)
 - [Theme Creation Guide](../documents/THEME_BUILDING.md)
 - [Component Documentation](../documents/COMPONENTS.md)
+## Templates
+- [Theme Template](https://github.com/Leviathanium/Template.theme)
+- [Wallpaper Template](https://github.com/Leviathanium/Template.bg)
+- [Icon Template](https://github.com/Leviathanium/Template.icon)
+- [Overlay Template](https://github.com/Leviathanium/Template.over)
+- [Font Template](https://github.com/Leviathanium/Template.font)
+- [Accent Template](https://github.com/Leviathanium/Template.acc)
+- [LED Template](https://github.com/Leviathanium/Template.led)
+
 - ---
