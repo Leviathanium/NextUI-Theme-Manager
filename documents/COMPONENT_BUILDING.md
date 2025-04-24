@@ -57,7 +57,7 @@ Create a compelling preview image:
 
 Edit the `manifest.json` file to update basic information:
 
-```json
+```json5
 {
   "component_info": {
     "name": "MyAwesomeWallpapers",  // Update with your component name
@@ -142,7 +142,7 @@ Create a preview image:
 
 Edit the `manifest.json` file to update basic information:
 
-```json
+```json5
 {
   "component_info": {
     "name": "MyAwesomeOverlays",  // Update with your component name
@@ -230,7 +230,7 @@ Create a compelling preview image:
 
 Edit the `manifest.json` file to update basic information:
 
-```json
+```json5
 {
   "component_info": {
     "name": "MyAwesomeIcons",    // Update with your component name
@@ -314,7 +314,7 @@ Create a preview image:
 
 Edit the `manifest.json` file to update basic information:
 
-```json
+```json5
 {
   "component_info": {
     "name": "MyAwesomeFonts",    // Update with your component name
@@ -368,7 +368,7 @@ Unlike other components, accent packages don't contain additional files beyond t
 
 Edit the `manifest.json` file to customize your accent colors:
 
-```json
+```json5
 {
   "component_info": {
     "name": "MyAwesomeAccents",   // Update with your component name
@@ -434,7 +434,7 @@ LED packages are the simplest component type, containing only the manifest file 
 
 Edit the `manifest.json` file to customize your LED configuration:
 
-```json
+```json5
 {
   "component_info": {
     "name": "MyAwesomeLEDs",    // Update with your component name
