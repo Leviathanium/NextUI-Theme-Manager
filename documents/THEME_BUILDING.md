@@ -14,7 +14,7 @@ This exported `.theme` contains your current wallpapers, icons, accent colors, a
 
 ## 2. Update Components
 
-Once you've exported your `.theme`, move it to your computer and start working on fine tuning any components you want to add. For help, take a look at the detailed [Theme Documentation.](documents/THEMES.md)
+Once you've exported your `.theme`, move it to your computer and start working on fine tuning any components you want to add. For help, take a look at the detailed [Theme Documentation.](../documents/THEMES.md)
 
 ## 3. Update Metadata
 
