@@ -4,20 +4,11 @@ A comprehensive theming solution for your NextUI device that lets you customize 
 
 ---
 
-<div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-  <div style="flex: 0 1 30%; text-align: center;">
-    <img src="/documents/previews/Consolized.theme.png" width="100%" alt="Consolized Theme" />
-    <p><strong>Consolized Theme</strong></p>
-  </div>
-  <div style="flex: 0 1 30%; text-align: center;">
-    <img src="/documents/previews/Deep-Space.theme.png" width="100%" alt="Deep Space Theme" />
-    <p><strong>Deep Space Theme</strong></p>
-  </div>
-  <div style="flex: 0 1 30%; text-align: center;">
-    <img src="/documents/previews/Default.theme.png" width="100%" alt="Default Theme" />
-    <p><strong>Default Theme</strong></p>
-  </div>
-</div>
+<p float="left">
+  <img src="/documents/previews/Consolized.theme.png" width="32%" />
+  <img src="/documents/previews/Deep-Space.theme.png" width="32%" />
+  <img src="/documents/previews/Default.theme.png" width="32%" />
+</p>
 
 ---
 
