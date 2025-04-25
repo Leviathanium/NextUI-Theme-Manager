@@ -34,7 +34,6 @@ func CreateDefaultPreviewImage(outputPath string, componentType string) error {
 	return nil
 }
 
-// ExportWallpapers exports current wallpapers as a .bg component package
 func ExportWallpapers(name string) error {
 	logger := &Logger{
 		DebugFn: logging.LogDebug,
@@ -55,10 +54,11 @@ func ExportWallpapers(name string) error {
 
 	exportPath := filepath.Join(cwd, "Exports", name)
 
-	// Create directories
+	// Create directories, including the new ListWallpapers directory
 	dirPaths := []string{
 		exportPath,
 		filepath.Join(exportPath, "SystemWallpapers"),
+		filepath.Join(exportPath, "ListWallpapers"), // New directory for list wallpapers
 		filepath.Join(exportPath, "CollectionWallpapers"),
 	}
 
@@ -149,25 +149,48 @@ func ExportWallpapers(name string) error {
 		}
 	}
 
-	// Export system wallpapers
+	// Export system wallpapers and list wallpapers
 	for _, system := range systemPaths.Systems {
 		if system.Tag == "" {
 			continue // Skip systems without tags
 		}
 
+		// Main system wallpaper (bg.png)
 		systemBg := filepath.Join(system.MediaPath, "bg.png")
 		if _, err := os.Stat(systemBg); err == nil {
 			// Create filename with system tag
-			var filename string
+			var fileName string
 			if strings.Contains(system.Name, fmt.Sprintf("(%s)", system.Tag)) {
-				filename = fmt.Sprintf("%s.png", system.Name)
+				fileName = fmt.Sprintf("%s.png", system.Name)
 			} else {
-				filename = fmt.Sprintf("%s (%s).png", system.Name, system.Tag)
+				fileName = fmt.Sprintf("%s (%s).png", system.Name, system.Tag)
 			}
 
-			destPath := filepath.Join(exportPath, "SystemWallpapers", filename)
+			destPath := filepath.Join(exportPath, "SystemWallpapers", fileName)
 			if err := CopyFile(systemBg, destPath); err != nil {
 				logger.DebugFn("Warning: Could not copy system wallpaper for %s: %v", system.Name, err)
+			}
+		}
+
+		// NEW: List wallpaper (bglist.png)
+		systemListBg := filepath.Join(system.MediaPath, "bglist.png")
+		if _, err := os.Stat(systemListBg); err == nil {
+			// Create filename with system tag and -list suffix
+			var baseFileName string
+			if strings.Contains(system.Name, fmt.Sprintf("(%s)", system.Tag)) {
+				baseFileName = system.Name
+			} else {
+				baseFileName = fmt.Sprintf("%s (%s)", system.Name, system.Tag)
+			}
+
+			// Add -list suffix
+			fileName := fmt.Sprintf("%s-list.png", baseFileName)
+
+			destPath := filepath.Join(exportPath, "ListWallpapers", fileName)
+			if err := CopyFile(systemListBg, destPath); err != nil {
+				logger.DebugFn("Warning: Could not copy system list wallpaper for %s: %v", system.Name, err)
+			} else {
+				logger.DebugFn("Exported list wallpaper for %s: %s", system.Name, fileName)
 			}
 		}
 	}

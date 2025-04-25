@@ -535,7 +535,6 @@ func updateOverlayMappings(themePath string, manifest *ThemeManifest, systemPath
 	return nil
 }
 
-// updateWallpaperMappings scans wallpapers in the theme and updates manifest mappings
 func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
 	// Create a map of existing mappings for quick lookup
 	existingMappings := make(map[string]bool)
@@ -668,6 +667,104 @@ func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPa
 		}
 	}
 
+	// NEW: Process list wallpapers
+	listWallpapersDir := filepath.Join(themePath, "Wallpapers", "ListWallpapers")
+	if _, err := os.Stat(listWallpapersDir); err == nil {
+		entries, err := os.ReadDir(listWallpapersDir)
+		if err != nil {
+			logger.DebugFn("Warning: Error reading list wallpapers directory: %v", err)
+		} else {
+			for _, entry := range entries {
+				if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+					continue
+				}
+
+				// Check if file has a PNG extension
+				if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+					continue
+				}
+
+				themePath := filepath.Join("Wallpapers/ListWallpapers", entry.Name())
+
+				// Skip if this file is already in mappings
+				if existingMappings[themePath] {
+					continue
+				}
+
+				// Check for system tag in filename and -list suffix
+				fileName := entry.Name()
+				baseName := strings.TrimSuffix(fileName, ".png")
+
+				// See if this is a list wallpaper (filename ends with -list)
+				if !strings.HasSuffix(baseName, "-list") {
+					logger.DebugFn("List wallpaper doesn't have -list suffix: %s", fileName)
+					continue
+				}
+
+				// Remove the -list suffix to get the system name and tag
+				baseNameWithoutSuffix := strings.TrimSuffix(baseName, "-list")
+
+				// Extract system tag
+				matches := tagRegex.FindStringSubmatch(baseNameWithoutSuffix)
+				if len(matches) >= 2 {
+					systemTag := matches[1]
+					systemName := strings.TrimSuffix(strings.Split(baseNameWithoutSuffix, "(")[0], " ")
+
+					// Find matching system by tag
+					var systemFound bool
+					for _, system := range systemPaths.Systems {
+						if system.Tag == systemTag {
+							systemPath := filepath.Join(system.MediaPath, "bglist.png")
+							metadata := map[string]string{
+								"SystemName":    systemName,
+								"SystemTag":     systemTag,
+								"WallpaperType": "List",
+							}
+
+							manifest.PathMappings.Wallpapers = append(
+								manifest.PathMappings.Wallpapers,
+								PathMapping{
+									ThemePath:  themePath,
+									SystemPath: systemPath,
+									Metadata:   metadata,
+								},
+							)
+							manifest.Content.Wallpapers.Count++
+							manifest.Content.Wallpapers.Present = true
+							systemFound = true
+							logger.DebugFn("Added mapping for list wallpaper: %s -> %s", themePath, systemPath)
+							break
+						}
+					}
+
+					// If system not found in paths, create a default path
+					if !systemFound && systemTag != "" {
+						systemPath := filepath.Join(systemPaths.Roms, fmt.Sprintf("%s (%s)", systemName, systemTag), ".media", "bglist.png")
+						metadata := map[string]string{
+							"SystemName":    systemName,
+							"SystemTag":     systemTag,
+							"WallpaperType": "List",
+						}
+
+						manifest.PathMappings.Wallpapers = append(
+							manifest.PathMappings.Wallpapers,
+							PathMapping{
+								ThemePath:  themePath,
+								SystemPath: systemPath,
+								Metadata:   metadata,
+							},
+						)
+						manifest.Content.Wallpapers.Count++
+						manifest.Content.Wallpapers.Present = true
+						logger.DebugFn("Added default mapping for list wallpaper: %s -> %s", themePath, systemPath)
+					}
+				} else {
+					logger.DebugFn("Could not extract system tag from list wallpaper: %s", fileName)
+				}
+			}
+		}
+	}
+
 	// Process collection wallpapers
 	collectionWallpapersDir := filepath.Join(themePath, "Wallpapers", "CollectionWallpapers")
 	if _, err := os.Stat(collectionWallpapersDir); err == nil {
@@ -692,14 +789,16 @@ func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPa
 					continue
 				}
 
-				// Extract collection name
+				// Determine collection name and system path
 				collectionName := strings.TrimSuffix(entry.Name(), ".png")
 				systemPath := filepath.Join(systemPaths.Root, "Collections", collectionName, ".media", "bg.png")
+
 				metadata := map[string]string{
 					"CollectionName": collectionName,
 					"WallpaperType":  "Collection",
 				}
 
+				// Add to manifest
 				manifest.PathMappings.Wallpapers = append(
 					manifest.PathMappings.Wallpapers,
 					PathMapping{

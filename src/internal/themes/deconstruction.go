@@ -133,7 +133,6 @@ func DeconstructTheme(themeName string) error {
 	return nil
 }
 
-// DeconstructWallpapers extracts wallpapers from a theme package into a standalone component
 func DeconstructWallpapers(themePath string, manifest *ThemeManifest, componentName string, logger *Logger) error {
 	logger.DebugFn("Extracting wallpapers from theme to component: %s", componentName)
 
@@ -151,10 +150,11 @@ func DeconstructWallpapers(themePath string, manifest *ThemeManifest, componentN
 	// Path where component will be created (in Exports directory)
 	exportPath := filepath.Join(cwd, "Exports", componentName)
 
-	// Create directories for the wallpaper component
+	// Create directories for the wallpaper component, including the new ListWallpapers directory
 	dirPaths := []string{
 		exportPath,
 		filepath.Join(exportPath, "SystemWallpapers"),
+		filepath.Join(exportPath, "ListWallpapers"), // New directory
 		filepath.Join(exportPath, "CollectionWallpapers"),
 	}
 
@@ -183,12 +183,33 @@ func DeconstructWallpapers(themePath string, manifest *ThemeManifest, componentN
 			continue
 		}
 
-		// Determine destination path in component package
-		// The ThemePath is expected to be like "Wallpapers/SystemWallpapers/Name.png"
-		// We strip the initial "Wallpapers/" to get the correct path in our component package
-		relativePath := mapping.ThemePath
-		if strings.HasPrefix(relativePath, "Wallpapers/") {
-			relativePath = relativePath[len("Wallpapers/"):]
+		// Extract metadata if available
+		var wallpaperType string
+		if mapping.Metadata != nil {
+			wallpaperType = mapping.Metadata["WallpaperType"]
+		}
+
+		// Determine destination path in component package based on wallpaper type
+		var relativePath string
+
+		// Special handling for list wallpapers - put in ListWallpapers directory
+		if wallpaperType == "List" {
+			// The file should go to ListWallpapers directory
+			if strings.HasPrefix(mapping.ThemePath, "Wallpapers/") {
+				// Get just the filename
+				filename := filepath.Base(mapping.ThemePath)
+				relativePath = filepath.Join("ListWallpapers", filename)
+			} else {
+				// Default fallback, maintain original path
+				relativePath = mapping.ThemePath
+			}
+		} else {
+			// The ThemePath is expected to be like "Wallpapers/SystemWallpapers/Name.png"
+			// We strip the initial "Wallpapers/" to get the correct path in our component package
+			relativePath = mapping.ThemePath
+			if strings.HasPrefix(relativePath, "Wallpapers/") {
+				relativePath = relativePath[len("Wallpapers/"):]
+			}
 		}
 
 		dstPath := filepath.Join(exportPath, relativePath)
