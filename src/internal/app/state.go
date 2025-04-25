@@ -27,6 +27,7 @@ const (
 	ExportComponent
 	Deconstruction
 	DeconstructConfirm
+	OverlaySystemSelection  // New screen for system tag selection
 )
 
 // ScreenEnum holds all available screens
@@ -46,6 +47,8 @@ type ScreenEnum struct {
 	ExportComponent    Screen
 	Deconstruction     Screen
 	DeconstructConfirm Screen
+    OverlaySystemSelection Screen // New screen for system tag selection
+
 }
 
 // AppState holds the current state of the application
@@ -54,6 +57,7 @@ type appState struct {
 	SelectedTheme           string // For theme import/export
 	SelectedComponentType   string // For component operations
 	SelectedComponentOption string // For component operations
+	SelectedSystemTag       string // New field for system tag selection
 }
 
 // Global variables
@@ -74,37 +78,39 @@ var (
 		ExportComponent:    ExportComponent,
 		Deconstruction:     Deconstruction,
 		DeconstructConfirm: DeconstructConfirm,
+		OverlaySystemSelection: OverlaySystemSelection, // Add new screen
 	}
 
 	state appState
 )
 
-// GetCurrentScreen returns the current screen
+// Replace with:
 func GetCurrentScreen() Screen {
-	// Ensure we never return an invalid screen value
-	if state.CurrentScreen < MainMenu || state.CurrentScreen > DeconstructConfirm {
-		logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
-		state.CurrentScreen = MainMenu
-	}
-	return state.CurrentScreen
+    // Ensure we never return an invalid screen value
+    if state.CurrentScreen < MainMenu || state.CurrentScreen > OverlaySystemSelection {
+        logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
+        state.CurrentScreen = MainMenu
+    }
+    return state.CurrentScreen
 }
 
-// SetCurrentScreen sets the current screen
+
+// Replace with:
 func SetCurrentScreen(screen Screen) {
-	// Validate screen value before setting
-	if screen < MainMenu || screen > DeconstructConfirm {
-		logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
-		screen = MainMenu
-	}
+    // Validate screen value before setting
+    if screen < MainMenu || screen > OverlaySystemSelection {
+        logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
+        screen = MainMenu
+    }
 
-	// Add explicit debug logging
-	logging.LogDebug("Setting current screen from %d to %d", state.CurrentScreen, screen)
+    // Add explicit debug logging
+    logging.LogDebug("Setting current screen from %d to %d", state.CurrentScreen, screen)
 
-	// Set the screen
-	state.CurrentScreen = screen
+    // Set the screen
+    state.CurrentScreen = screen
 
-	// Verify the screen was set correctly
-	logging.LogDebug("Current screen is now: %d", state.CurrentScreen)
+    // Verify the screen was set correctly
+    logging.LogDebug("Current screen is now: %d", state.CurrentScreen)
 }
 
 // GetSelectedTheme returns the selected theme
@@ -135,4 +141,15 @@ func GetSelectedComponentOption() string {
 // SetSelectedComponentOption sets the selected component option
 func SetSelectedComponentOption(option string) {
 	state.SelectedComponentOption = option
+}
+
+// Add new getter/setter functions for SelectedSystemTag
+// GetSelectedSystemTag returns the selected system tag
+func GetSelectedSystemTag() string {
+	return state.SelectedSystemTag
+}
+
+// SetSelectedSystemTag sets the selected system tag
+func SetSelectedSystemTag(tag string) {
+	state.SelectedSystemTag = tag
 }

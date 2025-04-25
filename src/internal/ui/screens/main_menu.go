@@ -12,58 +12,61 @@ import (
 	"nextui-themes/internal/ui"
 )
 
-// MainMenuScreen displays the main menu with expanded options
 func MainMenuScreen() (string, int) {
-	// Updated menu items with clearer naming
-	menu := []string{
-		"Installed Themes",   // NEW: Browse locally installed themes
-		"Download Themes",    // RENAMED: Browse and download themes from catalog
-		"Sync Catalog",       // RENAMED: Update the entire catalog from repository
-		"Components",
-		"Export",
-	}
+    // Updated menu items with "Deconstruct" added
+    menu := []string{
+        "Installed Themes",
+        "Download Themes",
+        "Sync Catalog",
+        "Components",
+        "Deconstruct", // Added the Deconstruct option to main menu (without ellipsis)
+        "Export",
+    }
 
-	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
+    return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "NextUI Theme Manager", "--cancel-text", "QUIT")
 }
 
-// HandleMainMenu processes the user's selection from the main menu
 func HandleMainMenu(selection string, exitCode int) app.Screen {
-	logging.LogDebug("HandleMainMenu called with selection: '%s', exitCode: %d", selection, exitCode)
+    logging.LogDebug("HandleMainMenu called with selection: '%s', exitCode: %d", selection, exitCode)
 
-	switch exitCode {
-	case 0:
-		// User selected an option
-		switch selection {
-		case "Installed Themes":
-			logging.LogDebug("Selected Installed Themes")
-			return app.Screens.InstalledThemes
+    switch exitCode {
+    case 0:
+        // User selected an option
+        switch selection {
+        case "Installed Themes":
+            logging.LogDebug("Selected Installed Themes")
+            return app.Screens.InstalledThemes
 
-		case "Download Themes":
-			logging.LogDebug("Selected Download Themes")
-			return app.Screens.DownloadThemes
+        case "Download Themes":
+            logging.LogDebug("Selected Download Themes")
+            return app.Screens.DownloadThemes
 
-		case "Sync Catalog":
-			logging.LogDebug("Selected Sync Catalog")
-			return app.Screens.SyncCatalog
+        case "Sync Catalog":
+            logging.LogDebug("Selected Sync Catalog")
+            return app.Screens.SyncCatalog
 
-		case "Components":
-			logging.LogDebug("Selected Components")
-			return app.Screens.ComponentsMenu
+        case "Components":
+            logging.LogDebug("Selected Components")
+            return app.Screens.ComponentsMenu
 
-		case "Export":
-			logging.LogDebug("Selected Export")
-			return app.Screens.ThemeExport
+        case "Deconstruct": // Add handling for the new main menu option
+            logging.LogDebug("Selected Deconstruct")
+            return app.Screens.Deconstruction
 
-		default:
-			logging.LogDebug("Unknown selection: %s", selection)
-			return app.Screens.MainMenu
-		}
+        case "Export":
+            logging.LogDebug("Selected Export")
+            return app.Screens.ThemeExport
 
-	case 1, 2:
-		// User pressed cancel or back
-		logging.LogDebug("User cancelled/exited")
-		os.Exit(0)
-	}
+        default:
+            logging.LogDebug("Unknown selection: %s", selection)
+            return app.Screens.MainMenu
+        }
 
-	return app.Screens.MainMenu
+    case 1, 2:
+        // User pressed cancel or back
+        logging.LogDebug("User cancelled/exited")
+        os.Exit(0)
+    }
+
+    return app.Screens.MainMenu
 }

@@ -154,7 +154,6 @@ func ExportTheme() error {
 	return nil
 }
 
-// exportWallpapers scans for and exports wallpapers
 func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
 	// Initialize wallpaper section
 	manifest.Content.Wallpapers.Present = false
@@ -291,13 +290,20 @@ func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *sy
 		}
 	}
 
-	// Check for system wallpapers
+	// Create the ListWallpapers directory if it doesn't exist yet
+	listWallpapersDir := filepath.Join(themePath, "Wallpapers", "ListWallpapers")
+	if err := os.MkdirAll(listWallpapersDir, 0755); err != nil {
+		logger.DebugFn("Warning: Could not create ListWallpapers directory: %v", err)
+	}
+
+	// Check for system wallpapers and list wallpapers
 	for _, system := range systemPaths.Systems {
 		if system.Tag == "" {
 			// Skip systems without tags
 			continue
 		}
 
+		// Main System wallpaper (bg.png)
 		systemBg := filepath.Join(system.MediaPath, "bg.png")
 		if _, err := os.Stat(systemBg); err == nil {
 			// Create filename with system tag - check if already contains tag to prevent duplication
@@ -333,6 +339,46 @@ func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *sy
 				manifest.Content.Wallpapers.Present = true
 				manifest.Content.Wallpapers.Count++
 				logger.DebugFn("Exported %s wallpaper to %s", system.Name, destPath)
+			}
+		}
+
+		// NEW: ROM List wallpaper (bglist.png)
+		systemListBg := filepath.Join(system.MediaPath, "bglist.png")
+		if _, err := os.Stat(systemListBg); err == nil {
+			// Create filename with system tag and -list suffix
+			var baseFileName string
+			if strings.Contains(system.Name, fmt.Sprintf("(%s)", system.Tag)) {
+				// System name already has the tag, use as is plus -list suffix
+				baseFileName = system.Name
+			} else {
+				// Add tag to system name
+				baseFileName = fmt.Sprintf("%s (%s)", system.Name, system.Tag)
+			}
+
+			// Add the -list suffix
+			fileName := fmt.Sprintf("%s-list.png", baseFileName)
+
+			destPath := filepath.Join(themePath, "Wallpapers", "ListWallpapers", fileName)
+
+			if err := CopyFile(systemListBg, destPath); err != nil {
+				logger.DebugFn("Warning: Could not copy system %s bglist.png: %v", system.Name, err)
+			} else {
+				// Add to manifest
+				manifest.PathMappings.Wallpapers = append(
+					manifest.PathMappings.Wallpapers,
+					PathMapping{
+						ThemePath:  "Wallpapers/ListWallpapers/" + fileName,
+						SystemPath: systemListBg,
+						Metadata: map[string]string{
+							"SystemName":    system.Name,
+							"SystemTag":     system.Tag,
+							"WallpaperType": "List",
+						},
+					},
+				)
+				manifest.Content.Wallpapers.Present = true
+				manifest.Content.Wallpapers.Count++
+				logger.DebugFn("Exported %s list wallpaper to %s", system.Name, destPath)
 			}
 		}
 	}
@@ -380,6 +426,7 @@ func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *sy
 		}
 	}
 }
+
 
 // exportIcons scans for and exports icons
 func exportIcons(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {

@@ -491,7 +491,6 @@ func ImportOverlays(componentPath string) error {
 
 // Helper functions for cleanup
 
-// cleanupExistingWallpapers removes existing wallpapers before applying new ones
 func cleanupExistingWallpapers(systemPaths *system.SystemPaths, logger *Logger) error {
 	logger.DebugFn("Cleaning up existing wallpapers")
 
@@ -535,15 +534,53 @@ func cleanupExistingWallpapers(systemPaths *system.SystemPaths, logger *Logger) 
 		logger.DebugFn("Removed Collections wallpaper: %s", collectionsBg)
 	}
 
-	// System wallpapers
+	// System wallpapers - clean up both bg.png and bglist.png files
+	systemCleanupCount := 0
 	for _, system := range systemPaths.Systems {
+		// Main system background (bg.png)
 		systemBg := filepath.Join(system.MediaPath, "bg.png")
 		if err := os.Remove(systemBg); err != nil && !os.IsNotExist(err) {
 			logger.DebugFn("Warning: Could not remove %s wallpaper: %v", system.Name, err)
 		} else if err == nil {
 			logger.DebugFn("Removed %s wallpaper: %s", system.Name, systemBg)
+			systemCleanupCount++
+		}
+
+		// List background (bglist.png) - ensure this is properly cleaned up
+		systemListBg := filepath.Join(system.MediaPath, "bglist.png")
+		if err := os.Remove(systemListBg); err != nil && !os.IsNotExist(err) {
+			logger.DebugFn("Warning: Could not remove %s list wallpaper: %v", system.Name, err)
+		} else if err == nil {
+			logger.DebugFn("Removed %s list wallpaper: %s", system.Name, systemListBg)
+			systemCleanupCount++
 		}
 	}
+
+	// Special handling to cleanup ROMs directory directly (in case of misplaced files)
+	// This handles cases where bglist.png files might be in unexpected locations
+	romsDir := systemPaths.Roms
+	if romsEntries, err := os.ReadDir(romsDir); err == nil {
+		for _, romEntry := range romsEntries {
+			if !romEntry.IsDir() || strings.HasPrefix(romEntry.Name(), ".") {
+				continue
+			}
+
+			// Check each ROM system directory
+			romSystemDir := filepath.Join(romsDir, romEntry.Name())
+			mediaDir := filepath.Join(romSystemDir, ".media")
+
+			// Try to clean up any bglist.png files that might be here
+			bglistFile := filepath.Join(mediaDir, "bglist.png")
+			if err := os.Remove(bglistFile); err != nil && !os.IsNotExist(err) {
+				logger.DebugFn("Warning: Could not remove potential bglist.png in %s: %v", romEntry.Name(), err)
+			} else if err == nil {
+				logger.DebugFn("Removed additional bglist.png in %s: %s", romEntry.Name(), bglistFile)
+				systemCleanupCount++
+			}
+		}
+	}
+
+	logger.DebugFn("Cleaned up %d system wallpaper files (including bglist.png files)", systemCleanupCount)
 
 	// Collection wallpapers
 	collectionsDir := filepath.Join(systemPaths.Root, "Collections")
@@ -566,6 +603,7 @@ func cleanupExistingWallpapers(systemPaths *system.SystemPaths, logger *Logger) 
 
 	return nil
 }
+
 
 // cleanupExistingIcons removes existing icons before applying new ones
 func cleanupExistingIcons(systemPaths *system.SystemPaths, logger *Logger) error {

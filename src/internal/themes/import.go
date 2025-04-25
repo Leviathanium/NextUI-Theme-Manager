@@ -16,6 +16,10 @@ import (
 )
 
 // ImportTheme imports a theme package
+// Modify the ImportTheme function in src/internal/themes/import.go
+// This updates the ImportTheme function to always clean up existing components
+// before applying new ones from the theme pack, matching the behavior of individual component packs.
+
 func ImportTheme(themeName string) error {
 	// Create logger
 	logger := &Logger{
@@ -54,11 +58,36 @@ func ImportTheme(themeName string) error {
 		// Continue anyway with the original manifest
 	}
 
-	// Clean up existing components
-	if err := cleanupExistingComponents(manifest, systemPaths, logger); err != nil {
-		logger.DebugFn("Warning: Error cleaning up existing components: %v", err)
+	// IMPORTANT CHANGE: Always clean up existing components before applying new ones
+	// This ensures consistency with how individual component packs work
+
+	// Clean up existing wallpapers (regardless of whether the theme includes them)
+	logger.DebugFn("Cleaning up existing wallpapers before theme import")
+	if err := cleanupExistingWallpapers(systemPaths, logger); err != nil {
+		logger.DebugFn("Warning: Error cleaning up existing wallpapers: %v", err)
 		// Continue with import anyway
 	}
+
+	// Clean up existing icons (regardless of whether the theme includes them)
+	logger.DebugFn("Cleaning up existing icons before theme import")
+	if err := cleanupExistingIcons(systemPaths, logger); err != nil {
+		logger.DebugFn("Warning: Error cleaning up existing icons: %v", err)
+		// Continue with import anyway
+	}
+
+	// Clean up existing overlays (regardless of whether the theme includes them)
+	logger.DebugFn("Cleaning up existing overlays before theme import")
+	if err := cleanupExistingOverlays(systemPaths, logger); err != nil {
+		logger.DebugFn("Warning: Error cleaning up existing overlays: %v", err)
+		// Continue with import anyway
+	}
+
+	// We've removed the conditional cleanup in favor of always cleaning up
+	// The old code cleaned up only if the theme didn't include these components:
+	// if err := cleanupExistingComponents(manifest, systemPaths, logger); err != nil {
+	//     logger.DebugFn("Warning: Error cleaning up existing components: %v", err)
+	//     // Continue with import anyway
+	// }
 
 	// Apply theme components based on the (now updated) manifest
 	if err := importThemeFiles(themePath, manifest, systemPaths, logger); err != nil {
@@ -88,6 +117,10 @@ func ImportTheme(themeName string) error {
 
 	return nil
 }
+
+// Note: The cleanupExistingComponents function can be kept for backward compatibility,
+// but it's no longer called from ImportTheme since we now always clean up components
+// regardless of whether the theme includes them or not.
 
 // importThemeFiles copies all files from the theme to the system based on path mappings
 func importThemeFiles(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
@@ -535,7 +568,6 @@ func updateOverlayMappings(themePath string, manifest *ThemeManifest, systemPath
 	return nil
 }
 
-// updateWallpaperMappings scans wallpapers in the theme and updates manifest mappings
 func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
 	// Create a map of existing mappings for quick lookup
 	existingMappings := make(map[string]bool)
@@ -668,6 +700,104 @@ func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPa
 		}
 	}
 
+	// NEW: Process list wallpapers
+	listWallpapersDir := filepath.Join(themePath, "Wallpapers", "ListWallpapers")
+	if _, err := os.Stat(listWallpapersDir); err == nil {
+		entries, err := os.ReadDir(listWallpapersDir)
+		if err != nil {
+			logger.DebugFn("Warning: Error reading list wallpapers directory: %v", err)
+		} else {
+			for _, entry := range entries {
+				if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+					continue
+				}
+
+				// Check if file has a PNG extension
+				if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+					continue
+				}
+
+				themePath := filepath.Join("Wallpapers/ListWallpapers", entry.Name())
+
+				// Skip if this file is already in mappings
+				if existingMappings[themePath] {
+					continue
+				}
+
+				// Check for system tag in filename and -list suffix
+				fileName := entry.Name()
+				baseName := strings.TrimSuffix(fileName, ".png")
+
+				// See if this is a list wallpaper (filename ends with -list)
+				if !strings.HasSuffix(baseName, "-list") {
+					logger.DebugFn("List wallpaper doesn't have -list suffix: %s", fileName)
+					continue
+				}
+
+				// Remove the -list suffix to get the system name and tag
+				baseNameWithoutSuffix := strings.TrimSuffix(baseName, "-list")
+
+				// Extract system tag
+				matches := tagRegex.FindStringSubmatch(baseNameWithoutSuffix)
+				if len(matches) >= 2 {
+					systemTag := matches[1]
+					systemName := strings.TrimSuffix(strings.Split(baseNameWithoutSuffix, "(")[0], " ")
+
+					// Find matching system by tag
+					var systemFound bool
+					for _, system := range systemPaths.Systems {
+						if system.Tag == systemTag {
+							systemPath := filepath.Join(system.MediaPath, "bglist.png")
+							metadata := map[string]string{
+								"SystemName":    systemName,
+								"SystemTag":     systemTag,
+								"WallpaperType": "List",
+							}
+
+							manifest.PathMappings.Wallpapers = append(
+								manifest.PathMappings.Wallpapers,
+								PathMapping{
+									ThemePath:  themePath,
+									SystemPath: systemPath,
+									Metadata:   metadata,
+								},
+							)
+							manifest.Content.Wallpapers.Count++
+							manifest.Content.Wallpapers.Present = true
+							systemFound = true
+							logger.DebugFn("Added mapping for list wallpaper: %s -> %s", themePath, systemPath)
+							break
+						}
+					}
+
+					// If system not found in paths, create a default path
+					if !systemFound && systemTag != "" {
+						systemPath := filepath.Join(systemPaths.Roms, fmt.Sprintf("%s (%s)", systemName, systemTag), ".media", "bglist.png")
+						metadata := map[string]string{
+							"SystemName":    systemName,
+							"SystemTag":     systemTag,
+							"WallpaperType": "List",
+						}
+
+						manifest.PathMappings.Wallpapers = append(
+							manifest.PathMappings.Wallpapers,
+							PathMapping{
+								ThemePath:  themePath,
+								SystemPath: systemPath,
+								Metadata:   metadata,
+							},
+						)
+						manifest.Content.Wallpapers.Count++
+						manifest.Content.Wallpapers.Present = true
+						logger.DebugFn("Added default mapping for list wallpaper: %s -> %s", themePath, systemPath)
+					}
+				} else {
+					logger.DebugFn("Could not extract system tag from list wallpaper: %s", fileName)
+				}
+			}
+		}
+	}
+
 	// Process collection wallpapers
 	collectionWallpapersDir := filepath.Join(themePath, "Wallpapers", "CollectionWallpapers")
 	if _, err := os.Stat(collectionWallpapersDir); err == nil {
@@ -692,14 +822,16 @@ func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPa
 					continue
 				}
 
-				// Extract collection name
+				// Determine collection name and system path
 				collectionName := strings.TrimSuffix(entry.Name(), ".png")
 				systemPath := filepath.Join(systemPaths.Root, "Collections", collectionName, ".media", "bg.png")
+
 				metadata := map[string]string{
 					"CollectionName": collectionName,
 					"WallpaperType":  "Collection",
 				}
 
+				// Add to manifest
 				manifest.PathMappings.Wallpapers = append(
 					manifest.PathMappings.Wallpapers,
 					PathMapping{
@@ -951,7 +1083,6 @@ func applyLEDSettings(manifest *ThemeManifest, logger *Logger) error {
 	return nil
 }
 
-// cleanupExistingComponents removes existing components that aren't in the new theme
 func cleanupExistingComponents(manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
 	logger.DebugFn("Starting cleanup of existing components")
 
@@ -959,73 +1090,9 @@ func cleanupExistingComponents(manifest *ThemeManifest, systemPaths *system.Syst
 	if !manifest.Content.Wallpapers.Present {
 		logger.DebugFn("Theme doesn't include wallpapers - cleaning up existing wallpapers")
 
-		// Root wallpaper
-		rootBg := filepath.Join(systemPaths.Root, "bg.png")
-		if err := os.Remove(rootBg); err != nil && !os.IsNotExist(err) {
-			logger.DebugFn("Warning: Could not remove root wallpaper: %v", err)
-		} else {
-			logger.DebugFn("Removed root wallpaper: %s", rootBg)
-		}
-
-		// Root media wallpaper
-		rootMediaBg := filepath.Join(systemPaths.Root, ".media", "bg.png")
-		if err := os.Remove(rootMediaBg); err != nil && !os.IsNotExist(err) {
-			logger.DebugFn("Warning: Could not remove root media wallpaper: %v", err)
-		} else {
-			logger.DebugFn("Removed root media wallpaper: %s", rootMediaBg)
-		}
-
-		// Recently Played wallpaper
-		rpBg := filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
-		if err := os.Remove(rpBg); err != nil && !os.IsNotExist(err) {
-			logger.DebugFn("Warning: Could not remove Recently Played wallpaper: %v", err)
-		} else {
-			logger.DebugFn("Removed Recently Played wallpaper: %s", rpBg)
-		}
-
-		// Tools wallpaper
-		toolsBg := filepath.Join(systemPaths.Tools, ".media", "bg.png")
-		if err := os.Remove(toolsBg); err != nil && !os.IsNotExist(err) {
-			logger.DebugFn("Warning: Could not remove Tools wallpaper: %v", err)
-		} else {
-			logger.DebugFn("Removed Tools wallpaper: %s", toolsBg)
-		}
-
-		// Collections wallpaper
-		collectionsBg := filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
-		if err := os.Remove(collectionsBg); err != nil && !os.IsNotExist(err) {
-			logger.DebugFn("Warning: Could not remove Collections wallpaper: %v", err)
-		} else {
-			logger.DebugFn("Removed Collections wallpaper: %s", collectionsBg)
-		}
-
-		// System wallpapers
-		for _, system := range systemPaths.Systems {
-			systemBg := filepath.Join(system.MediaPath, "bg.png")
-			if err := os.Remove(systemBg); err != nil && !os.IsNotExist(err) {
-				logger.DebugFn("Warning: Could not remove %s wallpaper: %v", system.Name, err)
-			} else {
-				logger.DebugFn("Removed %s wallpaper: %s", system.Name, systemBg)
-			}
-		}
-
-		// Collection wallpapers
-		collectionsDir := filepath.Join(systemPaths.Root, "Collections")
-		entries, err := os.ReadDir(collectionsDir)
-		if err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-					continue
-				}
-
-				collectionName := entry.Name()
-				collectionBg := filepath.Join(collectionsDir, collectionName, ".media", "bg.png")
-				if err := os.Remove(collectionBg); err != nil && !os.IsNotExist(err) {
-					logger.DebugFn("Warning: Could not remove %s collection wallpaper: %v", collectionName, err)
-				} else {
-					logger.DebugFn("Removed %s collection wallpaper: %s", collectionName, collectionBg)
-				}
-			}
+		// Call the updated cleanupExistingWallpapers function which now handles bglist.png
+		if err := cleanupExistingWallpapers(systemPaths, logger); err != nil {
+			logger.DebugFn("Warning: Error cleaning up existing wallpapers: %v", err)
 		}
 	} else {
 		logger.DebugFn("Theme includes wallpapers - keeping existing wallpapers until they're replaced")
@@ -1034,145 +1101,21 @@ func cleanupExistingComponents(manifest *ThemeManifest, systemPaths *system.Syst
 	// If theme doesn't include icons, clean up existing icons
 	if !manifest.Content.Icons.Present {
 		logger.DebugFn("Theme doesn't include icons - cleaning up existing icons")
-
-		// System icons in Roms/.media directory
-		romsMediaDir := filepath.Join(systemPaths.Roms, ".media")
-		if _, err := os.Stat(romsMediaDir); !os.IsNotExist(err) {
-			entries, err := os.ReadDir(romsMediaDir)
-			if err == nil {
-				for _, entry := range entries {
-					if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-						continue
-					}
-
-					if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
-						continue
-					}
-
-					// Skip non-system icons
-					tagRegex := regexp.MustCompile(`\((.*?)\)`)
-					if !tagRegex.MatchString(entry.Name()) &&
-						entry.Name() != "Recently Played.png" &&
-						entry.Name() != "Collections.png" &&
-						entry.Name() != "tg5040.png" {
-						continue
-					}
-
-					systemIcon := filepath.Join(romsMediaDir, entry.Name())
-					logger.DebugFn("Checking for system icon at: %s", systemIcon)
-
-					if err := os.Remove(systemIcon); err != nil {
-						logger.DebugFn("Warning: Could not remove system icon %s: %v", entry.Name(), err)
-					} else {
-						logger.DebugFn("Removed system icon: %s", systemIcon)
-					}
-				}
-			}
-		}
-
-		// Root media directory for special icons
-		rootMediaDir := filepath.Join(systemPaths.Root, ".media")
-		if _, err := os.Stat(rootMediaDir); !os.IsNotExist(err) {
-			// Recently Played icon
-			rpIcon := filepath.Join(rootMediaDir, "Recently Played.png")
-			logger.DebugFn("Checking for Recently Played icon at: %s", rpIcon)
-
-			if _, err := os.Stat(rpIcon); !os.IsNotExist(err) {
-				if err := os.Remove(rpIcon); err != nil {
-					logger.DebugFn("Warning: Could not remove Recently Played icon: %v", err)
-				} else {
-					logger.DebugFn("Removed Recently Played icon: %s", rpIcon)
-				}
-			}
-
-			// Tools icon - use parent path of Tools since Tools path includes tg5040
-			toolsParentDir := filepath.Dir(systemPaths.Tools) // Gets /mnt/SDCARD/Tools
-			toolsMediaDir := filepath.Join(toolsParentDir, ".media")
-			if _, err := os.Stat(toolsMediaDir); !os.IsNotExist(err) {
-				toolsIcon := filepath.Join(toolsMediaDir, "tg5040.png")
-				logger.DebugFn("Checking for Tools icon at: %s", toolsIcon)
-
-				if _, err := os.Stat(toolsIcon); !os.IsNotExist(err) {
-					if err := os.Remove(toolsIcon); err != nil {
-						logger.DebugFn("Warning: Could not remove Tools icon: %v", err)
-					} else {
-						logger.DebugFn("Removed Tools icon: %s", toolsIcon)
-					}
-				}
-			}
-
-			// Collections icon
-			collectionsIcon := filepath.Join(rootMediaDir, "Collections.png")
-			logger.DebugFn("Checking for Collections icon at: %s", collectionsIcon)
-
-			if _, err := os.Stat(collectionsIcon); !os.IsNotExist(err) {
-				if err := os.Remove(collectionsIcon); err != nil {
-					logger.DebugFn("Warning: Could not remove Collections icon: %v", err)
-				} else {
-					logger.DebugFn("Removed Collections icon: %s", collectionsIcon)
-				}
-			}
-		}
-
-		// Tool icons
-		toolsDir := filepath.Join(systemPaths.Tools)
-		toolEntries, err := os.ReadDir(toolsDir)
-		if err == nil {
-			for _, entry := range toolEntries {
-				if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-					continue
-				}
-
-				toolName := entry.Name()
-				toolMediaDir := filepath.Join(toolsDir, toolName, ".media")
-
-				if _, err := os.Stat(toolMediaDir); os.IsNotExist(err) {
-					continue
-				}
-
-				toolIcon := filepath.Join(toolMediaDir, toolName+".png")
-				logger.DebugFn("Checking for tool %s icon at: %s", toolName, toolIcon)
-
-				if _, err := os.Stat(toolIcon); !os.IsNotExist(err) {
-					if err := os.Remove(toolIcon); err != nil {
-						logger.DebugFn("Warning: Could not remove %s tool icon: %v", toolName, err)
-					} else {
-						logger.DebugFn("Removed %s tool icon: %s", toolName, toolIcon)
-					}
-				}
-			}
-		}
-
-		// Collection icons
-		collectionsDir := filepath.Join(systemPaths.Root, "Collections")
-		colEntries, err := os.ReadDir(collectionsDir)
-		if err == nil {
-			for _, entry := range colEntries {
-				if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-					continue
-				}
-
-				collectionName := entry.Name()
-				collectionMediaDir := filepath.Join(collectionsDir, collectionName, ".media")
-
-				if _, err := os.Stat(collectionMediaDir); os.IsNotExist(err) {
-					continue
-				}
-
-				collectionIcon := filepath.Join(collectionMediaDir, collectionName+".png")
-				logger.DebugFn("Checking for collection %s icon at: %s", collectionName, collectionIcon)
-
-				if _, err := os.Stat(collectionIcon); !os.IsNotExist(err) {
-					if err := os.Remove(collectionIcon); err != nil {
-						logger.DebugFn("Warning: Could not remove %s collection icon: %v", collectionName, err)
-					} else {
-						logger.DebugFn("Removed %s collection icon: %s", collectionName, collectionIcon)
-					}
-				}
-			}
+		if err := cleanupExistingIcons(systemPaths, logger); err != nil {
+			logger.DebugFn("Warning: Error cleaning up existing icons: %v", err)
 		}
 	} else {
 		logger.DebugFn("Theme includes icons - keeping existing icons until they're replaced")
+	}
+
+	// If theme doesn't include overlays, clean up existing overlays
+	if !manifest.Content.Overlays.Present {
+		logger.DebugFn("Theme doesn't include overlays - cleaning up existing overlays")
+		if err := cleanupExistingOverlays(systemPaths, logger); err != nil {
+			logger.DebugFn("Warning: Error cleaning up existing overlays: %v", err)
+		}
+	} else {
+		logger.DebugFn("Theme includes overlays - keeping existing overlays until they're replaced")
 	}
 
 	logger.DebugFn("Completed cleanup of existing components")

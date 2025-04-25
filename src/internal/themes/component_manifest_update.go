@@ -292,6 +292,99 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 		}
 	}
 
+	// NEW: Check for wallpapers in ListWallpapers directory
+	listWallpapersDir := filepath.Join(componentPath, "ListWallpapers")
+	if _, err := os.Stat(listWallpapersDir); err == nil {
+		entries, err := os.ReadDir(listWallpapersDir)
+		if err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
+					continue
+				}
+
+				// Check if file has a PNG extension
+				if !strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+					continue
+				}
+
+				fileName := entry.Name()
+				filePath := filepath.Join("ListWallpapers", fileName)
+
+				// Check if this is a list wallpaper (ends with -list.png)
+				baseName := strings.TrimSuffix(fileName, ".png")
+				if !strings.HasSuffix(baseName, "-list") {
+					logger.DebugFn("List wallpaper doesn't have -list suffix: %s", fileName)
+					continue
+				}
+
+				// Add to content list (this gets populated when components are applied)
+				wallpaperManifest.Content.SystemWallpapers = append(
+					wallpaperManifest.Content.SystemWallpapers,
+					fileName,
+				)
+
+				// Extract system tag
+				baseNameWithoutSuffix := strings.TrimSuffix(baseName, "-list")
+				re := regexp.MustCompile(`\((.*?)\)`)
+				matches := re.FindStringSubmatch(baseNameWithoutSuffix)
+
+				if len(matches) >= 2 {
+					systemTag := matches[1]
+
+					// Find matching system by tag
+					var systemFound bool
+					for _, system := range systemPaths.Systems {
+						if system.Tag == systemTag {
+							systemPath := filepath.Join(system.MediaPath, "bglist.png")
+							metadata := map[string]string{
+								"SystemName":    system.Name,
+								"SystemTag":     systemTag,
+								"WallpaperType": "List",
+							}
+
+							wallpaperManifest.PathMappings = append(
+								wallpaperManifest.PathMappings,
+								PathMapping{
+									ThemePath:  filePath,
+									SystemPath: systemPath,
+									Metadata:   metadata,
+								},
+							)
+							wallpaperManifest.Content.Count++
+							systemFound = true
+							logger.DebugFn("Added list wallpaper to manifest: %s", fileName)
+							break
+						}
+					}
+
+					// If system not found, create a default path
+					if !systemFound && systemTag != "" {
+						systemName := strings.TrimSuffix(strings.Split(baseNameWithoutSuffix, "(")[0], " ")
+						systemPath := filepath.Join(systemPaths.Roms, fmt.Sprintf("%s (%s)", systemName, systemTag), ".media", "bglist.png")
+						metadata := map[string]string{
+							"SystemName":    systemName,
+							"SystemTag":     systemTag,
+							"WallpaperType": "List",
+						}
+
+						wallpaperManifest.PathMappings = append(
+							wallpaperManifest.PathMappings,
+							PathMapping{
+								ThemePath:  filePath,
+								SystemPath: systemPath,
+								Metadata:   metadata,
+							},
+						)
+						wallpaperManifest.Content.Count++
+						logger.DebugFn("Added default list wallpaper to manifest: %s", fileName)
+					}
+				} else {
+					logger.DebugFn("Could not determine system for list wallpaper: %s", fileName)
+				}
+			}
+		}
+	}
+
 	// Check for wallpapers in CollectionWallpapers directory
 	collectionWallpapersDir := filepath.Join(componentPath, "CollectionWallpapers")
 	if _, err := os.Stat(collectionWallpapersDir); err == nil {
