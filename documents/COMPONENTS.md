@@ -41,6 +41,8 @@ component_name.bg/
 │  ├─ Tools.png
 │  ├─ Collections.png
 │  └─ Game Boy Advance (GBA).png
+├─ ListWallpapers/               
+│  └─ Arcade (FBN)-list.png       
 └─ CollectionWallpapers/
    └─ Handhelds.png
 ```

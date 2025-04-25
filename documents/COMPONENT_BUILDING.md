@@ -23,13 +23,15 @@ wallpaper_20250424_153012.bg/
 ├─ manifest.json
 ├─ preview.png
 ├─ SystemWallpapers/
-│  ├─ Root.png                # Default global NextUI background
-│  ├─ Recently Played.png     # Recently played list
-│  ├─ Tools.png               # Tools menu
-│  ├─ Collections.png         # Main collections menu
-│  └─ [System Name] (TAG).png # System wallpapers with tags
+│  ├─ Root.png                   # Default global NextUI background
+│  ├─ Recently Played.png        # Recently played list
+│  ├─ Tools.png                  # Tools menu
+│  ├─ Collections.png            # Main collections menu
+│  └─ [System Name] (TAG).png    # System wallpapers with tags
+├─ ListWallpapers/               # Individual ROM menu list wallpapers
+│  └─ Arcade (FBN)-list.png      # Named with "(TAG)-list.png"
 └─ CollectionWallpapers/
-   └─ [Collection Name].png   # Named after collection folders
+   └─ [Collection Name].png      # Named after collection folders
 ```
 
 ### 3. Replace Wallpaper Files
@@ -38,10 +40,12 @@ Now replace the wallpaper images with your custom designs:
 
 1. Create your own wallpaper images (recommended resolution: 1024x768)
 2. Place system wallpapers in the `SystemWallpapers` folder with proper naming
-3. Place collection wallpapers in the `CollectionWallpapers` folder
+3. Place individual Rom list wallpapers in the `ListWallpapers` folder with proper naming
+4. Place collection wallpapers in the `CollectionWallpapers` folder
 
 **Important Naming Conventions:**
 - System wallpapers must include the system tag in parentheses (e.g., `Game Boy Advance (GBA).png` or just `(GBA).png`)
+- Individual Rom list wallpapers must be named with with a `-list` added (e.g. `Sega Genesis (MD)-list.png` or just `(MD)-list.png`)
 - Include wallpapers for both emulator variants if applicable (e.g., both `(MGBA).png` and `(GBA).png`)
 - Collection wallpapers must match the exact collection folder name (e.g., `Handhelds.png`)
 
@@ -87,6 +91,8 @@ MyAwesomeWallpapers.bg/
 │  ├─ Game Boy Advance (GBA).png
 │  ├─ Game Boy Advance (MGBA).png
 │  └─ [Other system wallpapers with tags]
+├─ ListWallpapers/                
+│  └─ Arcade (FBN)-list.png       
 └─ CollectionWallpapers/
    └─ [Collection wallpapers]
 ```
