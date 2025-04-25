@@ -5,170 +5,170 @@ package themes
 
 import (
 	"fmt"
+	"nextui-themes/internal/logging"
+	"nextui-themes/internal/system"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"nextui-themes/internal/logging"
-	"nextui-themes/internal/system"
 )
 
 // UpdateComponentManifest updates a component's manifest based on its actual content
 func UpdateComponentManifest(componentPath string) error {
-    // Determine component type from file extension
-    ext := filepath.Ext(componentPath)
+	// Determine component type from file extension
+	ext := filepath.Ext(componentPath)
 
-    var componentType string
-    for cType, cExt := range ComponentExtension {
-        if cExt == ext {
-            componentType = cType
-            break
-        }
-    }
+	var componentType string
+	for cType, cExt := range ComponentExtension {
+		if cExt == ext {
+			componentType = cType
+			break
+		}
+	}
 
-    if componentType == "" {
-        return fmt.Errorf("unknown component type for extension: %s", ext)
-    }
+	if componentType == "" {
+		return fmt.Errorf("unknown component type for extension: %s", ext)
+	}
 
-    logger := &Logger{
-        DebugFn: logging.LogDebug,
-    }
+	logger := &Logger{
+		DebugFn: logging.LogDebug,
+	}
 
-    logger.DebugFn("Updating manifest for component: %s (type: %s)", componentPath, componentType)
+	logger.DebugFn("Updating manifest for component: %s (type: %s)", componentPath, componentType)
 
-    // Create a system paths instance for reference
-    systemPaths, err := system.GetSystemPaths()
-    if err != nil {
-        logger.DebugFn("Warning: Error getting system paths: %v", err)
-        // Continue anyway, as we can still update most of the manifest
-    }
+	// Create a system paths instance for reference
+	systemPaths, err := system.GetSystemPaths()
+	if err != nil {
+		logger.DebugFn("Warning: Error getting system paths: %v", err)
+		// Continue anyway, as we can still update most of the manifest
+	}
 
-    // First try to load the existing manifest to preserve author information
-    var existingAuthor string
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err == nil {
-        // Extract author from existing manifest based on component type
-        switch componentType {
-        case ComponentWallpaper:
-            if m, ok := manifestObj.(*WallpaperManifest); ok && m.ComponentInfo.Author != "" {
-                existingAuthor = m.ComponentInfo.Author
-            }
-        case ComponentIcon:
-            if m, ok := manifestObj.(*IconManifest); ok && m.ComponentInfo.Author != "" {
-                existingAuthor = m.ComponentInfo.Author
-            }
-        case ComponentOverlay:
-            if m, ok := manifestObj.(*OverlayManifest); ok && m.ComponentInfo.Author != "" {
-                existingAuthor = m.ComponentInfo.Author
-            }
-        case ComponentFont:
-            if m, ok := manifestObj.(*FontManifest); ok && m.ComponentInfo.Author != "" {
-                existingAuthor = m.ComponentInfo.Author
-            }
-        case ComponentAccent:
-            if m, ok := manifestObj.(*AccentManifest); ok && m.ComponentInfo.Author != "" {
-                existingAuthor = m.ComponentInfo.Author
-            }
-        case ComponentLED:
-            if m, ok := manifestObj.(*LEDManifest); ok && m.ComponentInfo.Author != "" {
-                existingAuthor = m.ComponentInfo.Author
-            }
-        }
-    }
+	// First try to load the existing manifest to preserve author information
+	var existingAuthor string
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err == nil {
+		// Extract author from existing manifest based on component type
+		switch componentType {
+		case ComponentWallpaper:
+			if m, ok := manifestObj.(*WallpaperManifest); ok && m.ComponentInfo.Author != "" {
+				existingAuthor = m.ComponentInfo.Author
+			}
+		case ComponentIcon:
+			if m, ok := manifestObj.(*IconManifest); ok && m.ComponentInfo.Author != "" {
+				existingAuthor = m.ComponentInfo.Author
+			}
+		case ComponentOverlay:
+			if m, ok := manifestObj.(*OverlayManifest); ok && m.ComponentInfo.Author != "" {
+				existingAuthor = m.ComponentInfo.Author
+			}
+		case ComponentFont:
+			if m, ok := manifestObj.(*FontManifest); ok && m.ComponentInfo.Author != "" {
+				existingAuthor = m.ComponentInfo.Author
+			}
+		case ComponentAccent:
+			if m, ok := manifestObj.(*AccentManifest); ok && m.ComponentInfo.Author != "" {
+				existingAuthor = m.ComponentInfo.Author
+			}
+		case ComponentLED:
+			if m, ok := manifestObj.(*LEDManifest); ok && m.ComponentInfo.Author != "" {
+				existingAuthor = m.ComponentInfo.Author
+			}
+		}
+	}
 
-    // Dispatch to specific update function based on component type
-    var updateErr error
-    switch componentType {
-    case ComponentWallpaper:
-        updateErr = UpdateWallpaperManifest(componentPath, systemPaths, logger)
-    case ComponentIcon:
-        updateErr = UpdateIconManifest(componentPath, systemPaths, logger)
-    case ComponentOverlay:
-        updateErr = UpdateOverlayManifest(componentPath, systemPaths, logger)
-    case ComponentFont:
-        updateErr = UpdateFontManifest(componentPath, logger)
-    case ComponentAccent:
-        updateErr = UpdateAccentManifest(componentPath, logger)
-    case ComponentLED:
-        updateErr = UpdateLEDManifest(componentPath, logger)
-    default:
-        return fmt.Errorf("unhandled component type: %s", componentType)
-    }
+	// Dispatch to specific update function based on component type
+	var updateErr error
+	switch componentType {
+	case ComponentWallpaper:
+		updateErr = UpdateWallpaperManifest(componentPath, systemPaths, logger)
+	case ComponentIcon:
+		updateErr = UpdateIconManifest(componentPath, systemPaths, logger)
+	case ComponentOverlay:
+		updateErr = UpdateOverlayManifest(componentPath, systemPaths, logger)
+	case ComponentFont:
+		updateErr = UpdateFontManifest(componentPath, logger)
+	case ComponentAccent:
+		updateErr = UpdateAccentManifest(componentPath, logger)
+	case ComponentLED:
+		updateErr = UpdateLEDManifest(componentPath, logger)
+	default:
+		return fmt.Errorf("unhandled component type: %s", componentType)
+	}
 
-    // If we had an existing author, restore it after the update
-    if existingAuthor != "" && updateErr == nil {
-        // Load the updated manifest
-        updatedManifest, err := LoadComponentManifest(componentPath)
-        if err == nil {
-            // Set the author back to the original value
-            switch componentType {
-            case ComponentWallpaper:
-                if m, ok := updatedManifest.(*WallpaperManifest); ok {
-                    m.ComponentInfo.Author = existingAuthor
-                    // Write the manifest back
-                    WriteComponentManifest(componentPath, m)
-                }
-            case ComponentIcon:
-                if m, ok := updatedManifest.(*IconManifest); ok {
-                    m.ComponentInfo.Author = existingAuthor
-                    WriteComponentManifest(componentPath, m)
-                }
-            case ComponentOverlay:
-                if m, ok := updatedManifest.(*OverlayManifest); ok {
-                    m.ComponentInfo.Author = existingAuthor
-                    WriteComponentManifest(componentPath, m)
-                }
-            case ComponentFont:
-                if m, ok := updatedManifest.(*FontManifest); ok {
-                    m.ComponentInfo.Author = existingAuthor
-                    WriteComponentManifest(componentPath, m)
-                }
-            case ComponentAccent:
-                if m, ok := updatedManifest.(*AccentManifest); ok {
-                    m.ComponentInfo.Author = existingAuthor
-                    WriteComponentManifest(componentPath, m)
-                }
-            case ComponentLED:
-                if m, ok := updatedManifest.(*LEDManifest); ok {
-                    m.ComponentInfo.Author = existingAuthor
-                    WriteComponentManifest(componentPath, m)
-                }
-            }
-        }
-    }
+	// If we had an existing author, restore it after the update
+	if existingAuthor != "" && updateErr == nil {
+		// Load the updated manifest
+		updatedManifest, err := LoadComponentManifest(componentPath)
+		if err == nil {
+			// Set the author back to the original value
+			switch componentType {
+			case ComponentWallpaper:
+				if m, ok := updatedManifest.(*WallpaperManifest); ok {
+					m.ComponentInfo.Author = existingAuthor
+					// Write the manifest back
+					WriteComponentManifest(componentPath, m)
+				}
+			case ComponentIcon:
+				if m, ok := updatedManifest.(*IconManifest); ok {
+					m.ComponentInfo.Author = existingAuthor
+					WriteComponentManifest(componentPath, m)
+				}
+			case ComponentOverlay:
+				if m, ok := updatedManifest.(*OverlayManifest); ok {
+					m.ComponentInfo.Author = existingAuthor
+					WriteComponentManifest(componentPath, m)
+				}
+			case ComponentFont:
+				if m, ok := updatedManifest.(*FontManifest); ok {
+					m.ComponentInfo.Author = existingAuthor
+					WriteComponentManifest(componentPath, m)
+				}
+			case ComponentAccent:
+				if m, ok := updatedManifest.(*AccentManifest); ok {
+					m.ComponentInfo.Author = existingAuthor
+					WriteComponentManifest(componentPath, m)
+				}
+			case ComponentLED:
+				if m, ok := updatedManifest.(*LEDManifest); ok {
+					m.ComponentInfo.Author = existingAuthor
+					WriteComponentManifest(componentPath, m)
+				}
+			}
+		}
+	}
 
-    return updateErr
+	return updateErr
 }
 
 func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPaths, logger *Logger) error {
-    logger.DebugFn("Updating wallpaper manifest for: %s", componentPath)
+	logger.DebugFn("Updating wallpaper manifest for: %s", componentPath)
 
-    // Get the component name from the path
-    componentName := filepath.Base(componentPath)
+	// Get the component name from the path
+	componentName := filepath.Base(componentPath)
 
-    // Load existing manifest to preserve component_info
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err != nil {
-        // If manifest doesn't exist, create a new one
-        manifestObj, err = CreateComponentManifest(ComponentWallpaper, componentName)
-        if err != nil {
-            return fmt.Errorf("error creating wallpaper manifest: %w", err)
-        }
-    }
+	// Load existing manifest to preserve component_info
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err != nil {
+		// If manifest doesn't exist, create a new one
+		manifestObj, err = CreateComponentManifest(ComponentWallpaper, componentName)
+		if err != nil {
+			return fmt.Errorf("error creating wallpaper manifest: %w", err)
+		}
+	}
 
-    wallpaperManifest, ok := manifestObj.(*WallpaperManifest)
-    if !ok {
-        return fmt.Errorf("invalid manifest type for wallpaper component")
-    }
+	wallpaperManifest, ok := manifestObj.(*WallpaperManifest)
+	if !ok {
+		return fmt.Errorf("invalid manifest type for wallpaper component")
+	}
 
-    // Always update component name to match the directory name
-    wallpaperManifest.ComponentInfo.Name = componentName
+	// Always update component name to match the directory name
+	wallpaperManifest.ComponentInfo.Name = componentName
 
-    // Clear existing content data (but preserve other component_info fields)
-    wallpaperManifest.Content.Count = 0
-    wallpaperManifest.Content.SystemWallpapers = []string{}
-    wallpaperManifest.Content.CollectionWallpapers = []string{}
-    wallpaperManifest.PathMappings = []PathMapping{}
+	// Clear existing content data (but preserve other component_info fields)
+	wallpaperManifest.Content.Count = 0
+	wallpaperManifest.Content.SystemWallpapers = []string{}
+	wallpaperManifest.Content.CollectionWallpapers = []string{}
+	wallpaperManifest.PathMappings = []PathMapping{}
 
 	// Check for wallpapers in SystemWallpapers directory
 	systemWallpapersDir := filepath.Join(componentPath, "SystemWallpapers")
@@ -203,35 +203,35 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 				case "Root":
 					systemPath = filepath.Join(systemPaths.Root, "bg.png")
 					metadata = map[string]string{
-						"SystemName": "Root",
+						"SystemName":    "Root",
 						"WallpaperType": "Main",
 					}
 
 				case "Root-Media":
 					systemPath = filepath.Join(systemPaths.Root, ".media", "bg.png")
 					metadata = map[string]string{
-						"SystemName": "Root",
+						"SystemName":    "Root",
 						"WallpaperType": "Media",
 					}
 
 				case "Recently Played":
 					systemPath = filepath.Join(systemPaths.RecentlyPlayed, ".media", "bg.png")
 					metadata = map[string]string{
-						"SystemName": "Recently Played",
+						"SystemName":    "Recently Played",
 						"WallpaperType": "Media",
 					}
 
 				case "Tools":
 					systemPath = filepath.Join(systemPaths.Tools, ".media", "bg.png")
 					metadata = map[string]string{
-						"SystemName": "Tools",
+						"SystemName":    "Tools",
 						"WallpaperType": "Media",
 					}
 
 				case "Collections":
 					systemPath = filepath.Join(systemPaths.Root, "Collections", ".media", "bg.png")
 					metadata = map[string]string{
-						"SystemName": "Collections",
+						"SystemName":    "Collections",
 						"WallpaperType": "Media",
 					}
 
@@ -249,8 +249,8 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 							if system.Tag == systemTag {
 								systemPath = filepath.Join(system.MediaPath, "bg.png")
 								metadata = map[string]string{
-									"SystemName": system.Name,
-									"SystemTag": systemTag,
+									"SystemName":    system.Name,
+									"SystemTag":     systemTag,
 									"WallpaperType": "System",
 								}
 								systemFound = true
@@ -265,8 +265,8 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 
 							systemPath = filepath.Join(systemPaths.Roms, fmt.Sprintf("%s (%s)", systemName, systemTag), ".media", "bg.png")
 							metadata = map[string]string{
-								"SystemName": systemName,
-								"SystemTag": systemTag,
+								"SystemName":    systemName,
+								"SystemTag":     systemTag,
 								"WallpaperType": "System",
 							}
 						}
@@ -322,7 +322,7 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 
 				metadata := map[string]string{
 					"CollectionName": collectionName,
-					"WallpaperType": "Collection",
+					"WallpaperType":  "Collection",
 				}
 
 				// Add to path mappings
@@ -346,30 +346,30 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 
 // UpdateIconManifest updates an icon component's manifest based on its content
 func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, logger *Logger) error {
-    logger.DebugFn("Updating icon manifest for: %s", componentPath)
+	logger.DebugFn("Updating icon manifest for: %s", componentPath)
 
-    // Get the component name from the path
-    componentName := filepath.Base(componentPath)
+	// Get the component name from the path
+	componentName := filepath.Base(componentPath)
 
-    // Load existing manifest to preserve component_info
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err != nil {
-        // If manifest doesn't exist, create a new one
-        manifestObj, err = CreateComponentManifest(ComponentIcon, componentName)
-        if err != nil {
-            return fmt.Errorf("error creating icon manifest: %w", err)
-        }
-    }
+	// Load existing manifest to preserve component_info
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err != nil {
+		// If manifest doesn't exist, create a new one
+		manifestObj, err = CreateComponentManifest(ComponentIcon, componentName)
+		if err != nil {
+			return fmt.Errorf("error creating icon manifest: %w", err)
+		}
+	}
 
-    iconManifest, ok := manifestObj.(*IconManifest)
-    if !ok {
-        return fmt.Errorf("invalid manifest type for icon component")
-    }
+	iconManifest, ok := manifestObj.(*IconManifest)
+	if !ok {
+		return fmt.Errorf("invalid manifest type for icon component")
+	}
 
-    // Always update component name to match the directory name
-    iconManifest.ComponentInfo.Name = componentName
+	// Always update component name to match the directory name
+	iconManifest.ComponentInfo.Name = componentName
 
-    // Rest of the function remains the same...
+	// Rest of the function remains the same...
 
 	// Clear existing content data (but preserve component_info)
 	iconManifest.Content.SystemCount = 0
@@ -414,7 +414,7 @@ func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, l
 					systemPath = filepath.Join(systemPaths.Root, ".media", "Recently Played.png")
 					metadata = map[string]string{
 						"SystemName": "Recently Played",
-						"IconType": "System",
+						"IconType":   "System",
 					}
 
 				case "Tools.png":
@@ -423,14 +423,14 @@ func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, l
 					systemPath = filepath.Join(toolsParentDir, ".media", "tg5040.png")
 					metadata = map[string]string{
 						"SystemName": "Tools",
-						"IconType": "System",
+						"IconType":   "System",
 					}
 
 				case "Collections.png":
 					systemPath = filepath.Join(systemPaths.Root, ".media", "Collections.png")
 					metadata = map[string]string{
 						"SystemName": "Collections",
-						"IconType": "System",
+						"IconType":   "System",
 					}
 
 				default:
@@ -458,21 +458,21 @@ func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, l
 						if exactMatch {
 							// Use exact ROM directory name for the icon
 							// This ensures the icon will be displayed correctly
-							systemPath = filepath.Join(systemPaths.Roms, ".media", exactSystemName + ".png")
+							systemPath = filepath.Join(systemPaths.Roms, ".media", exactSystemName+".png")
 							metadata = map[string]string{
-								"SystemName": exactSystemName,
-								"SystemTag": systemTag,
-								"IconType": "System",
-								"RenameRequired": "true", // Flag that this icon needs renaming
-								"OriginalName": fileName, // Store original name for identification
+								"SystemName":     exactSystemName,
+								"SystemTag":      systemTag,
+								"IconType":       "System",
+								"RenameRequired": "true",   // Flag that this icon needs renaming
+								"OriginalName":   fileName, // Store original name for identification
 							}
 						} else {
 							// System not found in available systems, use as-is
 							systemPath = filepath.Join(systemPaths.Roms, ".media", fileName)
 							metadata = map[string]string{
 								"SystemName": strings.TrimSuffix(fileName, ".png"),
-								"SystemTag": systemTag,
-								"IconType": "System",
+								"SystemTag":  systemTag,
+								"IconType":   "System",
 							}
 						}
 					}
@@ -523,7 +523,7 @@ func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, l
 
 				// Determine tool name and system path
 				toolName := strings.TrimSuffix(fileName, ".png")
-				systemPath := filepath.Join(systemPaths.Tools, toolName, ".media", toolName + ".png")
+				systemPath := filepath.Join(systemPaths.Tools, toolName, ".media", toolName+".png")
 
 				metadata := map[string]string{
 					"ToolName": toolName,
@@ -571,11 +571,11 @@ func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, l
 
 				// Determine collection name and system path
 				collectionName := strings.TrimSuffix(fileName, ".png")
-				systemPath := filepath.Join(systemPaths.Root, "Collections", collectionName, ".media", collectionName + ".png")
+				systemPath := filepath.Join(systemPaths.Root, "Collections", collectionName, ".media", collectionName+".png")
 
 				metadata := map[string]string{
 					"CollectionName": collectionName,
-					"IconType": "Collection",
+					"IconType":       "Collection",
 				}
 
 				// Add to path mappings
@@ -599,28 +599,28 @@ func UpdateIconManifest(componentPath string, systemPaths *system.SystemPaths, l
 
 // UpdateOverlayManifest updates an overlay component's manifest based on its content
 func UpdateOverlayManifest(componentPath string, systemPaths *system.SystemPaths, logger *Logger) error {
-    logger.DebugFn("Updating overlay manifest for: %s", componentPath)
+	logger.DebugFn("Updating overlay manifest for: %s", componentPath)
 
-    // Get the component name from the path
-    componentName := filepath.Base(componentPath)
+	// Get the component name from the path
+	componentName := filepath.Base(componentPath)
 
-    // Load existing manifest to preserve component_info
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err != nil {
-        // If manifest doesn't exist, create a new one
-        manifestObj, err = CreateComponentManifest(ComponentOverlay, componentName)
-        if err != nil {
-            return fmt.Errorf("error creating overlay manifest: %w", err)
-        }
-    }
+	// Load existing manifest to preserve component_info
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err != nil {
+		// If manifest doesn't exist, create a new one
+		manifestObj, err = CreateComponentManifest(ComponentOverlay, componentName)
+		if err != nil {
+			return fmt.Errorf("error creating overlay manifest: %w", err)
+		}
+	}
 
-    overlayManifest, ok := manifestObj.(*OverlayManifest)
-    if !ok {
-        return fmt.Errorf("invalid manifest type for overlay component")
-    }
+	overlayManifest, ok := manifestObj.(*OverlayManifest)
+	if !ok {
+		return fmt.Errorf("invalid manifest type for overlay component")
+	}
 
-    // Always update component name to match the directory name
-    overlayManifest.ComponentInfo.Name = componentName
+	// Always update component name to match the directory name
+	overlayManifest.ComponentInfo.Name = componentName
 
 	// Clear existing content data (but preserve component_info)
 	overlayManifest.Content.Systems = []string{}
@@ -671,7 +671,7 @@ func UpdateOverlayManifest(componentPath string, systemPaths *system.SystemPaths
 							ThemePath:  filePath,
 							SystemPath: systemPath,
 							Metadata: map[string]string{
-								"SystemTag": systemTag,
+								"SystemTag":   systemTag,
 								"OverlayName": file.Name(),
 							},
 						},
@@ -706,41 +706,41 @@ func UpdateOverlayManifest(componentPath string, systemPaths *system.SystemPaths
 
 // UpdateFontManifest updates a font component's manifest based on its content
 func UpdateFontManifest(componentPath string, logger *Logger) error {
-    logger.DebugFn("Updating font manifest for: %s", componentPath)
+	logger.DebugFn("Updating font manifest for: %s", componentPath)
 
-    // Get the component name from the path
-    componentName := filepath.Base(componentPath)
+	// Get the component name from the path
+	componentName := filepath.Base(componentPath)
 
-    // Load existing manifest to preserve component_info
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err != nil {
-        // If manifest doesn't exist, create a new one
-        manifestObj, err = CreateComponentManifest(ComponentFont, componentName)
-        if err != nil {
-            return fmt.Errorf("error creating font manifest: %w", err)
-        }
-    }
+	// Load existing manifest to preserve component_info
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err != nil {
+		// If manifest doesn't exist, create a new one
+		manifestObj, err = CreateComponentManifest(ComponentFont, componentName)
+		if err != nil {
+			return fmt.Errorf("error creating font manifest: %w", err)
+		}
+	}
 
-    fontManifest, ok := manifestObj.(*FontManifest)
-    if !ok {
-        return fmt.Errorf("invalid manifest type for font component")
-    }
+	fontManifest, ok := manifestObj.(*FontManifest)
+	if !ok {
+		return fmt.Errorf("invalid manifest type for font component")
+	}
 
-    // Always update component name to match the directory name
-    fontManifest.ComponentInfo.Name = componentName
+	// Always update component name to match the directory name
+	fontManifest.ComponentInfo.Name = componentName
 
-    // Clear existing content data (but preserve component_info)
-    fontManifest.Content.OGReplaced = false
-    fontManifest.Content.NextReplaced = false
-    fontManifest.PathMappings = make(map[string]PathMapping)
+	// Clear existing content data (but preserve component_info)
+	fontManifest.Content.OGReplaced = false
+	fontManifest.Content.NextReplaced = false
+	fontManifest.PathMappings = make(map[string]PathMapping)
 
-    // Define system paths for fonts - CORRECTED PATHS
-    systemPaths := map[string]string{
-        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
-        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",  // Corrected extension
-        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
-        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",  // Corrected extension
-    }
+	// Define system paths for fonts - CORRECTED PATHS
+	systemPaths := map[string]string{
+		"OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+		"OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf", // Corrected extension
+		"Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+		"Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf", // Corrected extension
+	}
 
 	// Check for each font file
 	fontFiles := []string{
@@ -779,28 +779,28 @@ func UpdateFontManifest(componentPath string, logger *Logger) error {
 
 // UpdateAccentManifest validates and updates an accent component's manifest
 func UpdateAccentManifest(componentPath string, logger *Logger) error {
-    logger.DebugFn("Updating accent manifest for: %s", componentPath)
+	logger.DebugFn("Updating accent manifest for: %s", componentPath)
 
-    // Get the component name from the path
-    componentName := filepath.Base(componentPath)
+	// Get the component name from the path
+	componentName := filepath.Base(componentPath)
 
-    // Load existing manifest to preserve component_info
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err != nil {
-        // If manifest doesn't exist, create a new one
-        manifestObj, err = CreateComponentManifest(ComponentAccent, componentName)
-        if err != nil {
-            return fmt.Errorf("error creating accent manifest: %w", err)
-        }
-    }
+	// Load existing manifest to preserve component_info
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err != nil {
+		// If manifest doesn't exist, create a new one
+		manifestObj, err = CreateComponentManifest(ComponentAccent, componentName)
+		if err != nil {
+			return fmt.Errorf("error creating accent manifest: %w", err)
+		}
+	}
 
-    accentManifest, ok := manifestObj.(*AccentManifest)
-    if !ok {
-        return fmt.Errorf("invalid manifest type for accent component")
-    }
+	accentManifest, ok := manifestObj.(*AccentManifest)
+	if !ok {
+		return fmt.Errorf("invalid manifest type for accent component")
+	}
 
-    // Always update component name to match the directory name
-    accentManifest.ComponentInfo.Name = componentName
+	// Always update component name to match the directory name
+	accentManifest.ComponentInfo.Name = componentName
 
 	// For accent settings, we mainly validate the manifest as the data is stored in it
 	// Ensure required color fields are present
@@ -829,28 +829,28 @@ func UpdateAccentManifest(componentPath string, logger *Logger) error {
 
 // UpdateLEDManifest validates and updates an LED component's manifest
 func UpdateLEDManifest(componentPath string, logger *Logger) error {
-    logger.DebugFn("Updating LED manifest for: %s", componentPath)
+	logger.DebugFn("Updating LED manifest for: %s", componentPath)
 
-    // Get the component name from the path
-    componentName := filepath.Base(componentPath)
+	// Get the component name from the path
+	componentName := filepath.Base(componentPath)
 
-    // Load existing manifest to preserve component_info
-    manifestObj, err := LoadComponentManifest(componentPath)
-    if err != nil {
-        // If manifest doesn't exist, create a new one
-        manifestObj, err = CreateComponentManifest(ComponentLED, componentName)
-        if err != nil {
-            return fmt.Errorf("error creating LED manifest: %w", err)
-        }
-    }
+	// Load existing manifest to preserve component_info
+	manifestObj, err := LoadComponentManifest(componentPath)
+	if err != nil {
+		// If manifest doesn't exist, create a new one
+		manifestObj, err = CreateComponentManifest(ComponentLED, componentName)
+		if err != nil {
+			return fmt.Errorf("error creating LED manifest: %w", err)
+		}
+	}
 
-    ledManifest, ok := manifestObj.(*LEDManifest)
-    if !ok {
-        return fmt.Errorf("invalid manifest type for LED component")
-    }
+	ledManifest, ok := manifestObj.(*LEDManifest)
+	if !ok {
+		return fmt.Errorf("invalid manifest type for LED component")
+	}
 
-    // Always update component name to match the directory name
-    ledManifest.ComponentInfo.Name = componentName
+	// Always update component name to match the directory name
+	ledManifest.ComponentInfo.Name = componentName
 
 	// For LED settings, we mainly validate the manifest as the data is stored in it
 	// Ensure all LED settings are initialized with defaults if missing

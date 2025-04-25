@@ -4,12 +4,12 @@
 package themes
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
-	"bytes"
 )
 
 // ThemeManifest represents the manifest.json file structure
@@ -27,10 +27,10 @@ type ThemeManifest struct {
 			Count   int  `json:"count"`
 		} `json:"wallpapers"`
 		Icons struct {
-			Present        bool `json:"present"`
-			SystemCount    int  `json:"system_count"`
-			ToolCount      int  `json:"tool_count"`
-			CollectionCount int `json:"collection_count"`
+			Present         bool `json:"present"`
+			SystemCount     int  `json:"system_count"`
+			ToolCount       int  `json:"tool_count"`
+			CollectionCount int  `json:"collection_count"`
 		} `json:"icons"`
 		Overlays struct {
 			Present bool     `json:"present"`
@@ -47,30 +47,29 @@ type ThemeManifest struct {
 		} `json:"settings"`
 	} `json:"content"`
 	PathMappings struct {
-		Wallpapers []PathMapping           `json:"wallpapers"`
-		Icons      []PathMapping           `json:"icons"`
-		Overlays   []PathMapping           `json:"overlays"`
-		Fonts      map[string]PathMapping  `json:"fonts"`
-		Settings   map[string]PathMapping  `json:"settings"`
+		Wallpapers []PathMapping          `json:"wallpapers"`
+		Icons      []PathMapping          `json:"icons"`
+		Overlays   []PathMapping          `json:"overlays"`
+		Fonts      map[string]PathMapping `json:"fonts"`
+		Settings   map[string]PathMapping `json:"settings"`
 	} `json:"path_mappings"`
-    AccentColors struct {
-        Color1 string `json:"color1"`
-        Color2 string `json:"color2"`
-        Color3 string `json:"color3"`
-        Color4 string `json:"color4"`
-        Color5 string `json:"color5"`
-        Color6 string `json:"color6"`
-    } `json:"accent_colors"`
+	AccentColors struct {
+		Color1 string `json:"color1"`
+		Color2 string `json:"color2"`
+		Color3 string `json:"color3"`
+		Color4 string `json:"color4"`
+		Color5 string `json:"color5"`
+		Color6 string `json:"color6"`
+	} `json:"accent_colors"`
 
-    // Add LED settings
-    LEDSettings struct {
-        F1Key      LEDSetting `json:"f1_key"`
-        F2Key      LEDSetting `json:"f2_key"`
-        TopBar     LEDSetting `json:"top_bar"`
-        LRTriggers LEDSetting `json:"lr_triggers"`
-    } `json:"led_settings"`
+	// Add LED settings
+	LEDSettings struct {
+		F1Key      LEDSetting `json:"f1_key"`
+		F2Key      LEDSetting `json:"f2_key"`
+		TopBar     LEDSetting `json:"top_bar"`
+		LRTriggers LEDSetting `json:"lr_triggers"`
+	} `json:"led_settings"`
 }
-
 
 // PathMapping represents a mapping between theme and system paths
 type PathMapping struct {
@@ -80,13 +79,13 @@ type PathMapping struct {
 }
 
 type LEDSetting struct {
-    Effect      int    `json:"effect"`
-    Color1      string `json:"color1"`
-    Color2      string `json:"color2"`
-    Speed       int    `json:"speed"`
-    Brightness  int    `json:"brightness"`
-    Trigger     int    `json:"trigger"`
-    InBrightness int   `json:"in_brightness"`
+	Effect       int    `json:"effect"`
+	Color1       string `json:"color1"`
+	Color2       string `json:"color2"`
+	Speed        int    `json:"speed"`
+	Brightness   int    `json:"brightness"`
+	Trigger      int    `json:"trigger"`
+	InBrightness int    `json:"in_brightness"`
 }
 
 // Logger is a simple wrapper for logging
@@ -116,46 +115,46 @@ func GetVersionString() string {
 
 // WriteManifest writes the manifest to a file in the theme directory
 func WriteManifest(themePath string, manifest *ThemeManifest, logger *Logger) error {
-    // Only set creation date and exported_by
-    manifest.ThemeInfo.CreationDate = time.Now()
-    manifest.ThemeInfo.ExportedBy = GetVersionString()
+	// Only set creation date and exported_by
+	manifest.ThemeInfo.CreationDate = time.Now()
+	manifest.ThemeInfo.ExportedBy = GetVersionString()
 
-    // Only set version if not already set
-    if manifest.ThemeInfo.Version == "" {
-        manifest.ThemeInfo.Version = "1.0.0"
-    }
+	// Only set version if not already set
+	if manifest.ThemeInfo.Version == "" {
+		manifest.ThemeInfo.Version = "1.0.0"
+	}
 
-    // Only set author if not already set
-    if manifest.ThemeInfo.Author == "" {
-        manifest.ThemeInfo.Author = "AuthorName" // Default author name only if none exists
-    }
+	// Only set author if not already set
+	if manifest.ThemeInfo.Author == "" {
+		manifest.ThemeInfo.Author = "AuthorName" // Default author name only if none exists
+	}
 
-    // Extract theme name from directory name if not set
-    if manifest.ThemeInfo.Name == "" {
-        themeName := filepath.Base(themePath)
-        manifest.ThemeInfo.Name = themeName
-    }
+	// Extract theme name from directory name if not set
+	if manifest.ThemeInfo.Name == "" {
+		themeName := filepath.Base(themePath)
+		manifest.ThemeInfo.Name = themeName
+	}
 
-    // Use an encoder that doesn't escape HTML characters
-    var buf bytes.Buffer
-    enc := json.NewEncoder(&buf)
-    enc.SetEscapeHTML(false)  // This prevents & from becoming \u0026
-    enc.SetIndent("", "  ")   // Add proper indentation
+	// Use an encoder that doesn't escape HTML characters
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false) // This prevents & from becoming \u0026
+	enc.SetIndent("", "  ")  // Add proper indentation
 
-    if err := enc.Encode(manifest); err != nil {
-        logger.DebugFn("Error creating manifest JSON: %v", err)
-        return fmt.Errorf("error creating manifest JSON: %w", err)
-    }
+	if err := enc.Encode(manifest); err != nil {
+		logger.DebugFn("Error creating manifest JSON: %v", err)
+		return fmt.Errorf("error creating manifest JSON: %w", err)
+	}
 
-    // Write manifest to file
-    manifestPath := filepath.Join(themePath, "manifest.json")
-    if err := os.WriteFile(manifestPath, buf.Bytes(), 0644); err != nil {
-        logger.DebugFn("Error writing manifest file: %v", err)
-        return fmt.Errorf("error writing manifest file: %w", err)
-    }
+	// Write manifest to file
+	manifestPath := filepath.Join(themePath, "manifest.json")
+	if err := os.WriteFile(manifestPath, buf.Bytes(), 0644); err != nil {
+		logger.DebugFn("Error writing manifest file: %v", err)
+		return fmt.Errorf("error writing manifest file: %w", err)
+	}
 
-    logger.DebugFn("Created manifest file: %s", manifestPath)
-    return nil
+	logger.DebugFn("Created manifest file: %s", manifestPath)
+	return nil
 }
 
 // ValidateTheme validates a theme package and returns its manifest
