@@ -138,23 +138,26 @@ Read below for details on how to do this for each `.theme` component.
 
 ```
 Wallpapers/
-├─ SystemWallpapers/          # All system and main section wallpapers
-│  ├─ Root.png                # Default global NextUI background
-│  ├─ Recently Played.png     # Recently played list
-│  ├─ Tools.png               # Tools menu
-│  ├─ Collections.png         # Main collections menu
+├─ SystemWallpapers/              # All system and main section wallpapers
+│  ├─ Root.png                    # Default global NextUI background
+│  ├─ Recently Played.png         # Recently played list
+│  ├─ Tools.png                   # Tools menu
+│  ├─ Collections.png             # Main collections menu
 │  └─ Game Boy Advance (GBA).png  # System wallpapers with tags
-└─ CollectionWallpapers/      # Individual collection wallpapers
-   └─ Handhelds.png           # Named after collection folders
+├─ ListWallpapers/                # Individual ROM menu list wallpapers
+│  └─ Arcade (FBN)-list.png       # Named with "(TAG)-list.png"
+└─ CollectionWallpapers/          # Individual collection wallpapers
+   └─ Handhelds.png               # Named after collection folders
 ```
 
 ### Important Wallpaper Notes
 When a `.theme` is applied, we:
-1. Scan the `Roms` directory on your SD card
+1. Clear any previously applied wallpapers
+2. Scan the `Roms` directory on your SD card
 2. Match each Rom folder's system tag with the respective `.png` image
 3. Move the `.png` image inside a `.media` folder inside that Rom directory
 4. Rename the image to `bg.png`
-5. Additionally, if a `.theme` does NOT have wallpapers, we delete any previously applied wallpapers.
+5. If there is are system-specifc wallpapers that use the `bglist.png` display method, we also move and rename those too.
 
 
 Here's an example that shows what file names work and **do not work** for wallpapers:
@@ -164,32 +167,40 @@ In our Wallpaper Directory:
 
 - Wallpapers
     - SystemWallpapers
-        - (MGBA).png             <--- Recomended naming convention. Simple and works.
-        - Sega Genesis (MD).png  <--- Also valid, contains system tag at the end.
-        - Final Burn Neo.png     <--- This WILL NOT WORK. There is no system tag included at the end.
-        - 01). Game Boy (GB).png <--- This ALSO WILL NOT WORK. You must REMOVE the "01)" from the .png name for it to work. Remember, we will AUTOMATICALLY find the system tag, so don't worry about adding order numbers to the .png images!
+        - (MGBA).png                        <--- Recomended naming convention. Simple and works.
+        - Sega Genesis (MD).png             <--- Also valid, contains system tag at the end.
+        - Final Burn Neo.png                <--- This WILL NOT WORK. There is no system tag included at the end.
+        - 01). Game Boy (GB).png            <--- This ALSO WILL NOT WORK. You must REMOVE the "01)" from the .png name for it to work. Remember, we will AUTOMATICALLY find the system tag, so don't worry about adding order numbers to the .png images!
+    - ListWallpapers
+        - (MGBA)-list.png                   <--- Recommended naming convention for list wallpapers.
+        - Sega Genesis (MD)-list.png        <--- Also valid, as long as it contains "(TAG)-list.png" at the end of the filename.
+        - Final Burn Neo (FBN)-List.png     <--- NOT valid, the L cannot be capitalized!!!
+        - 01). Game Boy (GB)-list.png       <--- This ALSO WILL NOT WORK. You must REMOVE the "01)" from the .png name for it to work. Remember, we will AUTOMATICALLY find the system tag, so don't worry about adding order numbers to the .png images!
 
 
 When we go to apply the wallpapers:
 
 
 - Roms
-    - Game Boy Advance (MGBA) <--- (MGBA).png would go inside here
-    - Sega Genesis (MD)       <--- Megadrive (MD).png would also work, since we have the matching system tag "(MD)"
-    - Arcade (FBN)            <--- Final Burn Neo.png would NOT WORK because there is no system tag in that .png name
+    - Game Boy Advance (MGBA) <--- "(MGBA).png" and "(MGBA)-list.png" would go inside here correctly
+    - Sega Genesis (MD)       <--- "Sega Genesis (MD).png" and "Sega Genesis (MD)-list.png" would also work, since we have the matching system tag "(MD)"
+    - Arcade (FBN)            <--- "Final Burn Neo.png" and "Final Burn Neo (FBN)-List.png" would NOT WORK due to the issues listed above
 
-
+    
 Final result after wallpaper application:
 
 
 - Roms
     - Game Boy Advance (MGBA)
         - .media
-            - .bg.png <--- Previously (MGBA).png
+            - bg.png             <--- Previously "(MGBA).png"
+            - bglist.png         <--- Previously "(MGBA)-list.png"
+            
     - Sega Genesis (MD)
         - .media
-            - .bg.png <--- Previously Sega Genesis (MD).png
-    - Arcade (FBN)    <--- Completely fails. No image.
+            - bg.png             <--- Previously "Sega Genesis (MD).png"
+            - bglist.png         <--- Previously "Sega Genesis (MD)-list.png"
+    - Arcade (FBN)               <--- Completely fails. No images.
 
 ```
 
