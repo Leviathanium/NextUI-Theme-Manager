@@ -54,6 +54,7 @@ type WallpaperManifest struct {
 	Content       struct {
 		Count                int      `json:"count"`
 		SystemWallpapers     []string `json:"system_wallpapers"`
+		ListWallpapers       []string `json:"list_wallpapers"`      // New field for list wallpapers
 		CollectionWallpapers []string `json:"collection_wallpapers"`
 	} `json:"content"`
 	PathMappings []PathMapping `json:"path_mappings"`
@@ -130,12 +131,14 @@ func CreateMinimalComponentManifest(componentType string, name string, author st
 
     // Create appropriate struct based on component type
     switch componentType {
+    // Part of CreateMinimalComponentManifest function - just the relevant case:
     case ComponentWallpaper:
         var manifest WallpaperManifest
         manifest.ComponentInfo = info
         // Initialize content section with empty values
         manifest.Content.Count = 0
         manifest.Content.SystemWallpapers = []string{}
+        manifest.Content.ListWallpapers = []string{}     // Initialize the new field
         manifest.Content.CollectionWallpapers = []string{}
         // Leave path_mappings empty
         manifest.PathMappings = []PathMapping{}

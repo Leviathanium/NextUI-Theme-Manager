@@ -167,6 +167,7 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 	// Clear existing content data (but preserve other component_info fields)
 	wallpaperManifest.Content.Count = 0
 	wallpaperManifest.Content.SystemWallpapers = []string{}
+	wallpaperManifest.Content.ListWallpapers = []string{}    // Clear the list wallpapers array
 	wallpaperManifest.Content.CollectionWallpapers = []string{}
 	wallpaperManifest.PathMappings = []PathMapping{}
 
@@ -188,11 +189,13 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 				fileName := entry.Name()
 				filePath := filepath.Join("SystemWallpapers", fileName)
 
-				// Add to content list
-				wallpaperManifest.Content.SystemWallpapers = append(
-					wallpaperManifest.Content.SystemWallpapers,
-					fileName,
-				)
+				// Add to content list - only add to SystemWallpapers if it's not a list wallpaper
+				if !strings.Contains(fileName, "-list") {
+					wallpaperManifest.Content.SystemWallpapers = append(
+						wallpaperManifest.Content.SystemWallpapers,
+						fileName,
+					)
+				}
 
 				// Determine system path and metadata
 				var systemPath string
@@ -310,18 +313,17 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 				fileName := entry.Name()
 				filePath := filepath.Join("ListWallpapers", fileName)
 
+				// Add to ListWallpapers content list
+				wallpaperManifest.Content.ListWallpapers = append(
+					wallpaperManifest.Content.ListWallpapers,
+					fileName,
+				)
+
 				// Check if this is a list wallpaper (ends with -list.png)
 				baseName := strings.TrimSuffix(fileName, ".png")
 				if !strings.HasSuffix(baseName, "-list") {
 					logger.DebugFn("List wallpaper doesn't have -list suffix: %s", fileName)
-					continue
 				}
-
-				// Add to content list (this gets populated when components are applied)
-				wallpaperManifest.Content.SystemWallpapers = append(
-					wallpaperManifest.Content.SystemWallpapers,
-					fileName,
-				)
 
 				// Extract system tag
 				baseNameWithoutSuffix := strings.TrimSuffix(baseName, "-list")
@@ -351,8 +353,8 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 								},
 							)
 							wallpaperManifest.Content.Count++
-							systemFound = true
 							logger.DebugFn("Added list wallpaper to manifest: %s", fileName)
+							systemFound = true
 							break
 						}
 					}
@@ -385,6 +387,7 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 		}
 	}
 
+	// Rest of function (for collection wallpapers) remains unchanged...
 	// Check for wallpapers in CollectionWallpapers directory
 	collectionWallpapersDir := filepath.Join(componentPath, "CollectionWallpapers")
 	if _, err := os.Stat(collectionWallpapersDir); err == nil {
