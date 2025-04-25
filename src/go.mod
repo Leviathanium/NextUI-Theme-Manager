@@ -2,7 +2,10 @@ module nextui-themes
 
 go 1.24.2
 
-require github.com/go-git/go-git/v5 v5.11.0
+require (
+	github.com/UncleJunVIP/certifiable v1.0.0
+	github.com/go-git/go-git/v5 v5.11.0
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect

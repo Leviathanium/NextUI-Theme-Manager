@@ -6,13 +6,12 @@ package themes
 import (
 	"fmt"
 	"io"
+	"nextui-themes/internal/logging"
+	"nextui-themes/internal/system" // Add this import
 	"os"
 	"path/filepath"
-    "regexp"
-    "strings"
-	"nextui-themes/internal/logging"
-	"nextui-themes/internal/system"  // Add this import
-
+	"regexp"
+	"strings"
 )
 
 // CopyFile copies a file from src to dst
@@ -148,8 +147,8 @@ func GetSystemIconDestination(iconSrcPath, iconName, dstPath string, systemPaths
 
 	// Handle special system icons
 	if iconName == "Recently Played.png" ||
-	   iconName == "Collections.png" ||
-	   iconName == "Tools.png" {
+		iconName == "Collections.png" ||
+		iconName == "Tools.png" {
 		// These special icons don't need tag-based renaming
 		logger.DebugFn("Special system icon, no renaming needed: %s", iconName)
 		return dstPath, nil
@@ -188,9 +187,9 @@ func GetSystemIconDestination(iconSrcPath, iconName, dstPath string, systemPaths
 		mediaDir := filepath.Dir(dstPath)
 
 		// Create the new destination path with the exact ROM directory name
-		newDstPath := filepath.Join(mediaDir, exactSystemName + ".png")
+		newDstPath := filepath.Join(mediaDir, exactSystemName+".png")
 
-		logger.DebugFn("Renaming system icon from '%s' to match ROM directory: '%s'", iconName, exactSystemName + ".png")
+		logger.DebugFn("Renaming system icon from '%s' to match ROM directory: '%s'", iconName, exactSystemName+".png")
 		return newDstPath, nil
 	}
 

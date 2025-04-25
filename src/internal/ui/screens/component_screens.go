@@ -4,16 +4,16 @@
 package screens
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 	"encoding/json"
+	"fmt"
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/themes"
 	"nextui-themes/internal/ui"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 )
 
 // ComponentsMenuScreen displays the menu of component types
@@ -61,8 +61,8 @@ func ComponentOptionsScreen() (string, int) {
 
 	// Updated menu options - removed redundant "Sync Catalog" option
 	menu := []string{
-		"Installed",      // Browse locally installed components
-		"Download",       // Browse and download components from catalog
+		"Installed", // Browse locally installed components
+		"Download",  // Browse and download components from catalog
 		"Export",
 	}
 
@@ -325,7 +325,7 @@ func DownloadComponentsScreen() (string, int) {
 			}
 
 			previewImages = append(previewImages, ui.GalleryItem{
-				Text: text,
+				Text:            text,
 				BackgroundImage: "", // No background image
 			})
 			continue
@@ -395,25 +395,25 @@ func HandleDownloadComponents(selection string, exitCode int) app.Screen {
 			}
 			result, promptCode := ui.DisplayMinUiList(strings.Join(options, "\n"), "text", message)
 
-            // Inside HandleDownloadComponents where component is applied:
-            if promptCode == 0 && result == "Yes" {
-                // Import/apply the selected component with operation message
-                componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
+			// Inside HandleDownloadComponents where component is applied:
+			if promptCode == 0 && result == "Yes" {
+				// Import/apply the selected component with operation message
+				componentPath := filepath.Join(app.GetWorkingDir(), "Components", componentType, selection)
 
-                importErr := ui.ShowMessageWithOperation(
-                    fmt.Sprintf("Applying %s component '%s'...", componentType, selection),
-                    func() error {
-                        return themes.ImportComponent(componentPath)
-                    },
-                )
+				importErr := ui.ShowMessageWithOperation(
+					fmt.Sprintf("Applying %s component '%s'...", componentType, selection),
+					func() error {
+						return themes.ImportComponent(componentPath)
+					},
+				)
 
-                if importErr != nil {
-                    logging.LogDebug("Error importing component: %v", importErr)
-                    ui.ShowMessage(fmt.Sprintf("Error: %s", importErr), "3")
-                } else {
-                    ui.ShowMessage(fmt.Sprintf("%s component applied successfully!", componentType), "2")
-                }
-            }
+				if importErr != nil {
+					logging.LogDebug("Error importing component: %v", importErr)
+					ui.ShowMessage(fmt.Sprintf("Error: %s", importErr), "3")
+				} else {
+					ui.ShowMessage(fmt.Sprintf("%s component applied successfully!", componentType), "2")
+				}
+			}
 		}
 		return app.Screens.ComponentOptions
 

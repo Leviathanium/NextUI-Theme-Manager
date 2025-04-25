@@ -4,14 +4,15 @@
 package main
 
 import (
+	"fmt"
+	_ "github.com/UncleJunVIP/certifiable"
+	"nextui-themes/internal/app"
+	"nextui-themes/internal/logging"
+	"nextui-themes/internal/themes"
+	"nextui-themes/internal/ui/screens"
 	"os"
 	"path/filepath"
 	"runtime"
-	"fmt"
-	"nextui-themes/internal/app"
-	"nextui-themes/internal/logging"
-	"nextui-themes/internal/ui/screens"
-	"nextui-themes/internal/themes"
 )
 
 func main() {

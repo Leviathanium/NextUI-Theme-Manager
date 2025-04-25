@@ -6,19 +6,19 @@ package ui
 import (
 	"bytes"
 	"fmt"
+	"nextui-themes/internal/logging"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-    "time"
-	"nextui-themes/internal/logging"
+	"time"
 )
 
 // Selection represents the result of a UI interaction
 type Selection struct {
-	Value    string
-	Code     int
-	Error    error
+	Value string
+	Code  int
+	Error error
 }
 
 // ShowMessageWithOperation displays a message while performing an operation,

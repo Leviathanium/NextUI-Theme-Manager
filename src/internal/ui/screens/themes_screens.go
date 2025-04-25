@@ -4,15 +4,15 @@
 package screens
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"encoding/json"
+	"fmt"
 	"nextui-themes/internal/app"
 	"nextui-themes/internal/logging"
 	"nextui-themes/internal/themes"
 	"nextui-themes/internal/ui"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 // InstalledThemesScreen displays a browseable list of locally installed themes
