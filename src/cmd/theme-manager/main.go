@@ -89,12 +89,12 @@ func main() {
 		currentScreen := app.GetCurrentScreen()
 		logging.LogDebug("Current screen: %d", currentScreen)
 
-		// Ensure screen value is valid
-		if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.DeconstructConfirm {
-			logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
-			app.SetCurrentScreen(app.Screens.MainMenu)
-			continue
-		}
+        // New check:
+        if currentScreen < app.Screens.MainMenu || currentScreen > app.Screens.OverlaySystemSelection {
+            logging.LogDebug("CRITICAL ERROR: Invalid screen value: %d, resetting to MainMenu", currentScreen)
+            app.SetCurrentScreen(app.Screens.MainMenu)
+            continue
+        }
 
 		// Process current screen
 		switch currentScreen {
@@ -177,6 +177,11 @@ func main() {
 			selection, exitCode = screens.DeconstructConfirmScreen()
 			nextScreen = screens.HandleDeconstructConfirm(selection, exitCode)
 
+        case app.Screens.OverlaySystemSelection:
+            logging.LogDebug("Showing overlay system selection screen")
+            selection, exitCode = screens.OverlaySystemSelectionScreen()
+            nextScreen = screens.HandleOverlaySystemSelection(selection, exitCode)
+
 		default:
 			logging.LogDebug("Unknown screen type: %d, defaulting to MainMenu", currentScreen)
 			nextScreen = app.Screens.MainMenu
@@ -185,11 +190,12 @@ func main() {
 		// Add extra debug logging
 		logging.LogDebug("Current screen: %d, Next screen: %d", currentScreen, nextScreen)
 
-		// Verify next screen is valid before setting
-		if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.DeconstructConfirm {
-			logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
-			nextScreen = app.Screens.MainMenu
-		}
+        // New validation logic that includes OverlaySystemSelection:
+        if nextScreen < app.Screens.MainMenu || nextScreen > app.Screens.OverlaySystemSelection {
+            logging.LogDebug("ERROR: Invalid next screen value: %d, defaulting to MainMenu", nextScreen)
+            nextScreen = app.Screens.MainMenu
+        }
+
 
 		// Update the current screen
 		logging.LogDebug("Setting next screen to: %d", nextScreen)

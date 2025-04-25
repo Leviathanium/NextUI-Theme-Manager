@@ -950,6 +950,137 @@ func ExportOverlays(name string) error {
 	return nil
 }
 
+// ExportOverlaysForSystem exports overlays for a specific system tag
+func ExportOverlaysForSystem(name string, systemTag string) error {
+	logger := &Logger{
+		DebugFn: logging.LogDebug,
+	}
+
+	logger.DebugFn("Starting overlay export for system %s: %s", systemTag, name)
+
+	// Get the current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("error getting current directory: %w", err)
+	}
+
+	// Create export directory path with .over extension
+	if !strings.HasSuffix(name, ComponentExtension[ComponentOverlay]) {
+		name = name + ComponentExtension[ComponentOverlay]
+	}
+
+	// Path where component will be created (in Exports directory)
+	exportPath := filepath.Join(cwd, "Exports", name)
+
+	// Create the root directory
+	if err := os.MkdirAll(exportPath, 0755); err != nil {
+		return fmt.Errorf("error creating directory %s: %w", exportPath, err)
+	}
+
+	// Create the Systems directory with the specific system tag directory
+	systemsDir := filepath.Join(exportPath, "Systems", systemTag)
+	if err := os.MkdirAll(systemsDir, 0755); err != nil {
+		return fmt.Errorf("error creating directory %s: %w", systemsDir, err)
+	}
+
+	// Create minimal component manifest with empty author (will be updated by caller if needed)
+	manifestObj, err := CreateMinimalComponentManifest(ComponentOverlay, name, "")
+	if err != nil {
+		return fmt.Errorf("error creating overlay manifest: %w", err)
+	}
+
+	overlayManifest := manifestObj.(*OverlayManifest)
+
+	// Initialize Content.Systems with just this system tag
+	overlayManifest.Content.Systems = []string{systemTag}
+
+	// Get system paths
+	systemPaths, err := system.GetSystemPaths()
+	if err != nil {
+		return fmt.Errorf("error getting system paths: %w", err)
+	}
+
+	// Check for overlays directory
+	overlaysDir := filepath.Join(systemPaths.Root, "Overlays")
+	if _, err := os.Stat(overlaysDir); os.IsNotExist(err) {
+		logger.DebugFn("Overlays directory not found: %s", overlaysDir)
+		return fmt.Errorf("overlays directory not found: %s", overlaysDir)
+	}
+
+	// Check for system-specific overlays directory
+	systemOverlaysPath := filepath.Join(overlaysDir, systemTag)
+	if _, err := os.Stat(systemOverlaysPath); os.IsNotExist(err) {
+		logger.DebugFn("System overlays directory not found: %s", systemOverlaysPath)
+		return fmt.Errorf("no overlays found for system %s", systemTag)
+	}
+
+	// List overlay files for this system
+	overlayFiles, err := os.ReadDir(systemOverlaysPath)
+	if err != nil {
+		logger.DebugFn("Error reading system overlays directory %s: %v", systemTag, err)
+		return fmt.Errorf("error reading overlays for system %s: %w", systemTag, err)
+	}
+
+	var hasOverlays bool
+
+	// Copy each overlay file
+	for _, file := range overlayFiles {
+		if file.IsDir() || strings.HasPrefix(file.Name(), ".") {
+			continue
+		}
+
+		// Only process PNG files
+		if !strings.HasSuffix(strings.ToLower(file.Name()), ".png") {
+			continue
+		}
+
+		srcPath := filepath.Join(systemOverlaysPath, file.Name())
+		dstPath := filepath.Join(systemsDir, file.Name())
+
+		// Copy the overlay file
+		if err := CopyFile(srcPath, dstPath); err != nil {
+			logger.DebugFn("Warning: Could not copy overlay %s: %v", file.Name(), err)
+			continue
+		}
+
+		themePath := filepath.Join("Systems", systemTag, file.Name())
+
+		// Add to manifest
+		overlayManifest.PathMappings = append(
+			overlayManifest.PathMappings,
+			PathMapping{
+				ThemePath:  themePath,
+				SystemPath: srcPath,
+				Metadata: map[string]string{
+					"SystemTag":   systemTag,
+					"OverlayName": file.Name(),
+				},
+			},
+		)
+
+		hasOverlays = true
+		logger.DebugFn("Exported overlay %s for system %s", file.Name(), systemTag)
+	}
+
+	if !hasOverlays {
+		return fmt.Errorf("no overlays found for system %s", systemTag)
+	}
+
+	// Create a default preview image
+	previewPath := filepath.Join(exportPath, "preview.png")
+	if err := CreateDefaultPreviewImage(previewPath, ComponentOverlay); err != nil {
+		logger.DebugFn("Warning: Could not create default preview: %v", err)
+	}
+
+	// Write the component manifest
+	if err := WriteComponentManifest(exportPath, overlayManifest); err != nil {
+		return fmt.Errorf("error writing overlay manifest: %w", err)
+	}
+
+	logger.DebugFn("Overlay component extraction for system %s completed", systemTag)
+	return nil
+}
+
 // Helper function to ensure component directories exist for importing
 func EnsureComponentDirectories() error {
 	// Get current directory
