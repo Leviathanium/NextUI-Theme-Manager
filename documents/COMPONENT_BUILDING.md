@@ -562,13 +562,15 @@ Here's how to create a repository for an overlay component:
 
 The Template.over repository is structured identically to a regular exported `.over` package, making it easy to transition from your exported component to a hosted repository.
 
-## 3. Submitting to the Community
+## 3. Submitting Your Theme
 
-You can submit your component through various channels:
 
-1. Share your ZIP file or GitHub repository URL in the NextUI Discord community
-2. Submit a pull request to have your component added to the official theme catalog
-3. Include screenshots or a GIF showing your component in action to attract interest
+
+Once you have your theme or component package (`.theme`, `.icon`, `.bg`, etc), you may submit the package to the [NextUI Themes Repository](https://github.com/Leviathanium/NextUI-Themes) using a Github pull request by modifying `push.json`. There are two ways to submit:
+1. Submit the URL, commit hash, and branch of your forked template repo, OR
+2. Create a `.zip` of the package and uploading it directly to `Upload` with your pull request
+
+For more documentation, check out the [submission guide in the NextUI Themes Repo.](https://github.com/Leviathanium/NextUI-Themes/tree/main/Upload)
 
 ---
 
@@ -577,6 +579,7 @@ You can submit your component through various channels:
 - [Theme Documentation](../documents/THEMES.md)
 - [Theme Creation Guide](../documents/THEME_BUILDING.md)
 - [Component Documentation](../documents/COMPONENTS.md)
+
 ## Templates
 - [Theme Template](https://github.com/Leviathanium/Template.theme)
 - [Wallpaper Template](https://github.com/Leviathanium/Template.bg)

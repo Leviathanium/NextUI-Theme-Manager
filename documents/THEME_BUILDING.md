@@ -162,42 +162,11 @@ git push -u origin main
 
 ## 8. Submitting Your Theme
 
-You can submit your `.theme` through the various channels available on the NextUI official Discord using your GitHub repo link. We can take it from there!
+Once you have your theme or component package (`.theme`, `.icon`, `.bg`, etc), you may submit the package to the [NextUI Themes Repository](https://github.com/Leviathanium/NextUI-Themes) using a Github pull request using `push.json`. There are two ways to submit:
+1. Submit the URL, commit hash, and branch of your forked template repo, OR
+2. Create a `.zip` of the package and uploading it directly to `Upload` with your pull request
 
-Alternatively, if you're familiar with pull requests, you can create a special pull request using the `catalog.json` file located in the [Themes Repo.](https://github.com/Leviathanium/NextUI-Themes/blob/main/Catalog/catalog.json) The catalog looks like this:
-
-```json5
-  "last_updated": "2025-04-25T16:10:35.873049Z",
-  "themes": {
-    "Pop-Tarts.theme": {
-      "author": "Shin",
-      "repository": "https://github.com/KrutzOtrem/pop-tarts.theme",
-      "commit": "eb3b3181ef1389e11e352de35531fcd70f991954",
-      "preview_path": "Catalog/Themes/previews/Pop-Tarts.theme.png",
-      "manifest_path": "Catalog/Themes/manifests/Pop-Tarts.theme.json",
-      "description": "Pop-Tarts.theme",
-      "URL": "https://github.com/Leviathanium/NextUI-Themes/raw/main/Uploads/Themes/Pop-Tarts.theme.zip"
-    },
-    "Consolized.theme": {
-      "preview_path": "Catalog/Themes/previews/Consolized.theme.png",
-      "manifest_path": "Catalog/Themes/manifests/Consolized.theme.json",
-      "author": "Gamnrd",
-      "description": "Consolized.theme",
-      "URL": "https://github.com/Leviathanium/NextUI-Themes/raw/main/Uploads/Themes/Consolized.theme.zip"
-    }
-```
-
-All you need to do is create a new JSON entry (preferably at the beginning if you want it to show up first in the catalog) that contains the following 3 properties, **exactly like this:**
-
-```json5
-"YourThemeName.theme": {
-  "author": "YourPreferredName",
-  "repository": "https://github.com/YourGitUsername/YourRepo.theme" // <-- Note that this ends in .theme!
-  "commit": "a8sd6f89as6d9f8a7sd6" // <---- your full commit hash for whichever commit you want to submit
-}, // <--- beginning of next theme
-```
-
-Then we can pull the `.theme` and update the catalog automatically!
+For more documentation, check out the [submission guide in the NextUI Themes Repo.](https://github.com/Leviathanium/NextUI-Themes/tree/main/Upload)
 
 ---
 ## Index
