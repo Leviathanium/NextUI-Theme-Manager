@@ -96,7 +96,7 @@ The manifest helps Theme Manager understand where files should be copied during 
 - When you first download/install a `.theme` and apply it, the `"content"` and `"path_mappings"` properties of the theme's `manifest.json` will **_automatically update_** to reflect your device. You should not need to tweak anything to get the manifest to work.
 - The `"theme_info"`, `"accent_colors"`, and `"led_settings"` will always stay the same and will never update.
 - If you're ever having trouble with a `.theme` pack not working correctly, you can always look at the `manifest.json` to see if the `"path_mappings"` are going to the right place. That's what it's there for!
-- When you _**export**_ a `.theme` pack, the manifest will be heavily populated. Some of these properties should be kept, and some can be safely removed. For more details on how to export and create theme packs, check out the [Theme Creation Guide](documents/THEME_BUILDING.md) for best practices on how to do this.
+- When you _**export**_ a `.theme` pack, the manifest will be heavily populated. Some of these properties should be kept, and some can be safely removed. For more details on how to export and create theme packs, check out the [Theme Creation Guide](../documents/THEME_BUILDING.md) for best practices on how to do this.
 
 ---
 
