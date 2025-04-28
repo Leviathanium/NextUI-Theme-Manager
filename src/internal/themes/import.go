@@ -227,6 +227,11 @@ func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, s
 		logger.DebugFn("Warning: Error updating overlay mappings: %v", err)
 	}
 
+    // Update fonts
+    if err := updateFontMappings(themePath, manifest, systemPaths, logger); err != nil {
+        logger.DebugFn("Warning: Error updating font mappings: %v", err)
+    }
+
 	// Write updated manifest back to file
 	return WriteManifest(themePath, manifest, logger)
 }
@@ -566,6 +571,66 @@ func updateOverlayMappings(themePath string, manifest *ThemeManifest, systemPath
 	}
 
 	return nil
+}
+
+// updateFontMappings scans fonts in the theme and updates manifest mappings
+func updateFontMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
+    logger.DebugFn("Updating font mappings in theme manifest")
+
+    // Define system paths for fonts - CORRECTED PATHS
+    fontSystemPaths := map[string]string{
+        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",
+        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",
+    }
+
+    // Initialize font mappings map if it doesn't exist
+    if manifest.PathMappings.Fonts == nil {
+        manifest.PathMappings.Fonts = make(map[string]PathMapping)
+    }
+
+    // Check for fonts directory
+    fontsDir := filepath.Join(themePath, "Fonts")
+    if _, err := os.Stat(fontsDir); os.IsNotExist(err) {
+        logger.DebugFn("No Fonts directory found in theme")
+        return nil
+    }
+
+    // Font files to check for
+    fontFiles := []string{
+        "OG.ttf",
+        "Next.ttf",
+        "OG.backup.ttf",
+        "Next.backup.ttf",
+    }
+
+    // Check for each font file
+    for _, fontFile := range fontFiles {
+        fontPath := filepath.Join(fontsDir, fontFile)
+        if _, err := os.Stat(fontPath); err == nil {
+            // Font file exists
+            fontName := strings.TrimSuffix(fontFile, ".ttf")
+
+            // Add to manifest
+            manifest.PathMappings.Fonts[fontName] = PathMapping{
+                ThemePath:  filepath.Join("Fonts", fontFile),
+                SystemPath: fontSystemPaths[fontName],
+            }
+
+            // Update content flags
+            manifest.Content.Fonts.Present = true
+            if fontName == "OG" {
+                manifest.Content.Fonts.OGReplaced = true
+            } else if fontName == "Next" {
+                manifest.Content.Fonts.NextReplaced = true
+            }
+
+            logger.DebugFn("Added font to manifest: %s", fontName)
+        }
+    }
+
+    return nil
 }
 
 func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
