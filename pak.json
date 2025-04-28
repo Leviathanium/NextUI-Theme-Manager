@@ -5,7 +5,7 @@
   "description": "A tool that manages, downloads, and deploys customization presets for NextUI",
   "author": "Leviathan",
   "repo_url": "https://github.com/Leviathanium/NextUI-Theme-Manager",
-  "release_filename": "Theme-Manager.pak.zip",
+  "release_filename": "Theme.Manager.pak.zip",
   "banners": {
     "BRICK": "documents/previews/Consolized.theme.png"
   },
