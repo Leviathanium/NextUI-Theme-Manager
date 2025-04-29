@@ -1,6 +1,6 @@
 {
   "name": "Theme Manager",
-  "version": "v1.3",
+  "version": "v1.4",
   "type": "TOOL",
   "description": "A tool that manages, downloads, and deploys customization presets for NextUI",
   "author": "Leviathan",
