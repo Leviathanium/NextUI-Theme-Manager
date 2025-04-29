@@ -1,6 +1,4 @@
-// src/internal/system/detection.go
-// System path detection for theme application
-
+// internal/system/detection.go
 package system
 
 import (
@@ -105,5 +103,38 @@ func EnsureMediaDirectories(paths *SystemPaths) error {
 		}
 	}
 
+	// Ensure Overlays directory
+	overlaysPath := filepath.Join(paths.Root, "Overlays")
+	if err := os.MkdirAll(overlaysPath, 0755); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// CreateOverlaySystemDirectory creates a system directory in the Overlays folder
+func CreateOverlaySystemDirectory(paths *SystemPaths, systemTag string) error {
+	overlaySystemPath := filepath.Join(paths.Root, "Overlays", systemTag)
+	return os.MkdirAll(overlaySystemPath, 0755)
+}
+
+// GetSystemByTag returns a system info by its tag
+func GetSystemByTag(paths *SystemPaths, tag string) *SystemInfo {
+	for _, system := range paths.Systems {
+		if system.Tag == tag {
+			return &system
+		}
+	}
+	return nil
+}
+
+// GetAllSystemTags returns a list of all system tags
+func GetAllSystemTags(paths *SystemPaths) []string {
+	var tags []string
+	for _, system := range paths.Systems {
+		if system.Tag != "" {
+			tags = append(tags, system.Tag)
+		}
+	}
+	return tags
 }

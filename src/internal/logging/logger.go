@@ -1,21 +1,43 @@
-// src/internal/logging/logger.go
-// Logging functionality for the application
-
+// internal/logging/logger.go
 package logging
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 )
 
 var logFile *os.File
 
-// Enables or disables logging functionality
-var LoggingEnabled bool = true  // Set to false to disable all logging
+// Flag to indicate whether logging is enabled
+var LoggingEnabled bool = true
 
-// InitLogger initializes the debug log file
+// Flag to indicate whether logging is fully initialized
+var loggerInitialized int32 = 0
+
+// SetLoggerInitialized marks the logger as fully initialized
+func SetLoggerInitialized() {
+	atomic.StoreInt32(&loggerInitialized, 1)
+}
+
+// IsLoggerInitialized checks if the logger is initialized
+func IsLoggerInitialized() bool {
+	return atomic.LoadInt32(&loggerInitialized) == 1
+}
+
+// LogSafe logs a message safely, using fmt.Printf if the logger isn't initialized yet
+func LogSafe(format string, args ...interface{}) {
+	if IsLoggerInitialized() {
+		LogDebug(format, args...)
+	} else {
+		// Fall back to standard output if logger isn't ready
+		fmt.Printf("EARLY LOG: "+format+"\n", args...)
+	}
+}
+
+// Initialize the logger
 func init() {
     // If logging is disabled, don't initialize anything
     if !LoggingEnabled {
@@ -49,9 +71,6 @@ func init() {
     // Log startup information
     LogDebug("=== Theme Manager Started ===")
     LogDebug("Current directory: %s", cwd)
-
-    // Mark logger as initialized
-    SetLoggerInitialized()
 }
 
 // CloseLogger closes the log file
