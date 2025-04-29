@@ -1064,28 +1064,111 @@ func updateLEDSettings(themePath string, manifest *ThemeManifest, logger *Logger
 
 // Update these two functions in src/internal/themes/import.go
 
-// applyAccentSettings applies accent color settings from manifest
+// This function should replace the existing applyAccentSettings in import.go
 func applyAccentSettings(manifest *ThemeManifest, logger *Logger) error {
-	// Create content for minuisettings.txt
-	var content strings.Builder
-	content.WriteString(fmt.Sprintf("color1=%s\n", manifest.AccentColors.Color1))
-	content.WriteString(fmt.Sprintf("color2=%s\n", manifest.AccentColors.Color2))
-	content.WriteString(fmt.Sprintf("color3=%s\n", manifest.AccentColors.Color3))
-	content.WriteString(fmt.Sprintf("color4=%s\n", manifest.AccentColors.Color4))
-	content.WriteString(fmt.Sprintf("color5=%s\n", manifest.AccentColors.Color5))
-	content.WriteString(fmt.Sprintf("color6=%s\n", manifest.AccentColors.Color6))
+    // Get path to settings file
+    settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
 
-	// Get path to settings file - FIXED PATH
-	settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
+    // Map of color keys to their values from the manifest
+    colorValues := map[string]string{
+        "color1": manifest.AccentColors.Color1,
+        "color2": manifest.AccentColors.Color2,
+        "color3": manifest.AccentColors.Color3,
+        "color4": manifest.AccentColors.Color4,
+        "color5": manifest.AccentColors.Color5,
+        "color6": manifest.AccentColors.Color6,
+    }
 
-	// Write settings to file
-	if err := os.WriteFile(settingsPath, []byte(content.String()), 0644); err != nil {
-		return fmt.Errorf("error writing accent settings: %w", err)
-	}
+    // Track which color keys we've seen
+    colorKeySeen := map[string]bool{
+        "color1": false,
+        "color2": false,
+        "color3": false,
+        "color4": false,
+        "color5": false,
+        "color6": false,
+    }
 
-	logger.DebugFn("Applied accent settings to %s", settingsPath)
-	return nil
+    // Final settings map and order preservation
+    settings := make(map[string]string)
+    var keyOrder []string
+
+    // Check if file exists
+    fileInfo, err := os.Stat(settingsPath)
+    if err == nil && fileInfo.Size() > 0 {
+        // File exists and has content
+        existingContent, err := os.ReadFile(settingsPath)
+        if err == nil {
+            // Parse existing settings
+            lines := strings.Split(string(existingContent), "\n")
+            for _, line := range lines {
+                line = strings.TrimSpace(line)
+                if line == "" {
+                    continue
+                }
+
+                parts := strings.SplitN(line, "=", 2)
+                if len(parts) != 2 {
+                    continue
+                }
+
+                key := strings.TrimSpace(parts[0])
+                value := strings.TrimSpace(parts[1])
+
+                // Check if this is a color key
+                if newValue, isColorKey := colorValues[key]; isColorKey {
+                    // Use the new color value and mark as seen
+                    settings[key] = newValue
+                    colorKeySeen[key] = true
+                } else {
+                    // Keep existing value for non-color keys
+                    settings[key] = value
+                }
+
+                // Add to ordered keys
+                keyOrder = append(keyOrder, key)
+            }
+
+            // Add any unseen color keys at the end
+            for key, seen := range colorKeySeen {
+                if !seen {
+                    settings[key] = colorValues[key]
+                    keyOrder = append(keyOrder, key)
+                }
+            }
+        } else {
+            logger.DebugFn("Warning: Could not read existing settings file: %v", err)
+            // Fall through to create new file
+        }
+    }
+
+    // If we don't have any settings yet (no file or couldn't read it),
+    // initialize with just the color keys
+    if len(settings) == 0 {
+        colorKeys := []string{"color1", "color2", "color3", "color4", "color5", "color6"}
+        for _, key := range colorKeys {
+            settings[key] = colorValues[key]
+            keyOrder = append(keyOrder, key)
+        }
+    }
+
+    // Build new content with all settings in the preserved order
+    var content strings.Builder
+    for _, key := range keyOrder {
+        if value, exists := settings[key]; exists {
+            content.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+        }
+    }
+
+    // Write updated settings to file
+    if err := os.WriteFile(settingsPath, []byte(content.String()), 0644); err != nil {
+        return fmt.Errorf("error writing accent settings: %w", err)
+    }
+
+    logger.DebugFn("Applied accent settings to %s while preserving other settings and their order", settingsPath)
+    return nil
 }
+
 
 // applyLEDSettings applies LED settings from manifest
 func applyLEDSettings(manifest *ThemeManifest, logger *Logger) error {
