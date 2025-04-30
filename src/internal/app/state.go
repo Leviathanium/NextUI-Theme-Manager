@@ -12,43 +12,42 @@ type Screen int
 const (
 	// Main menu and high-level screens
 	ScreenMainMenu Screen = iota
-	ScreenThemes
-	ScreenOverlays
+	ScreenThemesMenu        // New submenu for Themes
+	ScreenOverlaysMenu      // New submenu for Overlays
 	ScreenSyncCatalog
-	ScreenBackup
-	ScreenRevert
-	ScreenPurge
+	ScreenSettingsMenu      // New Settings menu replacing Backup/Revert/Purge
 
 	// Theme sub-screens
-	ScreenThemeGallery
+	ScreenInstalledThemes   // New screen for installed themes
+	ScreenDownloadThemes    // Renamed (was ThemeGallery)
 	ScreenThemeDownloadConfirm
 	ScreenThemeDownloading
 	ScreenThemeApplyConfirm
 	ScreenThemeApplying
 
 	// Overlay sub-screens
-	ScreenOverlayGallery
+	ScreenInstalledOverlays // New screen for installed overlays
+	ScreenDownloadOverlays  // Renamed (was OverlayGallery)
 	ScreenOverlayDownloadConfirm
 	ScreenOverlayDownloading
 	ScreenOverlayApplyConfirm
 	ScreenOverlayApplying
 
-	// Backup sub-screens
-	ScreenBackupMenu
+	// Settings sub-screens
+	ScreenRestoreMenu       // Renamed (was RevertMenu)
 	ScreenBackupThemeConfirm
 	ScreenBackupThemeCreating
 	ScreenBackupOverlayConfirm
 	ScreenBackupOverlayCreating
 	ScreenBackupAutoToggle
 
-	// Revert sub-screens
-	ScreenRevertMenu
-	ScreenRevertThemeGallery
-	ScreenRevertThemeConfirm
-	ScreenRevertThemeApplying
-	ScreenRevertOverlayGallery
-	ScreenRevertOverlayConfirm
-	ScreenRevertOverlayApplying
+	// Restore sub-screens (renamed from Revert)
+	ScreenRestoreThemeGallery   // Renamed
+	ScreenRestoreThemeConfirm   // Renamed
+	ScreenRestoreThemeApplying  // Renamed
+	ScreenRestoreOverlayGallery // Renamed
+	ScreenRestoreOverlayConfirm // Renamed
+	ScreenRestoreOverlayApplying // Renamed
 
 	// Purge screens
 	ScreenPurgeConfirm
@@ -59,47 +58,46 @@ const (
 type ScreenEnum struct {
 	// Main menu and high-level screens
 	MainMenu     Screen
-	Themes       Screen
-	Overlays     Screen
+	ThemesMenu   Screen
+	OverlaysMenu Screen
 	SyncCatalog  Screen
-	Backup       Screen
-	Revert       Screen
-	Purge        Screen
+	SettingsMenu Screen
 
 	// Theme sub-screens
-	ThemeGallery          Screen
+	InstalledThemes       Screen
+	DownloadThemes        Screen
 	ThemeDownloadConfirm  Screen
 	ThemeDownloading      Screen
 	ThemeApplyConfirm     Screen
 	ThemeApplying         Screen
 
 	// Overlay sub-screens
-	OverlayGallery         Screen
+	InstalledOverlays     Screen
+	DownloadOverlays      Screen
 	OverlayDownloadConfirm Screen
 	OverlayDownloading     Screen
 	OverlayApplyConfirm    Screen
 	OverlayApplying        Screen
 
-	// Backup sub-screens
-	BackupMenu             Screen
-	BackupThemeConfirm     Screen
-	BackupThemeCreating    Screen
-	BackupOverlayConfirm   Screen
-	BackupOverlayCreating  Screen
-	BackupAutoToggle       Screen
+	// Settings sub-screens
+	RestoreMenu           Screen
+	BackupThemeConfirm    Screen
+	BackupThemeCreating   Screen
+	BackupOverlayConfirm  Screen
+	BackupOverlayCreating Screen
+	BackupAutoToggle      Screen
 
-	// Revert sub-screens
-	RevertMenu             Screen
-	RevertThemeGallery     Screen
-	RevertThemeConfirm     Screen
-	RevertThemeApplying    Screen
-	RevertOverlayGallery   Screen
-	RevertOverlayConfirm   Screen
-	RevertOverlayApplying  Screen
+	// Restore sub-screens (renamed from Revert)
+	RestoreThemeGallery    Screen
+	RestoreThemeConfirm    Screen
+	RestoreThemeApplying   Screen
+	RestoreOverlayGallery  Screen
+	RestoreOverlayConfirm  Screen
+	RestoreOverlayApplying Screen
 
 	// Purge screens
-	PurgeConfirm           Screen
-	Purging                Screen
+	PurgeConfirm          Screen
+	Purging               Screen
 }
 
 // AppState holds the current state of the application
@@ -113,43 +111,42 @@ type appState struct {
 var Screens = ScreenEnum{
 	// Main menu and high-level screens
 	MainMenu:     ScreenMainMenu,
-	Themes:       ScreenThemes,
-	Overlays:     ScreenOverlays,
+	ThemesMenu:   ScreenThemesMenu,
+	OverlaysMenu: ScreenOverlaysMenu,
 	SyncCatalog:  ScreenSyncCatalog,
-	Backup:       ScreenBackup,
-	Revert:       ScreenRevert,
-	Purge:        ScreenPurge,
+	SettingsMenu: ScreenSettingsMenu,
 
 	// Theme sub-screens
-	ThemeGallery:          ScreenThemeGallery,
+	InstalledThemes:       ScreenInstalledThemes,
+	DownloadThemes:        ScreenDownloadThemes,
 	ThemeDownloadConfirm:  ScreenThemeDownloadConfirm,
 	ThemeDownloading:      ScreenThemeDownloading,
 	ThemeApplyConfirm:     ScreenThemeApplyConfirm,
 	ThemeApplying:         ScreenThemeApplying,
 
 	// Overlay sub-screens
-	OverlayGallery:         ScreenOverlayGallery,
+	InstalledOverlays:     ScreenInstalledOverlays,
+	DownloadOverlays:      ScreenDownloadOverlays,
 	OverlayDownloadConfirm: ScreenOverlayDownloadConfirm,
 	OverlayDownloading:     ScreenOverlayDownloading,
 	OverlayApplyConfirm:    ScreenOverlayApplyConfirm,
 	OverlayApplying:        ScreenOverlayApplying,
 
-	// Backup sub-screens
-	BackupMenu:             ScreenBackupMenu,
-	BackupThemeConfirm:     ScreenBackupThemeConfirm,
-	BackupThemeCreating:    ScreenBackupThemeCreating,
-	BackupOverlayConfirm:   ScreenBackupOverlayConfirm,
-	BackupOverlayCreating:  ScreenBackupOverlayCreating,
-	BackupAutoToggle:       ScreenBackupAutoToggle,
+	// Settings sub-screens
+	RestoreMenu:           ScreenRestoreMenu,
+	BackupThemeConfirm:    ScreenBackupThemeConfirm,
+	BackupThemeCreating:   ScreenBackupThemeCreating,
+	BackupOverlayConfirm:  ScreenBackupOverlayConfirm,
+	BackupOverlayCreating: ScreenBackupOverlayCreating,
+	BackupAutoToggle:      ScreenBackupAutoToggle,
 
-	// Revert sub-screens
-	RevertMenu:             ScreenRevertMenu,
-	RevertThemeGallery:     ScreenRevertThemeGallery,
-	RevertThemeConfirm:     ScreenRevertThemeConfirm,
-	RevertThemeApplying:    ScreenRevertThemeApplying,
-	RevertOverlayGallery:   ScreenRevertOverlayGallery,
-	RevertOverlayConfirm:   ScreenRevertOverlayConfirm,
-	RevertOverlayApplying:  ScreenRevertOverlayApplying,
+	// Restore sub-screens (renamed from Revert)
+	RestoreThemeGallery:    ScreenRestoreThemeGallery,
+	RestoreThemeConfirm:    ScreenRestoreThemeConfirm,
+	RestoreThemeApplying:   ScreenRestoreThemeApplying,
+	RestoreOverlayGallery:  ScreenRestoreOverlayGallery,
+	RestoreOverlayConfirm:  ScreenRestoreOverlayConfirm,
+	RestoreOverlayApplying: ScreenRestoreOverlayApplying,
 
 	// Purge screens
 	PurgeConfirm:           ScreenPurgeConfirm,

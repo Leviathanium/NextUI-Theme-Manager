@@ -37,6 +37,35 @@ func HandleOverlayGallery(selection string, exitCode int) app.Screen {
 	return app.Screens.MainMenu
 }
 
+// DownloadOverlaysScreen displays the overlay catalog/download screen
+func DownloadOverlaysScreen() (string, int) {
+	logging.LogDebug("Showing download overlays screen")
+	return themes.ShowOverlayGallery()
+}
+
+// HandleDownloadOverlays processes overlay catalog selection
+func HandleDownloadOverlays(selection string, exitCode int) app.Screen {
+	logging.LogDebug("HandleDownloadOverlays called with selection: '%s', exitCode: %d", selection, exitCode)
+
+	if exitCode == 0 && selection != "" {
+		// User selected an overlay
+		app.SetSelectedItem(selection)
+
+		// Check if overlay is already downloaded
+		if themes.IsOverlayDownloaded(selection) {
+			logging.LogDebug("Overlay already downloaded: %s", selection)
+			return app.Screens.OverlayApplyConfirm
+		}
+
+		// Not downloaded, ask to download
+		logging.LogDebug("Overlay not downloaded: %s", selection)
+		return app.Screens.OverlayDownloadConfirm
+	}
+
+	// User cancelled or error
+	return app.Screens.OverlaysMenu
+}
+
 // OverlayDownloadConfirmScreen displays the overlay download confirmation screen
 func OverlayDownloadConfirmScreen() (string, int) {
 	logging.LogDebug("Showing overlay download confirmation screen")
@@ -55,7 +84,7 @@ func HandleOverlayDownloadConfirm(selection string, exitCode int) app.Screen {
 	}
 
 	// User cancelled
-	return app.Screens.OverlayGallery
+	return app.Screens.DownloadOverlays
 }
 
 // OverlayDownloadingScreen handles the overlay downloading process

@@ -37,6 +37,35 @@ func HandleThemeGallery(selection string, exitCode int) app.Screen {
 	return app.Screens.MainMenu
 }
 
+// DownloadThemesScreen displays the theme catalog/download screen
+func DownloadThemesScreen() (string, int) {
+	logging.LogDebug("Showing download themes screen")
+	return themes.ShowThemeGallery()
+}
+
+// HandleDownloadThemes processes theme catalog selection
+func HandleDownloadThemes(selection string, exitCode int) app.Screen {
+	logging.LogDebug("HandleDownloadThemes called with selection: '%s', exitCode: %d", selection, exitCode)
+
+	if exitCode == 0 && selection != "" {
+		// User selected a theme
+		app.SetSelectedItem(selection)
+
+		// Check if theme is already downloaded
+		if themes.IsThemeDownloaded(selection) {
+			logging.LogDebug("Theme already downloaded: %s", selection)
+			return app.Screens.ThemeApplyConfirm
+		}
+
+		// Not downloaded, ask to download
+		logging.LogDebug("Theme not downloaded: %s", selection)
+		return app.Screens.ThemeDownloadConfirm
+	}
+
+	// User cancelled or error
+	return app.Screens.ThemesMenu
+}
+
 // ThemeDownloadConfirmScreen displays the theme download confirmation screen
 func ThemeDownloadConfirmScreen() (string, int) {
 	logging.LogDebug("Showing theme download confirmation screen")
@@ -55,7 +84,7 @@ func HandleThemeDownloadConfirm(selection string, exitCode int) app.Screen {
 	}
 
 	// User cancelled
-	return app.Screens.ThemeGallery
+	return app.Screens.DownloadThemes
 }
 
 // ThemeDownloadingScreen handles the theme downloading process

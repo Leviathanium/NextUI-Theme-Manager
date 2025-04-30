@@ -18,9 +18,7 @@ func MainMenuScreen() (string, int) {
 		"Themes",
 		"Overlays",
 		"Sync Catalog",
-		"Backup",
-		"Revert",
-		"Purge",
+		"Settings",
 	}
 
 	return ui.DisplayMinUiList(
@@ -40,27 +38,19 @@ func HandleMainMenu(selection string, exitCode int) app.Screen {
 		switch selection {
 		case "Themes":
 			logging.LogDebug("Selected Themes")
-			return app.Screens.Themes
+			return app.Screens.ThemesMenu
 
 		case "Overlays":
 			logging.LogDebug("Selected Overlays")
-			return app.Screens.Overlays
+			return app.Screens.OverlaysMenu
 
 		case "Sync Catalog":
 			logging.LogDebug("Selected Sync Catalog")
 			return app.Screens.SyncCatalog
 
-		case "Backup":
-			logging.LogDebug("Selected Backup")
-			return app.Screens.Backup
-
-		case "Revert":
-			logging.LogDebug("Selected Revert")
-			return app.Screens.Revert
-
-		case "Purge":
-			logging.LogDebug("Selected Purge")
-			return app.Screens.Purge
+		case "Settings":
+			logging.LogDebug("Selected Settings")
+			return app.Screens.SettingsMenu
 
 		default:
 			logging.LogDebug("Unknown selection: %s", selection)

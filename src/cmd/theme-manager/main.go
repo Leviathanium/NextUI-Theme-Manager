@@ -90,17 +90,25 @@ func main() {
 		currentScreen := app.GetCurrentScreen()
 		logging.LogDebug("Current screen: %d", currentScreen)
 
-		// Process current screen
+        // Process current screen
 		switch currentScreen {
 		// Main menu
 		case app.Screens.MainMenu:
 			selection, exitCode = screens.MainMenuScreen()
 			nextScreen = screens.HandleMainMenu(selection, exitCode)
 
-		// Theme screens
-		case app.Screens.Themes, app.Screens.ThemeGallery:
-			selection, exitCode = screens.ThemeGalleryScreen()
-			nextScreen = screens.HandleThemeGallery(selection, exitCode)
+		// Theme submenu screens
+		case app.Screens.ThemesMenu:
+			selection, exitCode = screens.ThemesMenuScreen()
+			nextScreen = screens.HandleThemesMenu(selection, exitCode)
+
+		case app.Screens.InstalledThemes:
+			selection, exitCode = screens.InstalledThemesScreen()
+			nextScreen = screens.HandleInstalledThemes(selection, exitCode)
+
+		case app.Screens.DownloadThemes:
+			selection, exitCode = screens.DownloadThemesScreen()
+			nextScreen = screens.HandleDownloadThemes(selection, exitCode)
 
 		case app.Screens.ThemeDownloadConfirm:
 			selection, exitCode = screens.ThemeDownloadConfirmScreen()
@@ -116,10 +124,18 @@ func main() {
 		case app.Screens.ThemeApplying:
 			nextScreen = screens.ThemeApplyingScreen()
 
-		// Overlay screens
-		case app.Screens.Overlays, app.Screens.OverlayGallery:
-			selection, exitCode = screens.OverlayGalleryScreen()
-			nextScreen = screens.HandleOverlayGallery(selection, exitCode)
+		// Overlay submenu screens
+		case app.Screens.OverlaysMenu:
+			selection, exitCode = screens.OverlaysMenuScreen()
+			nextScreen = screens.HandleOverlaysMenu(selection, exitCode)
+
+		case app.Screens.InstalledOverlays:
+			selection, exitCode = screens.InstalledOverlaysScreen()
+			nextScreen = screens.HandleInstalledOverlays(selection, exitCode)
+
+		case app.Screens.DownloadOverlays:
+			selection, exitCode = screens.DownloadOverlaysScreen()
+			nextScreen = screens.HandleDownloadOverlays(selection, exitCode)
 
 		case app.Screens.OverlayDownloadConfirm:
 			selection, exitCode = screens.OverlayDownloadConfirmScreen()
@@ -139,11 +155,39 @@ func main() {
 		case app.Screens.SyncCatalog:
 			nextScreen = screens.SyncCatalogScreen()
 
-		// Backup screens
-		case app.Screens.Backup, app.Screens.BackupMenu:
-			selection, exitCode = screens.BackupMenuScreen()
-			nextScreen = screens.HandleBackupMenu(selection, exitCode)
+		// Settings menu
+		case app.Screens.SettingsMenu:
+			selection, exitCode = screens.SettingsMenuScreen()
+			nextScreen = screens.HandleSettingsMenu(selection, exitCode)
 
+		// Restore screens (previously Revert)
+		case app.Screens.RestoreMenu:
+			selection, exitCode = screens.RestoreMenuScreen()
+			nextScreen = screens.HandleRestoreMenu(selection, exitCode)
+
+		case app.Screens.RestoreThemeGallery:
+			selection, exitCode = screens.RestoreThemeGalleryScreen()
+			nextScreen = screens.HandleRestoreThemeGallery(selection, exitCode)
+
+		case app.Screens.RestoreThemeConfirm:
+			selection, exitCode = screens.RestoreThemeConfirmScreen()
+			nextScreen = screens.HandleRestoreThemeConfirm(selection, exitCode)
+
+		case app.Screens.RestoreThemeApplying:
+			nextScreen = screens.RestoreThemeApplyingScreen()
+
+		case app.Screens.RestoreOverlayGallery:
+			selection, exitCode = screens.RestoreOverlayGalleryScreen()
+			nextScreen = screens.HandleRestoreOverlayGallery(selection, exitCode)
+
+		case app.Screens.RestoreOverlayConfirm:
+			selection, exitCode = screens.RestoreOverlayConfirmScreen()
+			nextScreen = screens.HandleRestoreOverlayConfirm(selection, exitCode)
+
+		case app.Screens.RestoreOverlayApplying:
+			nextScreen = screens.RestoreOverlayApplyingScreen()
+
+		// Backup screens
 		case app.Screens.BackupThemeConfirm:
 			selection, exitCode = screens.BackupThemeConfirmScreen()
 			nextScreen = screens.HandleBackupThemeConfirm(selection, exitCode)
@@ -162,35 +206,8 @@ func main() {
 			selection, exitCode = screens.BackupAutoToggleScreen()
 			nextScreen = screens.HandleBackupAutoToggle(selection, exitCode)
 
-		// Revert screens
-		case app.Screens.Revert, app.Screens.RevertMenu:
-			selection, exitCode = screens.RevertMenuScreen()
-			nextScreen = screens.HandleRevertMenu(selection, exitCode)
-
-		case app.Screens.RevertThemeGallery:
-			selection, exitCode = screens.RevertThemeGalleryScreen()
-			nextScreen = screens.HandleRevertThemeGallery(selection, exitCode)
-
-		case app.Screens.RevertThemeConfirm:
-			selection, exitCode = screens.RevertThemeConfirmScreen()
-			nextScreen = screens.HandleRevertThemeConfirm(selection, exitCode)
-
-		case app.Screens.RevertThemeApplying:
-			nextScreen = screens.RevertThemeApplyingScreen()
-
-		case app.Screens.RevertOverlayGallery:
-			selection, exitCode = screens.RevertOverlayGalleryScreen()
-			nextScreen = screens.HandleRevertOverlayGallery(selection, exitCode)
-
-		case app.Screens.RevertOverlayConfirm:
-			selection, exitCode = screens.RevertOverlayConfirmScreen()
-			nextScreen = screens.HandleRevertOverlayConfirm(selection, exitCode)
-
-		case app.Screens.RevertOverlayApplying:
-			nextScreen = screens.RevertOverlayApplyingScreen()
-
 		// Purge screens
-		case app.Screens.Purge, app.Screens.PurgeConfirm:
+		case app.Screens.PurgeConfirm:
 			selection, exitCode = screens.PurgeConfirmScreen()
 			nextScreen = screens.HandlePurgeConfirm(selection, exitCode)
 
@@ -202,11 +219,11 @@ func main() {
 			nextScreen = app.Screens.MainMenu
 		}
 
-		// Validate next screen
-		if nextScreen < app.Screens.MainMenu || int(nextScreen) > int(app.Screens.Purging) {
-			logging.LogDebug("Invalid next screen: %d, defaulting to main menu", nextScreen)
-			nextScreen = app.Screens.MainMenu
-		}
+        // Validate next screen
+        if nextScreen < app.Screens.MainMenu || int(nextScreen) > int(app.Screens.Purging) {
+            logging.LogDebug("Invalid next screen: %d, defaulting to main menu", nextScreen)
+            nextScreen = app.Screens.MainMenu
+        }
 
 		// Update the current screen
 		app.SetCurrentScreen(nextScreen)

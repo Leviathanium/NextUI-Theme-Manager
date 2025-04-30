@@ -24,7 +24,7 @@ func HandlePurgeConfirm(selection string, exitCode int) app.Screen {
 	}
 
 	// User cancelled
-	return app.Screens.MainMenu
+	return app.Screens.SettingsMenu
 }
 
 // PurgingScreen handles the purge process
@@ -46,5 +46,5 @@ func PurgingScreen() app.Screen {
 		ui.ShowMessage("Purge complete!", "2")
 	}
 
-	return app.Screens.MainMenu
+	return app.Screens.SettingsMenu
 }

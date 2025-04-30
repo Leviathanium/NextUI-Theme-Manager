@@ -67,7 +67,7 @@ func HandleBackupThemeConfirm(selection string, exitCode int) app.Screen {
 	}
 
 	// User cancelled
-	return app.Screens.BackupMenu
+	return app.Screens.SettingsMenu
 }
 
 // BackupThemeCreatingScreen handles the theme backup creation process
@@ -89,7 +89,7 @@ func BackupThemeCreatingScreen() app.Screen {
 		ui.ShowMessage("Theme backup created successfully!", "2")
 	}
 
-	return app.Screens.BackupMenu
+	return app.Screens.SettingsMenu
 }
 
 // BackupOverlayConfirmScreen displays the overlay backup confirmation screen
@@ -108,7 +108,7 @@ func HandleBackupOverlayConfirm(selection string, exitCode int) app.Screen {
 	}
 
 	// User cancelled
-	return app.Screens.BackupMenu
+	return app.Screens.SettingsMenu
 }
 
 // BackupOverlayCreatingScreen handles the overlay backup creation process
@@ -130,7 +130,7 @@ func BackupOverlayCreatingScreen() app.Screen {
 		ui.ShowMessage("Overlay backup created successfully!", "2")
 	}
 
-	return app.Screens.BackupMenu
+	return app.Screens.SettingsMenu
 }
 
 // BackupAutoToggleScreen displays the auto-backup toggle screen
@@ -158,6 +158,6 @@ func HandleBackupAutoToggle(selection string, exitCode int) app.Screen {
 		}
 	}
 
-	// Return to backup menu
-	return app.Screens.BackupMenu
+	// Return to settings menu
+	return app.Screens.SettingsMenu
 }
