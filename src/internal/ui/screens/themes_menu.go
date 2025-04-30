@@ -7,6 +7,7 @@ import (
 	"thememanager/internal/app"
 	"thememanager/internal/logging"
 	"thememanager/internal/ui"
+	"thememanager/internal/themes"
 )
 
 // ThemesMenuScreen displays the themes submenu screen

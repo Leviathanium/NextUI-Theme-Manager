@@ -14,6 +14,7 @@ const (
 	ScreenMainMenu Screen = iota
 	ScreenThemesMenu        // New submenu for Themes
 	ScreenOverlaysMenu      // New submenu for Overlays
+	ScreenBackupMenu
 	ScreenSyncCatalog
 	ScreenSettingsMenu      // New Settings menu replacing Backup/Revert/Purge
 
@@ -24,6 +25,9 @@ const (
 	ScreenThemeDownloading
 	ScreenThemeApplyConfirm
 	ScreenThemeApplying
+
+    ScreenThemeGallery Screen = iota // Add this if it doesn't exist yet
+
 
 	// Overlay sub-screens
 	ScreenInstalledOverlays // New screen for installed overlays
@@ -48,6 +52,15 @@ const (
 	ScreenRestoreOverlayGallery // Renamed
 	ScreenRestoreOverlayConfirm // Renamed
 	ScreenRestoreOverlayApplying // Renamed
+
+    ScreenOverlayGallery
+    ScreenRevertMenu
+    ScreenRevertThemeGallery
+    ScreenRevertThemeConfirm
+    ScreenRevertThemeApplying
+    ScreenRevertOverlayGallery
+    ScreenRevertOverlayConfirm
+    ScreenRevertOverlayApplying
 
 	// Purge screens
 	ScreenPurgeConfirm
@@ -79,6 +92,8 @@ type ScreenEnum struct {
 	OverlayApplyConfirm    Screen
 	OverlayApplying        Screen
 
+    ThemeGallery Screen
+
 	// Settings sub-screens
 	RestoreMenu           Screen
 	BackupThemeConfirm    Screen
@@ -86,6 +101,17 @@ type ScreenEnum struct {
 	BackupOverlayConfirm  Screen
 	BackupOverlayCreating Screen
 	BackupAutoToggle      Screen
+
+    // Add these fields:
+    BackupMenu            Screen
+    OverlayGallery        Screen
+    RevertMenu            Screen
+    RevertThemeGallery    Screen
+    RevertThemeConfirm    Screen
+    RevertThemeApplying   Screen
+    RevertOverlayGallery  Screen
+    RevertOverlayConfirm  Screen
+    RevertOverlayApplying Screen
 
 	// Restore sub-screens (renamed from Revert)
 	RestoreThemeGallery    Screen
@@ -132,6 +158,8 @@ var Screens = ScreenEnum{
 	OverlayApplyConfirm:    ScreenOverlayApplyConfirm,
 	OverlayApplying:        ScreenOverlayApplying,
 
+    ThemeGallery: ScreenThemeGallery,
+
 	// Settings sub-screens
 	RestoreMenu:           ScreenRestoreMenu,
 	BackupThemeConfirm:    ScreenBackupThemeConfirm,
@@ -139,6 +167,17 @@ var Screens = ScreenEnum{
 	BackupOverlayConfirm:  ScreenBackupOverlayConfirm,
 	BackupOverlayCreating: ScreenBackupOverlayCreating,
 	BackupAutoToggle:      ScreenBackupAutoToggle,
+
+    // Add these initializations:
+    BackupMenu:           ScreenBackupMenu,
+    OverlayGallery:       ScreenOverlayGallery,
+    RevertMenu:           ScreenRevertMenu,
+    RevertThemeGallery:   ScreenRevertThemeGallery,
+    RevertThemeConfirm:   ScreenRevertThemeConfirm,
+    RevertThemeApplying:  ScreenRevertThemeApplying,
+    RevertOverlayGallery: ScreenRevertOverlayGallery,
+    RevertOverlayConfirm: ScreenRevertOverlayConfirm,
+    RevertOverlayApplying: ScreenRevertOverlayApplying,
 
 	// Restore sub-screens (renamed from Revert)
 	RestoreThemeGallery:    ScreenRestoreThemeGallery,

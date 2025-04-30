@@ -7,6 +7,8 @@ import (
 	"thememanager/internal/app"
 	"thememanager/internal/logging"
 	"thememanager/internal/ui"
+	"thememanager/internal/themes"
+
 )
 
 // OverlaysMenuScreen displays the overlays submenu screen
