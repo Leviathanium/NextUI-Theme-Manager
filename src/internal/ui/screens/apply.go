@@ -19,13 +19,15 @@ func ShowApplyThemeScreen() (string, int) {
 	if err != nil {
 		app.LogDebug("Error listing themes: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error listing themes: %s", err), "3")
-		return "", 1
+		return "", 2  // Exit code 2 signals a controlled return to main menu
 	}
 
 	// Check if we have any themes
 	if len(themeNames) == 0 {
-		ui.ShowMessage("No themes available. Please download or import themes first.", "3")
-		return "", 1
+		app.LogDebug("No themes available")
+		// Show message and wait for user acknowledgment
+		ui.ShowMessage("No themes available. Please download or import themes first.", "0")
+		return "", 2  // Return to main menu with proper exit code
 	}
 
 	// Build menu items

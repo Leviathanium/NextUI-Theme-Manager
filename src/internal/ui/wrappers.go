@@ -109,6 +109,7 @@ func ShowMenu(menuItems string, title string, extraArgs ...string) (string, int)
 }
 
 // ShowMessage displays a message using minui-presenter
+// Modified ShowMessage function to better handle timeouts
 func ShowMessage(message string, timeout string) (string, int) {
 	app.LogDebug("Showing message: %s (timeout: %s)", message, timeout)
 
@@ -142,6 +143,12 @@ func ShowMessage(message string, timeout string) (string, int) {
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode = exitError.ExitCode()
+			// Handle timeout exit code (124) as a normal exit
+			if exitCode == 124 {
+				app.LogDebug("Message timed out (normal behavior)")
+				// Convert timeout to 0 (success) for consistent handling
+				exitCode = 0
+			}
 		} else {
 			app.LogDebug("Error running minui-presenter: %v", err)
 			return "", 1
@@ -157,7 +164,7 @@ func ShowMessage(message string, timeout string) (string, int) {
 	return "", exitCode
 }
 
-// ShowConfirmDialog displays a yes/no confirmation dialog
+// Modified ShowConfirmDialog function without the --selected parameter
 func ShowConfirmDialog(message string) (string, int) {
 	app.LogDebug("Showing confirm dialog: %s", message)
 
@@ -177,8 +184,8 @@ func ShowConfirmDialog(message string) (string, int) {
 	inputPath := tempFile.Name()
 	defer os.Remove(inputPath)
 
-	// Write Yes/No options
-	_, err = tempFile.WriteString("Yes\nNo")
+	// Write Yes/No options - place "No" first so it's selected by default
+	_, err = tempFile.WriteString("No\nYes")
 	if err != nil {
 		app.LogDebug("Error writing to temp file: %v", err)
 		tempFile.Close()
@@ -199,13 +206,12 @@ func ShowConfirmDialog(message string) (string, int) {
 	// Path to minui-list
 	minuiListPath := filepath.Join(cwd, "minui-list")
 
-	// Create command
+	// Create command - removed --selected parameter
 	args := []string{
 		"--format", "text",
 		"--title", message,
 		"--file", inputPath,
 		"--write-location", outputPath,
-		"--selected", "1", // Default to "No" for safety
 	}
 
 	cmd := exec.Command(minuiListPath, args...)

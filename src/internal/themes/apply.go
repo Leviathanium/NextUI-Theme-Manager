@@ -152,6 +152,8 @@ func CreateBackup(backupName string) error {
 	return nil
 }
 
+// Modified RestoreBackup function in src/internal/themes/apply.go
+
 // RestoreBackup restores a theme from a backup in the Backups directory
 func RestoreBackup(backupName string) error {
 	app.LogDebug("Restoring theme from backup: %s", backupName)
@@ -174,12 +176,17 @@ func RestoreBackup(backupName string) error {
 
 	// Check if system theme directory exists
 	if !SystemThemeExists() {
-		return fmt.Errorf("system theme directory does not exist: %s", SystemThemeDir)
+		// If system theme directory doesn't exist, create it
+		if err := os.MkdirAll(SystemThemeDir, 0755); err != nil {
+			return fmt.Errorf("failed to create system theme directory: %w", err)
+		}
 	}
 
-	// Backup current theme first (just in case)
-	if err := CreateBackup("auto_before_restore"); err != nil {
-		app.LogDebug("Warning: Failed to create automatic backup: %v", err)
+	// Create additional backup of current theme (just in case)
+	backupTimestamp := time.Now().Format("20060102_150405")
+	autoBackupName := fmt.Sprintf("auto_before_restore_%s", backupTimestamp)
+	if err := CreateBackup(autoBackupName); err != nil {
+		app.LogDebug("Warning: Failed to create automatic backup before restore: %v", err)
 		// Continue anyway, but log the warning
 	}
 
@@ -188,23 +195,14 @@ func RestoreBackup(backupName string) error {
 		return fmt.Errorf("failed to remove existing theme directory: %w", err)
 	}
 
-	// Create theme directory
+	// Create system theme directory
 	if err := os.MkdirAll(SystemThemeDir, 0755); err != nil {
-		return fmt.Errorf("failed to create theme directory: %w", err)
+		return fmt.Errorf("failed to create system theme directory: %w", err)
 	}
 
-	// Copy theme files from backup
-	// The actual theme content is in the "Theme" subdirectory
-	themeBackupPath := filepath.Join(backupPath, "Theme")
-
-	// Check if Theme subdirectory exists
-	if _, err := os.Stat(themeBackupPath); os.IsNotExist(err) {
-		// If Theme subdirectory doesn't exist, assume the full backup is the content
-		themeBackupPath = backupPath
-	}
-
-	// Copy all files
-	if err := CopyDirectory(themeBackupPath, SystemThemeDir); err != nil {
+	// FIXED: Copy directly from the backup path to the system theme directory
+	// without looking for a Theme subdirectory
+	if err := CopyDirectory(backupPath, SystemThemeDir); err != nil {
 		return fmt.Errorf("failed to copy theme files from backup: %w", err)
 	}
 

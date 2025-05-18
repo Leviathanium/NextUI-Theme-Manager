@@ -125,9 +125,11 @@ func GetThemePath(themeName string) string {
 
 // GetBackupPath returns the full path to a theme backup
 func GetBackupPath(backupName string) string {
+	// Ensure the name has the .theme extension
 	if !strings.HasSuffix(backupName, ThemeExtension) {
 		backupName += ThemeExtension
 	}
+	// Explicitly use the Backups directory
 	return filepath.Join(app.GetWorkingDir(), "Backups", backupName)
 }
 

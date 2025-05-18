@@ -8,23 +8,44 @@ import (
 	"sort"
 	"strings"
 	"time"
-
+    "strconv"
 	"thememanager/internal/app"
 )
 
+// Modified ExportTheme function in src/internal/themes/backup.go
+
 // ExportTheme exports the current system theme to a new theme package
+// with sequential numbering (backup1.theme, backup2.theme, etc.)
 func ExportTheme(themeName string) error {
-	app.LogDebug("Exporting system theme to: %s", themeName)
+	app.LogDebug("Exporting system theme as backup")
 
 	// Check if system theme directory exists
 	if !SystemThemeExists() {
 		return fmt.Errorf("system theme directory does not exist: %s", SystemThemeDir)
 	}
 
-	// Generate theme name with timestamp if not provided
+	// Generate sequential backup name if not provided
 	if themeName == "" {
-		timestamp := time.Now().Format("20060102_150405")
-		themeName = fmt.Sprintf("export_%s", timestamp)
+		// Get list of existing backups to determine next number
+		backups, err := ListBackups()
+		if err != nil {
+			return fmt.Errorf("failed to list existing backups: %w", err)
+		}
+
+		// Find the highest number used so far
+		highestNum := 0
+		for _, backup := range backups {
+			// Check if the backup name matches our pattern (backup1, backup2, etc.)
+			if strings.HasPrefix(backup, "backup") {
+				numStr := strings.TrimPrefix(backup, "backup")
+				if num, err := strconv.Atoi(numStr); err == nil && num > highestNum {
+					highestNum = num
+				}
+			}
+		}
+
+		// Next number is highest + 1
+		themeName = fmt.Sprintf("backup%d", highestNum+1)
 	}
 
 	// Make sure it has .theme extension
@@ -32,61 +53,40 @@ func ExportTheme(themeName string) error {
 		themeName += ThemeExtension
 	}
 
-	// Get export path
-	exportPath := filepath.Join(app.GetWorkingDir(), "Themes", themeName)
+	// FIXED: Use Backups directory instead of Themes directory
+	exportPath := filepath.Join(app.GetWorkingDir(), "Backups", themeName)
 
-	// Check if theme already exists
+	// Check if backup already exists
 	if _, err := os.Stat(exportPath); err == nil {
 		// Already exists, ask user for confirmation to overwrite
 		// For now, just return an error
-		return fmt.Errorf("theme already exists: %s", themeName)
+		return fmt.Errorf("backup already exists: %s", themeName)
 	}
 
-	// Create theme directory
+	// Create backup directory
 	if err := os.MkdirAll(exportPath, 0755); err != nil {
-		return fmt.Errorf("failed to create theme directory: %w", err)
+		return fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
-	// Create Theme subdirectory in export
-	themeExportPath := filepath.Join(exportPath, "Theme")
-	if err := os.MkdirAll(themeExportPath, 0755); err != nil {
-		return fmt.Errorf("failed to create Theme subdirectory in export: %w", err)
-	}
-
+	// FIXED: Copy directly to the export path without creating a Theme subdirectory
 	// Copy all files from system theme to export
-	if err := CopyDirectory(SystemThemeDir, themeExportPath); err != nil {
-		return fmt.Errorf("failed to copy system theme to export: %w", err)
+	if err := CopyDirectory(SystemThemeDir, exportPath); err != nil {
+		return fmt.Errorf("failed to copy system theme to backup: %w", err)
 	}
 
-	// Create manifest for export
+	// Create manifest for backup
 	manifest := CreateDefaultManifest(
 		strings.TrimSuffix(themeName, ThemeExtension),
 		"Theme Manager",
 	)
 	manifest.Description = "Exported system theme"
 
-	// Write manifest to export
+	// Write manifest to backup
 	if err := WriteManifest(manifest, exportPath); err != nil {
-		return fmt.Errorf("failed to write export manifest: %w", err)
+		return fmt.Errorf("failed to write backup manifest: %w", err)
 	}
 
-	// Copy current theme preview as export preview if available
-	// First try to find a preview.png in the theme directory
-	systemPreviewPath := filepath.Join(SystemThemeDir, ThemePreviewFile)
-	if _, err := os.Stat(systemPreviewPath); err == nil {
-		// Copy preview to export
-		exportPreviewPath := filepath.Join(exportPath, ThemePreviewFile)
-		if err := CopyFile(systemPreviewPath, exportPreviewPath); err != nil {
-			app.LogDebug("Warning: Failed to copy theme preview to export: %v", err)
-			// Continue anyway, preview is not critical
-		}
-	} else {
-		// If no preview in theme directory, create a placeholder
-		// In a real implementation, we might take a screenshot or generate a preview
-		app.LogDebug("No theme preview found, placeholder would be created here")
-	}
-
-	app.LogDebug("Theme exported successfully: %s", themeName)
+	app.LogDebug("Backup created successfully: %s", themeName)
 	return nil
 }
 
