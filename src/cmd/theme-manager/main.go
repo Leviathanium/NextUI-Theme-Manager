@@ -1,4 +1,3 @@
-// cmd/theme-manager/main.go
 package main
 
 import (
@@ -7,7 +6,8 @@ import (
 	"runtime"
 
 	"thememanager/internal/app"
-	"thememanager/internal/ui"
+	"thememanager/internal/themes"
+	"thememanager/internal/ui/screens"
 )
 
 func main() {
@@ -43,6 +43,12 @@ func main() {
 		return
 	}
 
+	// Initialize theme system
+	if err := themes.EnsureDirectories(); err != nil {
+		app.LogDebug("Warning: Failed to ensure theme directories: %v", err)
+		// Continue anyway, some functionality might still work
+	}
+
 	app.LogDebug("Starting main loop")
 
 	// Set initial screen
@@ -56,112 +62,122 @@ func main() {
 
 		// Get current screen
 		currentScreen := app.GetCurrentScreen()
-		app.LogDebug("Current screen: %d", currentScreen)
+		app.LogDebug("Current screen: %s", app.ScreenName(currentScreen))
 
 		// Process current screen
 		switch currentScreen {
+		// Main Menu
 		case app.ScreenMainMenu:
-			selection, exitCode = showMainMenu()
-			nextScreen = handleMainMenu(selection, exitCode)
+			selection, exitCode = screens.ShowMainMenu()
+			nextScreen = screens.HandleMainMenu(selection, exitCode)
 
-		case app.ScreenSettings:
-			selection, exitCode = showSettingsMenu()
-			nextScreen = handleSettingsMenu(selection, exitCode)
-
+		// About Screen
 		case app.ScreenAbout:
-			selection, exitCode = showAboutScreen()
-			nextScreen = handleAboutScreen(selection, exitCode)
+			selection, exitCode = screens.ShowAboutScreen()
+			nextScreen = screens.HandleAboutScreen(selection, exitCode)
+
+		// Apply Theme Screens
+		case app.ScreenApplyTheme:
+			selection, exitCode = screens.ShowApplyThemeScreen()
+			nextScreen = screens.HandleApplyThemeScreen(selection, exitCode)
+
+		case app.ScreenApplyThemeConfirm:
+			selection, exitCode = screens.ShowApplyThemeConfirmScreen()
+			nextScreen = screens.HandleApplyThemeConfirmScreen(selection, exitCode)
+
+		case app.ScreenApplyingTheme:
+			selection, exitCode = screens.ShowApplyingThemeScreen()
+			nextScreen = screens.HandleApplyingThemeScreen(selection, exitCode)
+
+		case app.ScreenThemeApplied:
+			selection, exitCode = screens.ShowThemeAppliedScreen()
+			nextScreen = screens.HandleThemeAppliedScreen(selection, exitCode)
+
+		// Download Theme Screens
+		case app.ScreenDownloadTheme:
+			selection, exitCode = screens.ShowDownloadThemeScreen()
+			nextScreen = screens.HandleDownloadThemeScreen(selection, exitCode)
+
+		case app.ScreenCatalogNotSynced:
+			selection, exitCode = screens.ShowCatalogNotSyncedScreen()
+			nextScreen = screens.HandleCatalogNotSyncedScreen(selection, exitCode)
+
+		case app.ScreenDownloadThemeConfirm:
+			selection, exitCode = screens.ShowDownloadThemeConfirmScreen()
+			nextScreen = screens.HandleDownloadThemeConfirmScreen(selection, exitCode)
+
+		case app.ScreenDownloadingTheme:
+			selection, exitCode = screens.ShowDownloadingThemeScreen()
+			nextScreen = screens.HandleDownloadingThemeScreen(selection, exitCode)
+
+		case app.ScreenThemeDownloaded:
+			selection, exitCode = screens.ShowThemeDownloadedScreen()
+			nextScreen = screens.HandleThemeDownloadedScreen(selection, exitCode)
+
+		// Sync Catalog Screens
+		case app.ScreenSyncCatalog:
+			selection, exitCode = screens.ShowSyncCatalogScreen()
+			nextScreen = screens.HandleSyncCatalogScreen(selection, exitCode)
+
+		case app.ScreenSyncingCatalog:
+			selection, exitCode = screens.ShowSyncingCatalogScreen()
+			nextScreen = screens.HandleSyncingCatalogScreen(selection, exitCode)
+
+		case app.ScreenSyncComplete:
+			selection, exitCode = screens.ShowSyncCompleteScreen()
+			nextScreen = screens.HandleSyncCompleteScreen(selection, exitCode)
+
+		case app.ScreenSyncFailed:
+			selection, exitCode = screens.ShowSyncFailedScreen()
+			nextScreen = screens.HandleSyncFailedScreen(selection, exitCode)
+
+		// Backups Menu Screens
+		case app.ScreenBackupsMenu:
+			selection, exitCode = screens.ShowBackupsMenuScreen()
+			nextScreen = screens.HandleBackupsMenuScreen(selection, exitCode)
+
+		// Export Theme Screens
+		case app.ScreenExportTheme:
+			selection, exitCode = screens.ShowExportThemeScreen()
+			nextScreen = screens.HandleExportThemeScreen(selection, exitCode)
+
+		case app.ScreenExportingTheme:
+			selection, exitCode = screens.ShowExportingThemeScreen()
+			nextScreen = screens.HandleExportingThemeScreen(selection, exitCode)
+
+		case app.ScreenThemeExported:
+			selection, exitCode = screens.ShowThemeExportedScreen()
+			nextScreen = screens.HandleThemeExportedScreen(selection, exitCode)
+
+		// Restore Theme Screens
+		case app.ScreenRestoreTheme:
+			selection, exitCode = screens.ShowRestoreThemeScreen()
+			nextScreen = screens.HandleRestoreThemeScreen(selection, exitCode)
+
+		case app.ScreenRestoreThemeConfirm:
+			selection, exitCode = screens.ShowRestoreThemeConfirmScreen()
+			nextScreen = screens.HandleRestoreThemeConfirmScreen(selection, exitCode)
+
+		case app.ScreenRestoringTheme:
+			selection, exitCode = screens.ShowRestoringThemeScreen()
+			nextScreen = screens.HandleRestoringThemeScreen(selection, exitCode)
+
+		case app.ScreenThemeRestored:
+			selection, exitCode = screens.ShowThemeRestoredScreen()
+			nextScreen = screens.HandleThemeRestoredScreen(selection, exitCode)
 
 		default:
-			app.LogDebug("Unknown screen: %d, defaulting to main menu", currentScreen)
+			app.LogDebug("Unknown screen: %s, defaulting to main menu", app.ScreenName(currentScreen))
 			nextScreen = app.ScreenMainMenu
 		}
 
 		// Update the current screen
 		app.SetCurrentScreen(nextScreen)
-	}
-}
 
-// showMainMenu displays the main menu
-func showMainMenu() (string, int) {
-	app.LogDebug("Showing main menu")
-
-	menuItems := "Themes\nSettings\nAbout"
-
-	return ui.ShowMenu(
-		menuItems,
-		"Theme Manager",
-		"--cancel-text", "QUIT",
-	)
-}
-
-// handleMainMenu processes the main menu selection
-func handleMainMenu(selection string, exitCode int) app.Screen {
-	app.LogDebug("Main menu selection: %s, exit code: %d", selection, exitCode)
-
-	if exitCode == 0 {
-		// User selected an option
-		switch selection {
-		case "Themes":
-			return app.ScreenThemes
-		case "Settings":
-			return app.ScreenSettings
-		case "About":
-			return app.ScreenAbout
-		default:
-			return app.ScreenMainMenu
+		// Special case for exit
+		if exitCode == 1 || exitCode == 2 && currentScreen == app.ScreenMainMenu {
+			app.LogDebug("User exited the application")
+			os.Exit(0)
 		}
-	} else if exitCode == 1 || exitCode == 2 {
-		// User pressed cancel/back/exit
-		// Exit the application
-		app.LogDebug("User exited the application")
-		os.Exit(0)
 	}
-
-	return app.ScreenMainMenu
-}
-
-// showSettingsMenu displays the settings menu
-func showSettingsMenu() (string, int) {
-	app.LogDebug("Showing settings menu")
-
-	menuItems := "Setting 1\nSetting 2\nSetting 3"
-
-	return ui.ShowMenu(
-		menuItems,
-		"Settings",
-		"--cancel-text", "BACK",
-	)
-}
-
-// handleSettingsMenu processes the settings menu selection
-func handleSettingsMenu(selection string, exitCode int) app.Screen {
-	app.LogDebug("Settings menu selection: %s, exit code: %d", selection, exitCode)
-
-	if exitCode == 0 {
-		// User selected a setting
-		ui.ShowMessage("Selected: " + selection, "2")
-		return app.ScreenSettings
-	} else if exitCode == 1 || exitCode == 2 {
-		// User pressed cancel/back
-		return app.ScreenMainMenu
-	}
-
-	return app.ScreenSettings
-}
-
-// showAboutScreen displays the about screen
-func showAboutScreen() (string, int) {
-	app.LogDebug("Showing about screen")
-
-	ui.ShowMessage("Theme Manager v1.0\nCreated for MinUI", "3")
-
-	// No selection, just return empty string and success code
-	return "", 0
-}
-
-// handleAboutScreen processes the about screen
-func handleAboutScreen(selection string, exitCode int) app.Screen {
-	// After showing the about message, return to main menu
-	return app.ScreenMainMenu
 }
