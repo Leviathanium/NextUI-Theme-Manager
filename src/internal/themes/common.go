@@ -11,11 +11,11 @@ import (
 
 // Constants for file extensions and paths
 const (
-	ThemeExtension      = ".theme"
-	ThemeManifestFile   = "manifest.yml"
-	ThemePreviewFile    = "preview.png"
-	SystemThemeDir      = "/mnt/SDCARD/Theme"
-	BackupThemeNameFmt  = "backup_%s.theme"
+    ThemeExtension      = ".theme"
+    ThemeManifestFile   = "manifest.yml"
+    ThemePreviewFile    = "preview.png"
+    SystemThemeDir      = "/mnt/SDCARD/Theme"
+    ThemeBackupNameFmt  = "backup_%s"  // Format string for backup names
 )
 
 // EnsureDirectories creates all required directories for the application

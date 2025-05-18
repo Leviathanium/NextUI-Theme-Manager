@@ -101,8 +101,6 @@ func CreateDefaultManifest(name, author string) *ThemeManifest {
 // ReadOrCreateManifest reads a manifest from a theme path,
 // or creates a default one if it doesn't exist
 func ReadOrCreateManifest(themePath, themeName, author string) (*ThemeManifest, error) {
-	manifestPath := filepath.Join(themePath, ThemeManifestFile)
-
 	// Try to read existing manifest
 	manifest, err := ReadManifest(themePath)
 	if err == nil {

@@ -1,10 +1,14 @@
-// internal/ui/screens/backups.go
+// Fixes for src/internal/ui/screens/backups.go
+
 package screens
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	"thememanager/internal/app"
+	"thememanager/internal/themes"
 	"thememanager/internal/ui"
 )
 
@@ -48,9 +52,6 @@ func HandleBackupsMenuScreen(selection string, exitCode int) app.Screen {
 	return app.ScreenBackupsMenu
 }
 
-// Modified file: src/internal/ui/screens/backups.go
-// Update the export and restore functions to use the actual theme management code
-
 // ShowExportThemeScreen displays the export theme confirmation screen
 func ShowExportThemeScreen() (string, int) {
 	app.LogDebug("Showing export theme screen")
@@ -62,6 +63,26 @@ func ShowExportThemeScreen() (string, int) {
 	}
 
 	return ui.ShowConfirmDialog("Export current system theme as backup?")
+}
+
+// HandleExportThemeScreen processes the export theme confirmation
+func HandleExportThemeScreen(selection string, exitCode int) app.Screen {
+	app.LogDebug("HandleExportThemeScreen called with selection: '%s', exitCode: %d", selection, exitCode)
+
+	if exitCode == 0 && selection == "Yes" {
+		// User confirmed - proceed to exporting
+		return app.ScreenExportingTheme
+	} else {
+		// User cancelled
+		return app.ScreenBackupsMenu
+	}
+}
+
+// ShowExportingThemeScreen displays the export progress screen
+func ShowExportingThemeScreen() (string, int) {
+	app.LogDebug("Showing exporting theme screen")
+
+	return ui.ShowMessage("Exporting current theme...", "2")
 }
 
 // HandleExportingThemeScreen processes the export operation
@@ -99,6 +120,14 @@ func ShowThemeExportedScreen() (string, int) {
 	)
 }
 
+// HandleThemeExportedScreen processes the theme exported screen
+func HandleThemeExportedScreen(selection string, exitCode int) app.Screen {
+	app.LogDebug("HandleThemeExportedScreen called with exitCode: %d", exitCode)
+
+	// Return to backups menu after showing success message
+	return app.ScreenBackupsMenu
+}
+
 // ShowRestoreThemeScreen displays the theme selection screen for restoring
 func ShowRestoreThemeScreen() (string, int) {
 	app.LogDebug("Showing restore theme screen")
@@ -129,67 +158,6 @@ func ShowRestoreThemeScreen() (string, int) {
 		} else {
 			menuItems = append(menuItems, backupName)
 		}
-	}
-
-	return ui.ShowMenu(
-		strings.Join(menuItems, "\n"),
-		"Select Backup to Restore",
-		"--cancel-text", "BACK",
-	)
-}
-
-// HandleRestoringThemeScreen processes the restoring operation
-func HandleRestoringThemeScreen(selection string, exitCode int) app.Screen {
-	app.LogDebug("HandleRestoringThemeScreen called with exitCode: %d", exitCode)
-
-	selectedBackup := app.GetSelectedItem()
-
-	// Extract backup name from selection (remove description part if present)
-	backupName := selectedBackup
-	if idx := strings.Index(backupName, " - "); idx > 0 {
-		backupName = backupName[:idx]
-	}
-
-	// Restore the backup
-	err := themes.RestoreBackup(backupName)
-
-	if err != nil {
-		app.LogDebug("Error restoring backup: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error restoring backup: %s", err), "3")
-	}
-
-	return app.ScreenThemeRestored
-}
-
-// ShowThemeExportedScreen displays the theme exported success screen
-func ShowThemeExportedScreen() (string, int) {
-	app.LogDebug("Showing theme exported screen")
-
-	// In the actual implementation, we would get the actual backup file path
-	backupPath := "backup_1.theme"
-
-	return ui.ShowMessage("Theme exported successfully to:\n" + backupPath, "2")
-}
-
-// HandleThemeExportedScreen processes the theme exported screen
-func HandleThemeExportedScreen(selection string, exitCode int) app.Screen {
-	app.LogDebug("HandleThemeExportedScreen called with exitCode: %d", exitCode)
-
-	// Return to backups menu after showing success message
-	return app.ScreenBackupsMenu
-}
-
-// ShowRestoreThemeScreen displays the theme selection screen for restoring
-func ShowRestoreThemeScreen() (string, int) {
-	app.LogDebug("Showing restore theme screen")
-
-	// This is a placeholder - later we'll implement a gallery view
-	// showing all available theme backups in the Backups directory
-
-	menuItems := []string{
-		"Backup 1",
-		"Backup 2",
-		"Backup 3",
 	}
 
 	return ui.ShowMenu(
@@ -248,8 +216,21 @@ func ShowRestoringThemeScreen() (string, int) {
 func HandleRestoringThemeScreen(selection string, exitCode int) app.Screen {
 	app.LogDebug("HandleRestoringThemeScreen called with exitCode: %d", exitCode)
 
-	// Theme restoration would happen here in the actual implementation
-	// For now, just show success message
+	selectedBackup := app.GetSelectedItem()
+
+	// Extract backup name from selection (remove description part if present)
+	backupName := selectedBackup
+	if idx := strings.Index(backupName, " - "); idx > 0 {
+		backupName = backupName[:idx]
+	}
+
+	// Restore the backup
+	err := themes.RestoreBackup(backupName)
+
+	if err != nil {
+		app.LogDebug("Error restoring backup: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error restoring backup: %s", err), "3")
+	}
 
 	return app.ScreenThemeRestored
 }

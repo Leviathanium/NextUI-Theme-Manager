@@ -1,10 +1,12 @@
-// internal/ui/screens/apply.go
+// src/internal/ui/screens/apply.go
 package screens
 
 import (
+	"fmt"
 	"strings"
 
 	"thememanager/internal/app"
+	"thememanager/internal/themes"
 	"thememanager/internal/ui"
 )
 
@@ -12,13 +14,32 @@ import (
 func ShowApplyThemeScreen() (string, int) {
 	app.LogDebug("Showing apply theme screen")
 
-	// This is a placeholder - later we'll implement a gallery view
-	// showing all available themes in the Themes directory
+	// Get list of available themes
+	themeNames, err := themes.ListThemes()
+	if err != nil {
+		app.LogDebug("Error listing themes: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error listing themes: %s", err), "3")
+		return "", 1
+	}
 
-	menuItems := []string{
-		"Theme 1",
-		"Theme 2",
-		"Theme 3",
+	// Check if we have any themes
+	if len(themeNames) == 0 {
+		ui.ShowMessage("No themes available. Please download or import themes first.", "3")
+		return "", 1
+	}
+
+	// Build menu items
+	var menuItems []string
+	for _, themeName := range themeNames {
+		// Try to get author from manifest
+		themePath := themes.GetThemePath(themeName)
+		manifest, err := themes.ReadManifest(themePath)
+
+		if err == nil && manifest.Author != "" {
+			menuItems = append(menuItems, fmt.Sprintf("%s by %s", themeName, manifest.Author))
+		} else {
+			menuItems = append(menuItems, themeName)
+		}
 	}
 
 	return ui.ShowMenu(
@@ -65,43 +86,12 @@ func HandleApplyThemeConfirmScreen(selection string, exitCode int) app.Screen {
 	}
 }
 
-// ShowApplyThemeScreen displays the theme selection screen for applying
-func ShowApplyThemeScreen() (string, int) {
-	app.LogDebug("Showing apply theme screen")
+// ShowApplyingThemeScreen displays the theme applying progress screen
+func ShowApplyingThemeScreen() (string, int) {
+	app.LogDebug("Showing applying theme screen")
 
-	// Get list of available themes
-	themeNames, err := themes.ListThemes()
-	if err != nil {
-		app.LogDebug("Error listing themes: %v", err)
-		ui.ShowMessage(fmt.Sprintf("Error listing themes: %s", err), "3")
-		return "", 1
-	}
-
-	// Check if we have any themes
-	if len(themeNames) == 0 {
-		ui.ShowMessage("No themes available. Please download or import themes first.", "3")
-		return "", 1
-	}
-
-	// Build menu items
-	var menuItems []string
-	for _, themeName := range themeNames {
-		// Try to get author from manifest
-		themePath := themes.GetThemePath(themeName)
-		manifest, err := themes.ReadManifest(themePath)
-
-		if err == nil && manifest.Author != "" {
-			menuItems = append(menuItems, fmt.Sprintf("%s by %s", themeName, manifest.Author))
-		} else {
-			menuItems = append(menuItems, themeName)
-		}
-	}
-
-	return ui.ShowMenu(
-		strings.Join(menuItems, "\n"),
-		"Select Theme to Apply",
-		"--cancel-text", "BACK",
-	)
+	selectedTheme := app.GetSelectedItem()
+	return ui.ShowMessage("Applying theme '" + selectedTheme + "'...", "2")
 }
 
 // HandleApplyingThemeScreen processes the applying operation
