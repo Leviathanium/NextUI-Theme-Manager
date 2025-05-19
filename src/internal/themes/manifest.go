@@ -1,4 +1,6 @@
-// internal/themes/manifest.go
+// File: src/internal/themes/manifest.go
+// This is a complete replacement for the file
+
 package themes
 
 import (
@@ -6,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 	"thememanager/internal/app"
@@ -13,20 +16,26 @@ import (
 
 // ThemeManifest represents the structure of a theme's manifest.yml file
 type ThemeManifest struct {
-	Name        string    `yaml:"name"`
-	Author      string    `yaml:"author"`
-	Version     string    `yaml:"version"`
-	Description string    `yaml:"description"`
-	CreatedDate time.Time `yaml:"created_date"`
-	UpdatedDate time.Time `yaml:"updated_date"`
-	Tags        []string  `yaml:"tags,omitempty"`
+	Name          string    `yaml:"name"`
+	Author        string    `yaml:"author"`
+	Description   string    `yaml:"description"`
+	RepositoryURL string    `yaml:"repository_url"`
+	Commit        string    `yaml:"commit"`
+	Branch        string    `yaml:"branch"`
+	Device        string    `yaml:"device"`
+	Systems       []string  `yaml:"systems"`
+	Version       string    `yaml:"version"`
+	CreatedDate   time.Time `yaml:"created_date"`
+	UpdatedDate   time.Time `yaml:"updated_date"`
+	Tags          []string  `yaml:"tags,omitempty"`
 }
 
 // ReadManifest reads and parses a theme's manifest file
-func ReadManifest(themePath string) (*ThemeManifest, error) {
+// Use strictValidation=true when applying themes, false when just displaying
+func ReadManifest(themePath string, strictValidation bool) (*ThemeManifest, error) {
 	manifestPath := filepath.Join(themePath, ThemeManifestFile)
 
-	app.LogDebug("Reading manifest from %s", manifestPath)
+	app.LogDebug("Reading manifest from %s (strict validation: %v)", manifestPath, strictValidation)
 
 	// Check if manifest file exists
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
@@ -45,13 +54,70 @@ func ReadManifest(themePath string) (*ThemeManifest, error) {
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
-	// Validate manifest
+	// Always require name at minimum
 	if manifest.Name == "" {
 		return nil, fmt.Errorf("manifest is missing required 'name' field")
 	}
 
+	// Only validate all fields if strict validation is enabled
+	if strictValidation {
+		if err := ValidateManifest(&manifest); err != nil {
+			return nil, err
+		}
+	}
+
 	app.LogDebug("Successfully read manifest for theme %s by %s", manifest.Name, manifest.Author)
 	return &manifest, nil
+}
+
+// ValidateManifest performs full validation of all required fields
+func ValidateManifest(manifest *ThemeManifest) error {
+	var missingFields []string
+
+	if manifest.Name == "" {
+		missingFields = append(missingFields, "name")
+	}
+
+	if manifest.Author == "" {
+		missingFields = append(missingFields, "author")
+	}
+
+	if manifest.Description == "" {
+		missingFields = append(missingFields, "description")
+	}
+
+	if manifest.RepositoryURL == "" {
+		missingFields = append(missingFields, "repository_url")
+	} else if !strings.HasPrefix(manifest.RepositoryURL, "https://github.com/") {
+		return fmt.Errorf("repository_url must be a GitHub URL starting with https://github.com/")
+	}
+
+	if manifest.Commit == "" {
+		missingFields = append(missingFields, "commit")
+	}
+
+	if manifest.Branch == "" {
+		missingFields = append(missingFields, "branch")
+	}
+
+	if manifest.Device == "" {
+		missingFields = append(missingFields, "device")
+	}
+
+	if manifest.Systems == nil || len(manifest.Systems) == 0 {
+		missingFields = append(missingFields, "systems")
+	}
+
+	if len(missingFields) > 0 {
+		return fmt.Errorf("manifest is missing required fields: %s", strings.Join(missingFields, ", "))
+	}
+
+	return nil
+}
+
+// IsManifestValid checks if a manifest is valid without returning detailed errors
+func IsManifestValid(manifest *ThemeManifest) bool {
+	return ValidateManifest(manifest) == nil
 }
 
 // WriteManifest writes a theme manifest to file
@@ -88,21 +154,26 @@ func CreateDefaultManifest(name, author string) *ThemeManifest {
 	now := time.Now()
 
 	return &ThemeManifest{
-		Name:        name,
-		Author:      author,
-		Version:     "1.0.0",
-		Description: "A theme for the device",
-		CreatedDate: now,
-		UpdatedDate: now,
-		Tags:        []string{},
+		Name:          name,
+		Author:        author,
+		Version:       "1.0.0",
+		Description:   "A theme for the device",
+		CreatedDate:   now,
+		UpdatedDate:   now,
+		Tags:          []string{},
+		RepositoryURL: "https://github.com/username/repository",
+		Commit:        "main",
+		Branch:        "main",
+		Device:        "generic",
+		Systems:       []string{"all"},
 	}
 }
 
 // ReadOrCreateManifest reads a manifest from a theme path,
 // or creates a default one if it doesn't exist
 func ReadOrCreateManifest(themePath, themeName, author string) (*ThemeManifest, error) {
-	// Try to read existing manifest
-	manifest, err := ReadManifest(themePath)
+	// Try to read existing manifest (with non-strict validation)
+	manifest, err := ReadManifest(themePath, false)
 	if err == nil {
 		return manifest, nil
 	}
@@ -132,11 +203,41 @@ func GetThemeInfo(manifest *ThemeManifest) string {
 		info += fmt.Sprintf("\n\n%s", manifest.Description)
 	}
 
+	if manifest.Systems != nil && len(manifest.Systems) > 0 {
+		info += fmt.Sprintf("\n\nSystems: %s", formatSystems(manifest.Systems))
+	}
+
+	if manifest.Device != "" {
+		info += fmt.Sprintf("\n\nDevice: %s", manifest.Device)
+	}
+
+	if manifest.RepositoryURL != "" {
+		info += fmt.Sprintf("\nRepository: %s", manifest.RepositoryURL)
+	}
+
+	if manifest.Branch != "" {
+		info += fmt.Sprintf("\nBranch: %s", manifest.Branch)
+	}
+
 	if len(manifest.Tags) > 0 {
 		info += fmt.Sprintf("\n\nTags: %s", formatTags(manifest.Tags))
 	}
 
 	return info
+}
+
+// Helper function to format systems
+func formatSystems(systems []string) string {
+	if len(systems) == 0 {
+		return ""
+	}
+
+	result := systems[0]
+	for i := 1; i < len(systems); i++ {
+		result += ", " + systems[i]
+	}
+
+	return result
 }
 
 // Helper function to format tags
@@ -151,4 +252,31 @@ func formatTags(tags []string) string {
 	}
 
 	return result
+}
+
+// GenerateManifestTemplate returns a template string for a manifest
+func GenerateManifestTemplate() string {
+	return `# Theme Manifest Template
+name: My Theme Name               # Required: Display name of the theme
+author: Author Name               # Required: Creator of the theme
+description: A detailed description of this theme  # Required: What this theme is about
+version: 1.0.0                    # Version of this theme
+
+# GitHub repository information
+repository_url: https://github.com/username/repository  # Required: GitHub URL
+commit: abc123def456              # Required: Commit hash
+branch: main                      # Required: Branch name
+
+# Platform information
+device: brick                     # Required: Device this theme is for
+systems:                          # Required: List of systems this theme covers
+  - system1
+  - system2
+  - system3
+
+# Optional metadata
+tags:                            # Optional: Tags for categorization
+  - tag1
+  - tag2
+`
 }

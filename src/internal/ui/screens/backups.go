@@ -1,4 +1,5 @@
-// Fixes for src/internal/ui/screens/backups.go
+// File: src/internal/ui/screens/backups.go
+// Updated version for backup screens with proper ReadManifest calls
 
 package screens
 
@@ -6,7 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
+    "path/filepath"
+    "os"
 	"thememanager/internal/app"
 	"thememanager/internal/themes"
 	"thememanager/internal/ui"
@@ -112,7 +114,7 @@ func ShowThemeExportedScreen() (string, int) {
 	app.LogDebug("Showing theme exported screen")
 
 	exportedName := app.GetSelectedItem()
-	exportPath := themes.GetThemePath(exportedName)
+	exportPath := themes.GetBackupPath(exportedName) // Changed to GetBackupPath
 
 	return ui.ShowMessage(
 		fmt.Sprintf("Theme exported successfully to:\n%s", exportPath),
@@ -146,32 +148,44 @@ func ShowRestoreThemeScreen() (string, int) {
 		return "", 1
 	}
 
-	// Build menu items
-	var menuItems []string
+	// Build theme data for gallery
+	var backupDataList []map[string]string
 	for _, backupName := range backupNames {
-		// Try to get author from manifest
 		backupPath := themes.GetBackupPath(backupName)
-		manifest, err := themes.ReadManifest(backupPath)
 
-		if err == nil && manifest.Description != "" {
-			menuItems = append(menuItems, fmt.Sprintf("%s - %s", backupName, manifest.Description))
-		} else {
-			menuItems = append(menuItems, backupName)
+		// Create backup info
+		backupInfo := map[string]string{
+			"name": backupName,
+			"is_valid": "true", // Backups are always considered valid for restore
 		}
+
+		// Try to read manifest - non-strict validation for display
+		manifest, err := themes.ReadManifest(backupPath, false)
+		if err == nil {
+			backupInfo["author"] = manifest.Author
+			backupInfo["description"] = manifest.Description
+		} else {
+			app.LogDebug("Warning: Failed to read manifest for backup %s: %v", backupName, err)
+		}
+
+		// Check if preview exists
+		previewPath := filepath.Join(backupPath, themes.ThemePreviewFile)
+		if _, err := os.Stat(previewPath); err == nil {
+			backupInfo["preview"] = previewPath
+		}
+
+		backupDataList = append(backupDataList, backupInfo)
 	}
 
-	return ui.ShowMenu(
-		strings.Join(menuItems, "\n"),
-		"Select Backup to Restore",
-		"--cancel-text", "BACK",
-	)
+	// Show backups gallery
+	return ui.ShowThemeGallery(backupDataList, "Select Backup to Restore")
 }
 
 // HandleRestoreThemeScreen processes the backup selection
 func HandleRestoreThemeScreen(selection string, exitCode int) app.Screen {
 	app.LogDebug("HandleRestoreThemeScreen called with selection: '%s', exitCode: %d", selection, exitCode)
 
-	if exitCode == 0 {
+	if exitCode == 0 && selection != "" {
 		// User selected a backup
 		app.SetSelectedItem(selection)
 		return app.ScreenRestoreThemeConfirm
@@ -188,7 +202,22 @@ func ShowRestoreThemeConfirmScreen() (string, int) {
 	app.LogDebug("Showing restore theme confirmation screen")
 
 	selectedBackup := app.GetSelectedItem()
-	return ui.ShowConfirmDialog("Restore theme from backup '" + selectedBackup + "'?")
+	backupPath := themes.GetBackupPath(selectedBackup)
+
+	// Try to read manifest for additional info - non-strict for display
+	manifest, err := themes.ReadManifest(backupPath, false)
+
+	var confirmMessage string
+	if err == nil {
+		// Format with manifest details
+		confirmMessage = fmt.Sprintf("Restore theme from backup '%s' created by %s?",
+			manifest.Name, manifest.Author)
+	} else {
+		// Simple confirmation without manifest details
+		confirmMessage = fmt.Sprintf("Restore theme from backup '%s'?", selectedBackup)
+	}
+
+	return ui.ShowConfirmDialog(confirmMessage)
 }
 
 // HandleRestoreThemeConfirmScreen processes the confirmation result

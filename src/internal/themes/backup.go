@@ -1,4 +1,6 @@
-// internal/themes/backup.go
+// File: src/internal/themes/backup.go
+// Complete replacement with updated ReadManifest calls
+
 package themes
 
 import (
@@ -11,8 +13,6 @@ import (
     "strconv"
 	"thememanager/internal/app"
 )
-
-// Modified ExportTheme function in src/internal/themes/backup.go
 
 // ExportTheme exports the current system theme to a new theme package
 // with sequential numbering (backup1.theme, backup2.theme, etc.)
@@ -53,7 +53,7 @@ func ExportTheme(themeName string) error {
 		themeName += ThemeExtension
 	}
 
-	// FIXED: Use Backups directory instead of Themes directory
+	// Use Backups directory instead of Themes directory
 	exportPath := filepath.Join(app.GetWorkingDir(), "Backups", themeName)
 
 	// Check if backup already exists
@@ -68,7 +68,7 @@ func ExportTheme(themeName string) error {
 		return fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
-	// FIXED: Copy directly to the export path without creating a Theme subdirectory
+	// Copy directly to the export path without creating a Theme subdirectory
 	// Copy all files from system theme to export
 	if err := CopyDirectory(SystemThemeDir, exportPath); err != nil {
 		return fmt.Errorf("failed to copy system theme to backup: %w", err)
@@ -168,8 +168,8 @@ func GetThemeList() ([]map[string]string, error) {
 	for _, themeName := range themeNames {
 		themePath := GetThemePath(themeName)
 
-		// Try to read manifest
-		manifest, err := ReadManifest(themePath)
+		// Try to read manifest - use non-strict validation for listing
+		manifest, err := ReadManifest(themePath, false)
 
 		// Create theme info
 		themeInfo := map[string]string{
@@ -181,8 +181,16 @@ func GetThemeList() ([]map[string]string, error) {
 			themeInfo["author"] = manifest.Author
 			themeInfo["version"] = manifest.Version
 			themeInfo["description"] = manifest.Description
+
+			// Check if manifest is valid
+			if IsManifestValid(manifest) {
+				themeInfo["is_valid"] = "true"
+			} else {
+				themeInfo["is_valid"] = "false"
+			}
 		} else {
 			app.LogDebug("Warning: Failed to read manifest for theme %s: %v", themeName, err)
+			themeInfo["is_valid"] = "false"
 		}
 
 		// Check if preview exists
@@ -211,12 +219,13 @@ func GetBackupList() ([]map[string]string, error) {
 	for _, backupName := range backupNames {
 		backupPath := GetBackupPath(backupName)
 
-		// Try to read manifest
-		manifest, err := ReadManifest(backupPath)
+		// Try to read manifest - use non-strict validation for listing
+		manifest, err := ReadManifest(backupPath, false)
 
 		// Create backup info
 		backupInfo := map[string]string{
 			"name": backupName,
+			"is_valid": "true", // Backups are always considered valid for restore
 		}
 
 		// Add manifest info if available

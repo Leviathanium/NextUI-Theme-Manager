@@ -1,15 +1,201 @@
 // internal/ui/wrappers.go
 package ui
 
+// Add this import at the top of the file
 import (
-	"bytes"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
+    "bytes"
+    "encoding/json" // New import for JSON handling
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
 
-	"thememanager/internal/app"
+    "thememanager/internal/app"
 )
+
+// File: src/internal/ui/wrappers.go
+// Replace the ShowThemeGallery function with this improved version
+
+// ShowThemeGallery displays a gallery of themes with previews using minui-presenter
+func ShowThemeGallery(themes []map[string]string, title string) (string, int) {
+    app.LogDebug("Showing theme gallery: %s", title)
+
+    // Get current directory
+    cwd, err := os.Getwd()
+    if err != nil {
+        app.LogDebug("Error getting current directory: %v", err)
+        return "", 1
+    }
+
+    // Create a temporary file for theme gallery data
+    tempFile, err := os.CreateTemp("", "theme-gallery-*")
+    if err != nil {
+        app.LogDebug("Error creating temp file: %v", err)
+        return "", 1
+    }
+    galleryFilePath := tempFile.Name()
+    defer os.Remove(galleryFilePath)
+
+    // Create gallery JSON structure
+    gallery := map[string]interface{}{
+        "items":    make([]map[string]interface{}, 0),
+        "selected": 0,
+    }
+
+    // Add each theme to the gallery
+    for _, theme := range themes {
+        name := theme["name"]
+        author := theme["author"]
+        description := theme["description"]
+        previewPath := theme["preview"]
+        isValid := theme["is_valid"] == "true"
+
+        // Create item text with theme info
+        itemText := name
+        if author != "" {
+            itemText += " by " + author
+        }
+        if description != "" {
+            itemText += "\n\n" + description
+        }
+
+        // Add validation warning if theme is invalid
+        if !isValid {
+            itemText += "\n\n⚠️ WARNING: This theme has missing or invalid fields and can't be applied."
+            itemText += "\nUse 'Export Theme' to create a backup before editing the manifest."
+        }
+
+        // Create gallery item
+        item := map[string]interface{}{
+            "text":             itemText,
+            "background_color": "#000000",
+            "show_pill":        true,
+            "alignment":        "top",
+        }
+
+        // Add preview image if it exists
+        if previewPath != "" {
+            // Verify image exists
+            if _, err := os.Stat(previewPath); err == nil {
+                item["background_image"] = previewPath
+            } else {
+                app.LogDebug("Warning: Preview image not found at %s", previewPath)
+                // No preview available
+                item["text"] = itemText + "\n\n(Preview image not found)"
+            }
+        } else {
+            // No preview image, add a note to the text
+            item["text"] = itemText + "\n\n(No preview image available)"
+        }
+
+        gallery["items"] = append(gallery["items"].([]map[string]interface{}), item)
+    }
+
+    // Check if we have any items
+    if len(gallery["items"].([]map[string]interface{})) == 0 {
+        app.LogDebug("No themes to display in gallery")
+        return "", 1
+    }
+
+    // Convert gallery data to JSON
+    galleryData, err := json.Marshal(gallery)
+    if err != nil {
+        app.LogDebug("Error creating gallery JSON: %v", err)
+        return "", 1
+    }
+
+    // Write gallery data to temp file
+    err = tempFile.Close()
+    if err != nil {
+        app.LogDebug("Error closing temp file: %v", err)
+        return "", 1
+    }
+
+    err = os.WriteFile(galleryFilePath, galleryData, 0644)
+    if err != nil {
+        app.LogDebug("Error writing gallery data: %v", err)
+        return "", 1
+    }
+
+    // Create temp file for output
+    tempOutFile, err := os.CreateTemp("", "gallery-output-*")
+    if err != nil {
+        app.LogDebug("Error creating output temp file: %v", err)
+        return "", 1
+    }
+    outputPath := tempOutFile.Name()
+    tempOutFile.Close()
+    defer os.Remove(outputPath)
+
+    // Path to minui-presenter
+    minuiPresenterPath := filepath.Join(cwd, "minui-presenter")
+
+    // Create command
+    args := []string{
+        "--file", galleryFilePath,
+        "--confirm-text", "APPLY",
+        "--confirm-show",
+        "--cancel-text", "BACK",
+        "--cancel-show",
+        "--item-key", "items",
+    }
+
+    cmd := exec.Command(minuiPresenterPath, args...)
+
+    // Capture stderr
+    var stderrBuf bytes.Buffer
+    cmd.Stderr = &stderrBuf
+
+    // Run the command
+    err = cmd.Run()
+    exitCode := 0
+    if err != nil {
+        if exitError, ok := err.(*exec.ExitError); ok {
+            exitCode = exitError.ExitCode()
+        } else {
+            app.LogDebug("Error running minui-presenter: %v", err)
+            return "", 1
+        }
+    }
+
+    // Log stderr if any
+    if stderrBuf.Len() > 0 {
+        app.LogDebug("minui-presenter stderr: %s", stderrBuf.String())
+    }
+
+    // Get selected item index from gallery file
+    if exitCode == 0 {
+        // Read gallery file to get updated selected index
+        updatedGalleryData, err := os.ReadFile(galleryFilePath)
+        if err != nil {
+            app.LogDebug("Error reading updated gallery data: %v", err)
+            return "", 1
+        }
+
+        var updatedGallery map[string]interface{}
+        err = json.Unmarshal(updatedGalleryData, &updatedGallery)
+        if err != nil {
+            app.LogDebug("Error parsing updated gallery data: %v", err)
+            return "", 1
+        }
+
+        selectedIndex := int(updatedGallery["selected"].(float64))
+        if selectedIndex >= 0 && selectedIndex < len(themes) {
+            // Check if theme is valid before returning
+            if themes[selectedIndex]["is_valid"] != "true" {
+                app.LogDebug("User attempted to apply invalid theme: %s", themes[selectedIndex]["name"])
+                // Show error message
+                ShowMessage("Cannot apply theme with missing or invalid fields. Please fix the manifest first.", "3")
+                return "", 2 // Return special code to go back to theme list
+            }
+
+            // Return the name of the selected theme
+            return themes[selectedIndex]["name"], exitCode
+        }
+    }
+
+    return "", exitCode
+}
 
 // ShowMenu displays a menu using minui-list
 func ShowMenu(menuItems string, title string, extraArgs ...string) (string, int) {

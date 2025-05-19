@@ -1,4 +1,7 @@
-// internal/themes/apply.go
+
+// File: src/internal/themes/apply.go
+// This is a complete replacement for the file
+
 package themes
 
 import (
@@ -23,8 +26,8 @@ func ApplyTheme(themeName string) error {
 		return fmt.Errorf("theme does not exist: %s", themeName)
 	}
 
-	// Read manifest to verify it's a valid theme
-	manifest, err := ReadManifest(themePath)
+	// Read manifest to verify it's a valid theme - using strict validation
+	manifest, err := ReadManifest(themePath, true)
 	if err != nil {
 		return fmt.Errorf("invalid theme package: %w", err)
 	}
@@ -34,12 +37,6 @@ func ApplyTheme(themeName string) error {
 	// Check if system theme directory exists
 	if !SystemThemeExists() {
 		return fmt.Errorf("system theme directory does not exist: %s", SystemThemeDir)
-	}
-
-	// Backup current theme first
-	if err := CreateBackup("auto_before_apply"); err != nil {
-		app.LogDebug("Warning: Failed to create automatic backup: %v", err)
-		// Continue anyway, but log the warning
 	}
 
 	// First, remove existing theme directory
@@ -125,7 +122,7 @@ func CreateBackup(backupName string) error {
 		strings.TrimSuffix(backupName, ThemeExtension),
 		"Theme Manager",
 	)
-	manifest.Description = "Automatic backup of system theme"
+	manifest.Description = "Manual backup of system theme"
 
 	// Write manifest to backup
 	if err := WriteManifest(manifest, backupPath); err != nil {
@@ -152,8 +149,6 @@ func CreateBackup(backupName string) error {
 	return nil
 }
 
-// Modified RestoreBackup function in src/internal/themes/apply.go
-
 // RestoreBackup restores a theme from a backup in the Backups directory
 func RestoreBackup(backupName string) error {
 	app.LogDebug("Restoring theme from backup: %s", backupName)
@@ -166,8 +161,8 @@ func RestoreBackup(backupName string) error {
 		return fmt.Errorf("backup does not exist: %s", backupName)
 	}
 
-	// Read manifest to verify it's a valid backup
-	manifest, err := ReadManifest(backupPath)
+	// Read manifest to verify it's a valid backup (non-strict for backups)
+	manifest, err := ReadManifest(backupPath, false)
 	if err != nil {
 		return fmt.Errorf("invalid backup package: %w", err)
 	}
@@ -182,14 +177,6 @@ func RestoreBackup(backupName string) error {
 		}
 	}
 
-	// Create additional backup of current theme (just in case)
-	backupTimestamp := time.Now().Format("20060102_150405")
-	autoBackupName := fmt.Sprintf("auto_before_restore_%s", backupTimestamp)
-	if err := CreateBackup(autoBackupName); err != nil {
-		app.LogDebug("Warning: Failed to create automatic backup before restore: %v", err)
-		// Continue anyway, but log the warning
-	}
-
 	// First, remove existing theme directory
 	if err := RemoveDirectory(SystemThemeDir); err != nil {
 		return fmt.Errorf("failed to remove existing theme directory: %w", err)
@@ -200,7 +187,7 @@ func RestoreBackup(backupName string) error {
 		return fmt.Errorf("failed to create system theme directory: %w", err)
 	}
 
-	// FIXED: Copy directly from the backup path to the system theme directory
+	// Copy directly from the backup path to the system theme directory
 	// without looking for a Theme subdirectory
 	if err := CopyDirectory(backupPath, SystemThemeDir); err != nil {
 		return fmt.Errorf("failed to copy theme files from backup: %w", err)
