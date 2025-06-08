@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 	"strings"
-
+    "sort"
 	"gopkg.in/yaml.v3"
 	"thememanager/internal/app"
 )
@@ -28,6 +28,66 @@ type ThemeManifest struct {
 	CreatedDate   time.Time `yaml:"created_date"`
 	UpdatedDate   time.Time `yaml:"updated_date"`
 	Tags          []string  `yaml:"tags,omitempty"`
+}
+
+// AutoDetectSystems scans the system theme directory and returns a sorted list of systems
+func AutoDetectSystems() []string {
+	app.LogDebug("Auto-detecting systems from theme directory")
+
+	// Check if system theme directory exists
+	if !SystemThemeExists() {
+		app.LogDebug("System theme directory does not exist, returning empty systems list")
+		return []string{}
+	}
+
+	// Read the system theme directory
+	entries, err := os.ReadDir(SystemThemeDir)
+	if err != nil {
+		app.LogDebug("Error reading system theme directory: %v", err)
+		return []string{}
+	}
+
+	var systems []string
+	for _, entry := range entries {
+		// Only include directories, skip files
+		if entry.IsDir() {
+			systems = append(systems, entry.Name())
+		}
+	}
+
+	// Sort alphabetically
+	sort.Strings(systems)
+
+	app.LogDebug("Auto-detected systems: %v", systems)
+	return systems
+}
+
+// CreateBackupManifest creates a manifest specifically for backup themes with template placeholders
+func CreateBackupManifest(name string) *ThemeManifest {
+	now := time.Now()
+
+	// Auto-detect systems from the theme directory
+	detectedSystems := AutoDetectSystems()
+
+	// If no systems detected, provide a reasonable default
+	if len(detectedSystems) == 0 {
+		detectedSystems = []string{"all"}
+	}
+
+	return &ThemeManifest{
+		Name:          name,
+		Author:        "System",
+		Version:       "1.0.0",
+		Description:   "Exported system theme",
+		CreatedDate:   now,
+		UpdatedDate:   now,
+		Tags:          []string{},
+		RepositoryURL: "https://github.com/[username]/[repo]",
+		Commit:        "[commit-hash-will-go-here]",
+		Branch:        "main",
+		Device:        "brick",
+		Systems:       detectedSystems,
+	}
 }
 
 // ReadManifest reads and parses a theme's manifest file

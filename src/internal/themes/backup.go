@@ -75,11 +75,7 @@ func ExportTheme(themeName string) error {
 	}
 
 	// Create manifest for backup
-	manifest := CreateDefaultManifest(
-		strings.TrimSuffix(themeName, ThemeExtension),
-		"Theme Manager",
-	)
-	manifest.Description = "Exported system theme"
+    manifest := CreateBackupManifest(strings.TrimSuffix(themeName, ThemeExtension))
 
 	// Write manifest to backup
 	if err := WriteManifest(manifest, exportPath); err != nil {

@@ -6,12 +6,12 @@ package screens
 import (
 	"fmt"
 	"strings"
-	"time"
     "path/filepath"
     "os"
 	"thememanager/internal/app"
 	"thememanager/internal/themes"
 	"thememanager/internal/ui"
+	"strconv"
 )
 
 // ShowBackupsMenuScreen displays the backups menu screen
@@ -91,19 +91,36 @@ func ShowExportingThemeScreen() (string, int) {
 func HandleExportingThemeScreen(selection string, exitCode int) app.Screen {
 	app.LogDebug("HandleExportingThemeScreen called with exitCode: %d", exitCode)
 
-	// Generate timestamp for export name
-	timestamp := time.Now().Format("20060102_150405")
-	exportName := fmt.Sprintf("backup_%s", timestamp)
-
-	// Export the theme
-	err := themes.ExportTheme(exportName)
+	// Let ExportTheme generate the sequential backup name automatically
+	// by passing an empty string
+	err := themes.ExportTheme("")
 
 	if err != nil {
 		app.LogDebug("Error exporting theme: %v", err)
 		ui.ShowMessage(fmt.Sprintf("Error exporting theme: %s", err), "3")
+		// Set empty selected item on error
+		app.SetSelectedItem("")
 	} else {
-		// Set the exported name for success screen
-		app.SetSelectedItem(exportName)
+		// Get the list of backups to find the most recent one (highest number)
+		backups, listErr := themes.ListBackups()
+		if listErr != nil {
+			app.LogDebug("Error listing backups after export: %v", listErr)
+			app.SetSelectedItem("backup")
+		} else {
+			// Find the backup with the highest number
+			highestNum := 0
+			latestBackup := "backup1"
+			for _, backup := range backups {
+				if strings.HasPrefix(backup, "backup") {
+					numStr := strings.TrimPrefix(backup, "backup")
+					if num, err := strconv.Atoi(numStr); err == nil && num > highestNum {
+						highestNum = num
+						latestBackup = backup
+					}
+				}
+			}
+			app.SetSelectedItem(latestBackup)
+		}
 	}
 
 	return app.ScreenThemeExported

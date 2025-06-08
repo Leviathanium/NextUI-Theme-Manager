@@ -118,11 +118,8 @@ func CreateBackup(backupName string) error {
 	}
 
 	// Create manifest for backup
-	manifest := CreateDefaultManifest(
-		strings.TrimSuffix(backupName, ThemeExtension),
-		"Theme Manager",
-	)
-	manifest.Description = "Manual backup of system theme"
+    manifest := CreateBackupManifest(strings.TrimSuffix(backupName, ThemeExtension))
+    manifest.Description = "Manual backup of system theme"
 
 	// Write manifest to backup
 	if err := WriteManifest(manifest, backupPath); err != nil {

@@ -46,17 +46,14 @@ func ShowThemeGallery(themes []map[string]string, title string) (string, int) {
     for _, theme := range themes {
         name := theme["name"]
         author := theme["author"]
-        description := theme["description"]
         previewPath := theme["preview"]
         isValid := theme["is_valid"] == "true"
 
         // Create item text with theme info
+        // Create item text with theme info (no description)
         itemText := name
         if author != "" {
             itemText += " by " + author
-        }
-        if description != "" {
-            itemText += "\n\n" + description
         }
 
         // Add validation warning if theme is invalid
