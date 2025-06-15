@@ -49,9 +49,11 @@ func AutoDetectSystems() []string {
 
 	var systems []string
 	for _, entry := range entries {
-		// Only include directories, skip files
-		if entry.IsDir() {
+		// Only include directories that are not hidden (don't start with dot)
+		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
 			systems = append(systems, entry.Name())
+		} else if entry.IsDir() && strings.HasPrefix(entry.Name(), ".") {
+			app.LogDebug("Skipping hidden directory: %s", entry.Name())
 		}
 	}
 
@@ -83,7 +85,7 @@ func CreateBackupManifest(name string) *ThemeManifest {
 		UpdatedDate:   now,
 		Tags:          []string{},
 		RepositoryURL: "https://github.com/[username]/[repo]",
-		Commit:        "[commit-hash-will-go-here]",
+		Commit:        "commit-hash-will-go-here",
 		Branch:        "main",
 		Device:        "brick",
 		Systems:       detectedSystems,

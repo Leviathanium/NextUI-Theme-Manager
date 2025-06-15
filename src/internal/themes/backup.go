@@ -68,14 +68,35 @@ func ExportTheme(themeName string) error {
 		return fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
-	// Copy directly to the export path without creating a Theme subdirectory
 	// Copy all files from system theme to export
 	if err := CopyDirectory(SystemThemeDir, exportPath); err != nil {
 		return fmt.Errorf("failed to copy system theme to backup: %w", err)
 	}
 
+	// Copy tool icons to backup (NEW: handle tool icons specially)
+	systemToolsMediaPath := "/mnt/SDCARD/Tools/tg5040/.media"
+	if _, err := os.Stat(systemToolsMediaPath); err == nil {
+		app.LogDebug("Found system tool icons, backing up to theme package")
+
+		// Create Tools/tg5040/.media structure in backup
+		backupToolsMediaPath := filepath.Join(exportPath, "Tools", "tg5040", ".media")
+		if err := os.MkdirAll(backupToolsMediaPath, 0755); err != nil {
+			return fmt.Errorf("failed to create backup tools media directory: %w", err)
+		}
+
+		// Copy tool icons
+		if err := CopyDirectory(systemToolsMediaPath, backupToolsMediaPath); err != nil {
+			app.LogDebug("Warning: Failed to copy tool icons to backup: %v", err)
+			// Continue anyway, tool icons are not critical for basic functionality
+		} else {
+			app.LogDebug("Successfully backed up tool icons")
+		}
+	} else {
+		app.LogDebug("No tool icons found in system, skipping tool icon backup")
+	}
+
 	// Create manifest for backup
-    manifest := CreateBackupManifest(strings.TrimSuffix(themeName, ThemeExtension))
+	manifest := CreateBackupManifest(strings.TrimSuffix(themeName, ThemeExtension))
 
 	// Write manifest to backup
 	if err := WriteManifest(manifest, exportPath); err != nil {

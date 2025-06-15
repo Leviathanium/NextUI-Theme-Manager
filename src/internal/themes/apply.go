@@ -49,19 +49,35 @@ func ApplyTheme(themeName string) error {
 		return fmt.Errorf("failed to create theme directory: %w", err)
 	}
 
-	// Copy theme files
-	// The actual theme content (not the manifest or preview) is in the "Theme" subdirectory
-	themeContentPath := filepath.Join(themePath, "Theme")
-
-	// Check if Theme subdirectory exists
-	if _, err := os.Stat(themeContentPath); os.IsNotExist(err) {
-		// If Theme subdirectory doesn't exist, assume the full theme package is the content
-		themeContentPath = themePath
+	// Copy all files INCLUDING Tools/icon.png but EXCLUDING Tools/tg5040/ subdirectory
+	if err := CopyDirectoryExcludingSubpath(themePath, SystemThemeDir, []string{"Tools/tg5040"}); err != nil {
+		return fmt.Errorf("failed to copy theme files: %w", err)
 	}
 
-	// Copy all files
-	if err := CopyDirectory(themeContentPath, SystemThemeDir); err != nil {
-		return fmt.Errorf("failed to copy theme files: %w", err)
+	// Handle tool icons specially - copy Tools/tg5040/.media/ to /mnt/SDCARD/Tools/tg5040/.media/
+	toolIconsPath := filepath.Join(themePath, "Tools", "tg5040", ".media")
+	if _, err := os.Stat(toolIconsPath); err == nil {
+		app.LogDebug("Found tool icons in theme, applying to system")
+
+		// Clear existing tool icons
+		systemToolsMediaPath := "/mnt/SDCARD/Tools/tg5040/.media"
+		if err := ClearToolIcons(systemToolsMediaPath); err != nil {
+			app.LogDebug("Warning: Failed to clear existing tool icons: %v", err)
+		}
+
+		// Create Tools/.media directory if it doesn't exist
+		if err := os.MkdirAll(systemToolsMediaPath, 0755); err != nil {
+			return fmt.Errorf("failed to create system tools media directory: %w", err)
+		}
+
+		// Copy tool icons
+		if err := CopyDirectory(toolIconsPath, systemToolsMediaPath); err != nil {
+			return fmt.Errorf("failed to copy tool icons: %w", err)
+		}
+
+		app.LogDebug("Successfully applied tool icons to system")
+	} else {
+		app.LogDebug("No tool icons found in theme")
 	}
 
 	app.LogDebug("Theme applied successfully: %s", themeName)
@@ -106,40 +122,40 @@ func CreateBackup(backupName string) error {
 		return fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
-	// Create Theme subdirectory in backup
-	themeBackupPath := filepath.Join(backupPath, "Theme")
-	if err := os.MkdirAll(themeBackupPath, 0755); err != nil {
-		return fmt.Errorf("failed to create Theme subdirectory in backup: %w", err)
-	}
-
 	// Copy all files from system theme to backup
-	if err := CopyDirectory(SystemThemeDir, themeBackupPath); err != nil {
+	if err := CopyDirectory(SystemThemeDir, backupPath); err != nil {
 		return fmt.Errorf("failed to copy system theme to backup: %w", err)
 	}
 
+	// Copy tool icons to backup (NEW: handle tool icons specially)
+	systemToolsMediaPath := "/mnt/SDCARD/Tools/tg5040/.media"
+	if _, err := os.Stat(systemToolsMediaPath); err == nil {
+		app.LogDebug("Found system tool icons, backing up to theme package")
+
+		// Create Tools/tg5040/.media structure in backup
+		backupToolsMediaPath := filepath.Join(backupPath, "Tools", "tg5040", ".media")
+		if err := os.MkdirAll(backupToolsMediaPath, 0755); err != nil {
+			return fmt.Errorf("failed to create backup tools media directory: %w", err)
+		}
+
+		// Copy tool icons
+		if err := CopyDirectory(systemToolsMediaPath, backupToolsMediaPath); err != nil {
+			app.LogDebug("Warning: Failed to copy tool icons to backup: %v", err)
+			// Continue anyway, tool icons are not critical for basic functionality
+		} else {
+			app.LogDebug("Successfully backed up tool icons")
+		}
+	} else {
+		app.LogDebug("No tool icons found in system, skipping tool icon backup")
+	}
+
 	// Create manifest for backup
-    manifest := CreateBackupManifest(strings.TrimSuffix(backupName, ThemeExtension))
-    manifest.Description = "Manual backup of system theme"
+	manifest := CreateBackupManifest(strings.TrimSuffix(backupName, ThemeExtension))
+	manifest.Description = "Manual backup of system theme"
 
 	// Write manifest to backup
 	if err := WriteManifest(manifest, backupPath); err != nil {
 		return fmt.Errorf("failed to write backup manifest: %w", err)
-	}
-
-	// Copy current theme preview as backup preview if available
-	// First try to find a preview.png in the theme directory
-	systemPreviewPath := filepath.Join(SystemThemeDir, ThemePreviewFile)
-	if _, err := os.Stat(systemPreviewPath); err == nil {
-		// Copy preview to backup
-		backupPreviewPath := filepath.Join(backupPath, ThemePreviewFile)
-		if err := CopyFile(systemPreviewPath, backupPreviewPath); err != nil {
-			app.LogDebug("Warning: Failed to copy theme preview to backup: %v", err)
-			// Continue anyway, preview is not critical
-		}
-	} else {
-		// If no preview in theme directory, create a placeholder
-		// In a real implementation, we might take a screenshot or generate a preview
-		app.LogDebug("No theme preview found, placeholder would be created here")
 	}
 
 	app.LogDebug("Backup created successfully: %s", backupName)

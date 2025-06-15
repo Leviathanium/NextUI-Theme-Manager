@@ -196,6 +196,12 @@ func CopyDirectory(src, dst string) error {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 
+		// Skip hidden files and directories (starting with dot)
+		if strings.HasPrefix(entry.Name(), ".") {
+			app.LogDebug("Skipping hidden file/directory: %s", entry.Name())
+			continue
+		}
+
 		if entry.IsDir() {
 			// Recursively copy subdirectory
 			if err := CopyDirectory(srcPath, dstPath); err != nil {
@@ -270,6 +276,172 @@ func RemoveDirectory(path string) error {
 	// Remove directory and all contents
 	if err := os.RemoveAll(path); err != nil {
 		return fmt.Errorf("error removing directory %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// CopyDirectoryExcluding recursively copies a directory while excluding specified directories
+func CopyDirectoryExcluding(src, dst string, exclude []string) error {
+	app.LogDebug("Copying directory %s to %s (excluding: %v)", src, dst, exclude)
+
+	// Get source file info
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("error getting source directory info: %w", err)
+	}
+
+	// Create destination directory with same permissions
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return fmt.Errorf("error creating destination directory: %w", err)
+	}
+
+	// Read source directory
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("error reading source directory: %w", err)
+	}
+
+	// Process each entry
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		// Skip hidden files and directories (starting with dot)
+		if strings.HasPrefix(entry.Name(), ".") {
+			app.LogDebug("Skipping hidden file/directory: %s", entry.Name())
+			continue
+		}
+
+		// Skip excluded directories
+		isExcluded := false
+		for _, excludeDir := range exclude {
+			if entry.Name() == excludeDir {
+				app.LogDebug("Skipping excluded directory: %s", entry.Name())
+				isExcluded = true
+				break
+			}
+		}
+		if isExcluded {
+			continue
+		}
+
+		if entry.IsDir() {
+			// Recursively copy subdirectory
+			if err := CopyDirectoryExcluding(srcPath, dstPath, exclude); err != nil {
+				return err
+			}
+		} else {
+			// Copy file
+			if err := CopyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// CopyDirectoryExcludingSubpath recursively copies a directory while excluding specified subpaths
+func CopyDirectoryExcludingSubpath(src, dst string, excludeSubpaths []string) error {
+	return copyDirectoryExcludingSubpathRecursive(src, dst, excludeSubpaths, "")
+}
+
+// Helper function for recursive copying with subpath exclusion
+func copyDirectoryExcludingSubpathRecursive(src, dst string, excludeSubpaths []string, currentPath string) error {
+	app.LogDebug("Copying directory %s to %s (current path: %s)", src, dst, currentPath)
+
+	// Get source file info
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("error getting source directory info: %w", err)
+	}
+
+	// Create destination directory with same permissions
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return fmt.Errorf("error creating destination directory: %w", err)
+	}
+
+	// Read source directory
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("error reading source directory: %w", err)
+	}
+
+	// Process each entry
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		// Build current subpath
+		var entrySubpath string
+		if currentPath == "" {
+			entrySubpath = entry.Name()
+		} else {
+			entrySubpath = filepath.Join(currentPath, entry.Name())
+		}
+
+		// Skip hidden files and directories (starting with dot)
+		if strings.HasPrefix(entry.Name(), ".") {
+			app.LogDebug("Skipping hidden file/directory: %s", entry.Name())
+			continue
+		}
+
+		// Skip excluded subpaths
+		isExcluded := false
+		for _, excludeSubpath := range excludeSubpaths {
+			if entrySubpath == excludeSubpath {
+				app.LogDebug("Skipping excluded subpath: %s", entrySubpath)
+				isExcluded = true
+				break
+			}
+		}
+		if isExcluded {
+			continue
+		}
+
+		if entry.IsDir() {
+			// Recursively copy subdirectory
+			if err := copyDirectoryExcludingSubpathRecursive(srcPath, dstPath, excludeSubpaths, entrySubpath); err != nil {
+				return err
+			}
+		} else {
+			// Copy file
+			if err := CopyFile(srcPath, dstPath); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// ClearToolIcons removes all existing tool icons from the system
+func ClearToolIcons(toolsMediaPath string) error {
+	app.LogDebug("Clearing existing tool icons from %s", toolsMediaPath)
+
+	// Check if directory exists
+	if _, err := os.Stat(toolsMediaPath); os.IsNotExist(err) {
+		app.LogDebug("Tool icons directory doesn't exist, nothing to clear")
+		return nil
+	}
+
+	// Read directory
+	entries, err := os.ReadDir(toolsMediaPath)
+	if err != nil {
+		return fmt.Errorf("error reading tools media directory: %w", err)
+	}
+
+	// Remove all .png files (tool icons)
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(strings.ToLower(entry.Name()), ".png") {
+			iconPath := filepath.Join(toolsMediaPath, entry.Name())
+			if err := os.Remove(iconPath); err != nil {
+				app.LogDebug("Warning: Failed to remove tool icon %s: %v", entry.Name(), err)
+			} else {
+				app.LogDebug("Removed existing tool icon: %s", entry.Name())
+			}
+		}
 	}
 
 	return nil
