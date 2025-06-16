@@ -73,7 +73,7 @@ func ExportTheme(themeName string) error {
 		return fmt.Errorf("failed to copy system theme to backup: %w", err)
 	}
 
-	// Copy tool icons to backup (NEW: handle tool icons specially)
+	// Copy tool icons to backup (handle tool icons specially)
 	systemToolsMediaPath := "/mnt/SDCARD/Tools/tg5040/.media"
 	if _, err := os.Stat(systemToolsMediaPath); err == nil {
 		app.LogDebug("Found system tool icons, backing up to theme package")
@@ -93,6 +93,53 @@ func ExportTheme(themeName string) error {
 		}
 	} else {
 		app.LogDebug("No tool icons found in system, skipping tool icon backup")
+	}
+
+	// Copy Collections and Recently Played icons to backup (NEW: handle special icons)
+	systemMediaPath := "/mnt/SDCARD/.media"
+
+	// Handle Collections icon
+	systemCollectionsPath := filepath.Join(systemMediaPath, "Collections.png")
+	if _, err := os.Stat(systemCollectionsPath); err == nil {
+		app.LogDebug("Found Collections icon in system, backing up to theme package")
+
+		// Create Collections directory in backup
+		backupCollectionsDir := filepath.Join(exportPath, "Collections")
+		if err := os.MkdirAll(backupCollectionsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create backup Collections directory: %w", err)
+		}
+
+		// Copy Collections icon
+		backupCollectionsPath := filepath.Join(backupCollectionsDir, "icon.png")
+		if err := CopyFile(systemCollectionsPath, backupCollectionsPath); err != nil {
+			app.LogDebug("Warning: Failed to copy Collections icon to backup: %v", err)
+		} else {
+			app.LogDebug("Successfully backed up Collections icon")
+		}
+	} else {
+		app.LogDebug("No Collections icon found in system")
+	}
+
+	// Handle Recently Played icon
+	systemRecentlyPlayedPath := filepath.Join(systemMediaPath, "Recently Played.png")
+	if _, err := os.Stat(systemRecentlyPlayedPath); err == nil {
+		app.LogDebug("Found Recently Played icon in system, backing up to theme package")
+
+		// Create Recently Played directory in backup
+		backupRecentlyPlayedDir := filepath.Join(exportPath, "Recently Played")
+		if err := os.MkdirAll(backupRecentlyPlayedDir, 0755); err != nil {
+			return fmt.Errorf("failed to create backup Recently Played directory: %w", err)
+		}
+
+		// Copy Recently Played icon
+		backupRecentlyPlayedPath := filepath.Join(backupRecentlyPlayedDir, "icon.png")
+		if err := CopyFile(systemRecentlyPlayedPath, backupRecentlyPlayedPath); err != nil {
+			app.LogDebug("Warning: Failed to copy Recently Played icon to backup: %v", err)
+		} else {
+			app.LogDebug("Successfully backed up Recently Played icon")
+		}
+	} else {
+		app.LogDebug("No Recently Played icon found in system")
 	}
 
 	// Create manifest for backup
