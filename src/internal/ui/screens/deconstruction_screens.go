@@ -66,13 +66,13 @@ func DeconstructionScreen() (string, int) {
 		if _, err := os.Stat(previewPath); err == nil {
 			// Use the preview image
 			previewImages = append(previewImages, ui.GalleryItem{
-				Text: theme,
+				Text:            theme,
 				BackgroundImage: previewPath,
 			})
 		} else {
 			// No preview image, just use the theme name
 			previewImages = append(previewImages, ui.GalleryItem{
-				Text: theme,
+				Text:            theme,
 				BackgroundImage: "", // No background image
 			})
 		}

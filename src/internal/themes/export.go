@@ -427,7 +427,6 @@ func exportWallpapers(themePath string, manifest *ThemeManifest, systemPaths *sy
 	}
 }
 
-
 // exportIcons scans for and exports icons
 func exportIcons(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) {
 	// Initialize icon section

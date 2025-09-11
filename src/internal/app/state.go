@@ -12,42 +12,42 @@ type Screen int
 
 // Expanded screen constants to include installed themes and components screens
 const (
-	MainMenu Screen = iota + 1
-	InstalledThemes      // NEW: Browse local themes
-	DownloadThemes       // RENAMED: Browse downloadable themes from catalog
-	SyncCatalog          // RENAMED: Sync the themes catalog
+	MainMenu        Screen = iota + 1
+	InstalledThemes        // NEW: Browse local themes
+	DownloadThemes         // RENAMED: Browse downloadable themes from catalog
+	SyncCatalog            // RENAMED: Sync the themes catalog
 	ThemeImport
 	ThemeImportConfirm
 	ThemeExport
 	ComponentsMenu
 	ComponentOptions
-	InstalledComponents  // NEW: Browse locally installed components
-	DownloadComponents   // RENAMED: Browse downloadable components from catalog
-	SyncComponents       // UNCHANGED but renamed for clarity
+	InstalledComponents // NEW: Browse locally installed components
+	DownloadComponents  // RENAMED: Browse downloadable components from catalog
+	SyncComponents      // UNCHANGED but renamed for clarity
 	ExportComponent
 	Deconstruction
 	DeconstructConfirm
-	OverlaySystemSelection  // New screen for system tag selection
+	OverlaySystemSelection // New screen for system tag selection
 )
 
 // ScreenEnum holds all available screens
 type ScreenEnum struct {
-	MainMenu           Screen
-	InstalledThemes    Screen // NEW
-	DownloadThemes     Screen // RENAMED
-	SyncCatalog        Screen // RENAMED
-	ThemeImport        Screen
-	ThemeImportConfirm Screen
-	ThemeExport        Screen
-	ComponentsMenu     Screen
-	ComponentOptions   Screen
-	InstalledComponents Screen // NEW
-	DownloadComponents Screen // RENAMED
-	SyncComponents     Screen
-	ExportComponent    Screen
-	Deconstruction     Screen
-	DeconstructConfirm Screen
-    OverlaySystemSelection Screen // New screen for system tag selection
+	MainMenu               Screen
+	InstalledThemes        Screen // NEW
+	DownloadThemes         Screen // RENAMED
+	SyncCatalog            Screen // RENAMED
+	ThemeImport            Screen
+	ThemeImportConfirm     Screen
+	ThemeExport            Screen
+	ComponentsMenu         Screen
+	ComponentOptions       Screen
+	InstalledComponents    Screen // NEW
+	DownloadComponents     Screen // RENAMED
+	SyncComponents         Screen
+	ExportComponent        Screen
+	Deconstruction         Screen
+	DeconstructConfirm     Screen
+	OverlaySystemSelection Screen // New screen for system tag selection
 
 }
 
@@ -63,21 +63,21 @@ type appState struct {
 // Global variables
 var (
 	Screens = ScreenEnum{
-		MainMenu:           MainMenu,
-		InstalledThemes:    InstalledThemes,    // NEW
-		DownloadThemes:     DownloadThemes,     // RENAMED
-		SyncCatalog:        SyncCatalog,        // RENAMED
-		ThemeImport:        ThemeImport,
-		ThemeImportConfirm: ThemeImportConfirm,
-		ThemeExport:        ThemeExport,
-		ComponentsMenu:     ComponentsMenu,
-		ComponentOptions:   ComponentOptions,
-		InstalledComponents: InstalledComponents, // NEW
-		DownloadComponents: DownloadComponents,   // RENAMED
-		SyncComponents:     SyncComponents,
-		ExportComponent:    ExportComponent,
-		Deconstruction:     Deconstruction,
-		DeconstructConfirm: DeconstructConfirm,
+		MainMenu:               MainMenu,
+		InstalledThemes:        InstalledThemes, // NEW
+		DownloadThemes:         DownloadThemes,  // RENAMED
+		SyncCatalog:            SyncCatalog,     // RENAMED
+		ThemeImport:            ThemeImport,
+		ThemeImportConfirm:     ThemeImportConfirm,
+		ThemeExport:            ThemeExport,
+		ComponentsMenu:         ComponentsMenu,
+		ComponentOptions:       ComponentOptions,
+		InstalledComponents:    InstalledComponents, // NEW
+		DownloadComponents:     DownloadComponents,  // RENAMED
+		SyncComponents:         SyncComponents,
+		ExportComponent:        ExportComponent,
+		Deconstruction:         Deconstruction,
+		DeconstructConfirm:     DeconstructConfirm,
 		OverlaySystemSelection: OverlaySystemSelection, // Add new screen
 	}
 
@@ -86,31 +86,30 @@ var (
 
 // Replace with:
 func GetCurrentScreen() Screen {
-    // Ensure we never return an invalid screen value
-    if state.CurrentScreen < MainMenu || state.CurrentScreen > OverlaySystemSelection {
-        logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
-        state.CurrentScreen = MainMenu
-    }
-    return state.CurrentScreen
+	// Ensure we never return an invalid screen value
+	if state.CurrentScreen < MainMenu || state.CurrentScreen > OverlaySystemSelection {
+		logging.LogDebug("WARNING: Invalid current screen value: %d, defaulting to MainMenu", state.CurrentScreen)
+		state.CurrentScreen = MainMenu
+	}
+	return state.CurrentScreen
 }
-
 
 // Replace with:
 func SetCurrentScreen(screen Screen) {
-    // Validate screen value before setting
-    if screen < MainMenu || screen > OverlaySystemSelection {
-        logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
-        screen = MainMenu
-    }
+	// Validate screen value before setting
+	if screen < MainMenu || screen > OverlaySystemSelection {
+		logging.LogDebug("WARNING: Attempted to set invalid screen value: %d, using MainMenu instead", screen)
+		screen = MainMenu
+	}
 
-    // Add explicit debug logging
-    logging.LogDebug("Setting current screen from %d to %d", state.CurrentScreen, screen)
+	// Add explicit debug logging
+	logging.LogDebug("Setting current screen from %d to %d", state.CurrentScreen, screen)
 
-    // Set the screen
-    state.CurrentScreen = screen
+	// Set the screen
+	state.CurrentScreen = screen
 
-    // Verify the screen was set correctly
-    logging.LogDebug("Current screen is now: %d", state.CurrentScreen)
+	// Verify the screen was set correctly
+	logging.LogDebug("Current screen is now: %d", state.CurrentScreen)
 }
 
 // GetSelectedTheme returns the selected theme

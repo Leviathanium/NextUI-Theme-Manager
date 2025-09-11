@@ -42,9 +42,9 @@ func LoadConfig() (*ConfigData, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		// Create default config
 		config := &ConfigData{
-			RepoURL:  DefaultRepoURL,
-			Branch:   DefaultBranch,
-			Version:  DefaultVersion,
+			RepoURL: DefaultRepoURL,
+			Branch:  DefaultBranch,
+			Version: DefaultVersion,
 		}
 
 		// Save default config

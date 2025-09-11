@@ -227,10 +227,10 @@ func UpdateManifestFromThemeContent(themePath string, manifest *ThemeManifest, s
 		logger.DebugFn("Warning: Error updating overlay mappings: %v", err)
 	}
 
-    // Update fonts
-    if err := updateFontMappings(themePath, manifest, systemPaths, logger); err != nil {
-        logger.DebugFn("Warning: Error updating font mappings: %v", err)
-    }
+	// Update fonts
+	if err := updateFontMappings(themePath, manifest, systemPaths, logger); err != nil {
+		logger.DebugFn("Warning: Error updating font mappings: %v", err)
+	}
 
 	// Write updated manifest back to file
 	return WriteManifest(themePath, manifest, logger)
@@ -575,62 +575,62 @@ func updateOverlayMappings(themePath string, manifest *ThemeManifest, systemPath
 
 // updateFontMappings scans fonts in the theme and updates manifest mappings
 func updateFontMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
-    logger.DebugFn("Updating font mappings in theme manifest")
+	logger.DebugFn("Updating font mappings in theme manifest")
 
-    // Define system paths for fonts - CORRECTED PATHS
-    fontSystemPaths := map[string]string{
-        "OG":          "/mnt/SDCARD/.system/res/font2.ttf",
-        "OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",
-        "Next":        "/mnt/SDCARD/.system/res/font1.ttf",
-        "Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",
-    }
+	// Define system paths for fonts - CORRECTED PATHS
+	fontSystemPaths := map[string]string{
+		"OG":          "/mnt/SDCARD/.system/res/font2.ttf",
+		"OG.backup":   "/mnt/SDCARD/.system/res/font2.backup.ttf",
+		"Next":        "/mnt/SDCARD/.system/res/font1.ttf",
+		"Next.backup": "/mnt/SDCARD/.system/res/font1.backup.ttf",
+	}
 
-    // Initialize font mappings map if it doesn't exist
-    if manifest.PathMappings.Fonts == nil {
-        manifest.PathMappings.Fonts = make(map[string]PathMapping)
-    }
+	// Initialize font mappings map if it doesn't exist
+	if manifest.PathMappings.Fonts == nil {
+		manifest.PathMappings.Fonts = make(map[string]PathMapping)
+	}
 
-    // Check for fonts directory
-    fontsDir := filepath.Join(themePath, "Fonts")
-    if _, err := os.Stat(fontsDir); os.IsNotExist(err) {
-        logger.DebugFn("No Fonts directory found in theme")
-        return nil
-    }
+	// Check for fonts directory
+	fontsDir := filepath.Join(themePath, "Fonts")
+	if _, err := os.Stat(fontsDir); os.IsNotExist(err) {
+		logger.DebugFn("No Fonts directory found in theme")
+		return nil
+	}
 
-    // Font files to check for
-    fontFiles := []string{
-        "OG.ttf",
-        "Next.ttf",
-        "OG.backup.ttf",
-        "Next.backup.ttf",
-    }
+	// Font files to check for
+	fontFiles := []string{
+		"OG.ttf",
+		"Next.ttf",
+		"OG.backup.ttf",
+		"Next.backup.ttf",
+	}
 
-    // Check for each font file
-    for _, fontFile := range fontFiles {
-        fontPath := filepath.Join(fontsDir, fontFile)
-        if _, err := os.Stat(fontPath); err == nil {
-            // Font file exists
-            fontName := strings.TrimSuffix(fontFile, ".ttf")
+	// Check for each font file
+	for _, fontFile := range fontFiles {
+		fontPath := filepath.Join(fontsDir, fontFile)
+		if _, err := os.Stat(fontPath); err == nil {
+			// Font file exists
+			fontName := strings.TrimSuffix(fontFile, ".ttf")
 
-            // Add to manifest
-            manifest.PathMappings.Fonts[fontName] = PathMapping{
-                ThemePath:  filepath.Join("Fonts", fontFile),
-                SystemPath: fontSystemPaths[fontName],
-            }
+			// Add to manifest
+			manifest.PathMappings.Fonts[fontName] = PathMapping{
+				ThemePath:  filepath.Join("Fonts", fontFile),
+				SystemPath: fontSystemPaths[fontName],
+			}
 
-            // Update content flags
-            manifest.Content.Fonts.Present = true
-            if fontName == "OG" {
-                manifest.Content.Fonts.OGReplaced = true
-            } else if fontName == "Next" {
-                manifest.Content.Fonts.NextReplaced = true
-            }
+			// Update content flags
+			manifest.Content.Fonts.Present = true
+			if fontName == "OG" {
+				manifest.Content.Fonts.OGReplaced = true
+			} else if fontName == "Next" {
+				manifest.Content.Fonts.NextReplaced = true
+			}
 
-            logger.DebugFn("Added font to manifest: %s", fontName)
-        }
-    }
+			logger.DebugFn("Added font to manifest: %s", fontName)
+		}
+	}
 
-    return nil
+	return nil
 }
 
 func updateWallpaperMappings(themePath string, manifest *ThemeManifest, systemPaths *system.SystemPaths, logger *Logger) error {
@@ -1066,109 +1066,108 @@ func updateLEDSettings(themePath string, manifest *ThemeManifest, logger *Logger
 
 // This function should replace the existing applyAccentSettings in import.go
 func applyAccentSettings(manifest *ThemeManifest, logger *Logger) error {
-    // Get path to settings file
-    settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
+	// Get path to settings file
+	settingsPath := "/mnt/SDCARD/.userdata/shared/minuisettings.txt"
 
-    // Map of color keys to their values from the manifest
-    colorValues := map[string]string{
-        "color1": manifest.AccentColors.Color1,
-        "color2": manifest.AccentColors.Color2,
-        "color3": manifest.AccentColors.Color3,
-        "color4": manifest.AccentColors.Color4,
-        "color5": manifest.AccentColors.Color5,
-        "color6": manifest.AccentColors.Color6,
-    }
+	// Map of color keys to their values from the manifest
+	colorValues := map[string]string{
+		"color1": manifest.AccentColors.Color1,
+		"color2": manifest.AccentColors.Color2,
+		"color3": manifest.AccentColors.Color3,
+		"color4": manifest.AccentColors.Color4,
+		"color5": manifest.AccentColors.Color5,
+		"color6": manifest.AccentColors.Color6,
+	}
 
-    // Track which color keys we've seen
-    colorKeySeen := map[string]bool{
-        "color1": false,
-        "color2": false,
-        "color3": false,
-        "color4": false,
-        "color5": false,
-        "color6": false,
-    }
+	// Track which color keys we've seen
+	colorKeySeen := map[string]bool{
+		"color1": false,
+		"color2": false,
+		"color3": false,
+		"color4": false,
+		"color5": false,
+		"color6": false,
+	}
 
-    // Final settings map and order preservation
-    settings := make(map[string]string)
-    var keyOrder []string
+	// Final settings map and order preservation
+	settings := make(map[string]string)
+	var keyOrder []string
 
-    // Check if file exists
-    fileInfo, err := os.Stat(settingsPath)
-    if err == nil && fileInfo.Size() > 0 {
-        // File exists and has content
-        existingContent, err := os.ReadFile(settingsPath)
-        if err == nil {
-            // Parse existing settings
-            lines := strings.Split(string(existingContent), "\n")
-            for _, line := range lines {
-                line = strings.TrimSpace(line)
-                if line == "" {
-                    continue
-                }
+	// Check if file exists
+	fileInfo, err := os.Stat(settingsPath)
+	if err == nil && fileInfo.Size() > 0 {
+		// File exists and has content
+		existingContent, err := os.ReadFile(settingsPath)
+		if err == nil {
+			// Parse existing settings
+			lines := strings.Split(string(existingContent), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
 
-                parts := strings.SplitN(line, "=", 2)
-                if len(parts) != 2 {
-                    continue
-                }
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) != 2 {
+					continue
+				}
 
-                key := strings.TrimSpace(parts[0])
-                value := strings.TrimSpace(parts[1])
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
 
-                // Check if this is a color key
-                if newValue, isColorKey := colorValues[key]; isColorKey {
-                    // Use the new color value and mark as seen
-                    settings[key] = newValue
-                    colorKeySeen[key] = true
-                } else {
-                    // Keep existing value for non-color keys
-                    settings[key] = value
-                }
+				// Check if this is a color key
+				if newValue, isColorKey := colorValues[key]; isColorKey {
+					// Use the new color value and mark as seen
+					settings[key] = newValue
+					colorKeySeen[key] = true
+				} else {
+					// Keep existing value for non-color keys
+					settings[key] = value
+				}
 
-                // Add to ordered keys
-                keyOrder = append(keyOrder, key)
-            }
+				// Add to ordered keys
+				keyOrder = append(keyOrder, key)
+			}
 
-            // Add any unseen color keys at the end
-            for key, seen := range colorKeySeen {
-                if !seen {
-                    settings[key] = colorValues[key]
-                    keyOrder = append(keyOrder, key)
-                }
-            }
-        } else {
-            logger.DebugFn("Warning: Could not read existing settings file: %v", err)
-            // Fall through to create new file
-        }
-    }
+			// Add any unseen color keys at the end
+			for key, seen := range colorKeySeen {
+				if !seen {
+					settings[key] = colorValues[key]
+					keyOrder = append(keyOrder, key)
+				}
+			}
+		} else {
+			logger.DebugFn("Warning: Could not read existing settings file: %v", err)
+			// Fall through to create new file
+		}
+	}
 
-    // If we don't have any settings yet (no file or couldn't read it),
-    // initialize with just the color keys
-    if len(settings) == 0 {
-        colorKeys := []string{"color1", "color2", "color3", "color4", "color5", "color6"}
-        for _, key := range colorKeys {
-            settings[key] = colorValues[key]
-            keyOrder = append(keyOrder, key)
-        }
-    }
+	// If we don't have any settings yet (no file or couldn't read it),
+	// initialize with just the color keys
+	if len(settings) == 0 {
+		colorKeys := []string{"color1", "color2", "color3", "color4", "color5", "color6"}
+		for _, key := range colorKeys {
+			settings[key] = colorValues[key]
+			keyOrder = append(keyOrder, key)
+		}
+	}
 
-    // Build new content with all settings in the preserved order
-    var content strings.Builder
-    for _, key := range keyOrder {
-        if value, exists := settings[key]; exists {
-            content.WriteString(fmt.Sprintf("%s=%s\n", key, value))
-        }
-    }
+	// Build new content with all settings in the preserved order
+	var content strings.Builder
+	for _, key := range keyOrder {
+		if value, exists := settings[key]; exists {
+			content.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		}
+	}
 
-    // Write updated settings to file
-    if err := os.WriteFile(settingsPath, []byte(content.String()), 0644); err != nil {
-        return fmt.Errorf("error writing accent settings: %w", err)
-    }
+	// Write updated settings to file
+	if err := os.WriteFile(settingsPath, []byte(content.String()), 0644); err != nil {
+		return fmt.Errorf("error writing accent settings: %w", err)
+	}
 
-    logger.DebugFn("Applied accent settings to %s while preserving other settings and their order", settingsPath)
-    return nil
+	logger.DebugFn("Applied accent settings to %s while preserving other settings and their order", settingsPath)
+	return nil
 }
-
 
 // applyLEDSettings applies LED settings from manifest
 func applyLEDSettings(manifest *ThemeManifest, logger *Logger) error {
