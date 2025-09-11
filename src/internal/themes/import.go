@@ -103,11 +103,11 @@ func ImportTheme(themeName string) error {
 	}
 
 	// Apply LED settings directly from manifest
-	if manifest.Content.Settings.LEDsIncluded {
-		if err := applyLEDSettings(manifest, logger); err != nil {
-			logger.DebugFn("Warning: Error applying LED settings: %v", err)
-		}
-	}
+	// if manifest.Content.Settings.LEDsIncluded {
+	// 	if err := applyLEDSettings(manifest, logger); err != nil {
+	// 		logger.DebugFn("Warning: Error applying LED settings: %v", err)
+	// 	}
+	// }
 
 	logger.DebugFn("Theme import completed successfully: %s", themeName)
 
