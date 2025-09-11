@@ -7,31 +7,31 @@ import (
 	"encoding/json"
 	"fmt"
 	"nextui-themes/internal/app"
-	"nextui-themes/internal/system"
 	"nextui-themes/internal/logging"
+	"nextui-themes/internal/system"
 	"nextui-themes/internal/themes"
 	"nextui-themes/internal/ui"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
 	"regexp"
 	"sort"
+	"strings"
+	"time"
 )
 
 func ComponentsMenuScreen() (string, int) {
-    // Updated menu without "Deconstruct..."
-    menu := []string{
-        "Wallpapers",
-        "Icons",
-        "Accents",
-        "Overlays",
-        "LEDs",
-        "Fonts",
-        // "Deconstruct..." option has been removed
-    }
+	// Updated menu without "Deconstruct..."
+	menu := []string{
+		"Wallpapers",
+		"Icons",
+		"Accents",
+		"Overlays",
+		"LEDs",
+		"Fonts",
+		// "Deconstruct..." option has been removed
+	}
 
-    return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Components")
+	return ui.DisplayMinUiList(strings.Join(menu, "\n"), "text", "Components")
 }
 
 // HandleComponentsMenu processes the component type selection
@@ -109,41 +109,40 @@ func HandleComponentOptions(selection string, exitCode int) app.Screen {
 	return app.Screens.ComponentOptions
 }
 
-
 // Modified OverlaySystemSelectionScreen function to fix duplicated system tags
 func OverlaySystemSelectionScreen() (string, int) {
-    logging.LogDebug("Showing overlay system selection screen")
+	logging.LogDebug("Showing overlay system selection screen")
 
-    // Get system paths
-    systemPaths, err := system.GetSystemPaths()
-    if err != nil {
-        logging.LogDebug("Error getting system paths: %v", err)
-        ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
-        return "", 1
-    }
+	// Get system paths
+	systemPaths, err := system.GetSystemPaths()
+	if err != nil {
+		logging.LogDebug("Error getting system paths: %v", err)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", err), "3")
+		return "", 1
+	}
 
-    // Extract system tags and names into a list without duplicating tags
-    var systemList []string
-    for _, system := range systemPaths.Systems {
-        if system.Tag != "" {
-            // The system.Name already includes the tag format "Name (TAG)"
-            // So we should just use that directly instead of formatting it again
-            systemList = append(systemList, system.Name)
-        }
-    }
+	// Extract system tags and names into a list without duplicating tags
+	var systemList []string
+	for _, system := range systemPaths.Systems {
+		if system.Tag != "" {
+			// The system.Name already includes the tag format "Name (TAG)"
+			// So we should just use that directly instead of formatting it again
+			systemList = append(systemList, system.Name)
+		}
+	}
 
-    if len(systemList) == 0 {
-        logging.LogDebug("No systems with tags found")
-        ui.ShowMessage("No systems with tags found", "3")
-        return "", 1
-    }
+	if len(systemList) == 0 {
+		logging.LogDebug("No systems with tags found")
+		ui.ShowMessage("No systems with tags found", "3")
+		return "", 1
+	}
 
-    // Sort the list alphabetically
-    sort.Strings(systemList)
+	// Sort the list alphabetically
+	sort.Strings(systemList)
 
-    componentType := app.GetSelectedComponentType()
-    return ui.DisplayMinUiList(strings.Join(systemList, "\n"), "text",
-        fmt.Sprintf("Select System for %s", componentType))
+	componentType := app.GetSelectedComponentType()
+	return ui.DisplayMinUiList(strings.Join(systemList, "\n"), "text",
+		fmt.Sprintf("Select System for %s", componentType))
 }
 
 // HandleOverlaySystemSelection processes the selection from overlay system screen
@@ -322,7 +321,6 @@ func InstalledComponentsScreen() (string, int) {
 	logging.LogDebug("Gallery selection: %s, exit code: %d", selection, exitCode)
 	return selection, exitCode
 }
-
 
 // HandleInstalledComponents processes the selection of an installed component
 func HandleInstalledComponents(selection string, exitCode int) app.Screen {
@@ -596,84 +594,84 @@ func HandleDownloadComponents(selection string, exitCode int) app.Screen {
 
 // Modified ExportComponentScreen function to properly display success messages
 func ExportComponentScreen() (string, int) {
-    componentType := app.GetSelectedComponentType()
-    systemTag := app.GetSelectedSystemTag()
+	componentType := app.GetSelectedComponentType()
+	systemTag := app.GetSelectedSystemTag()
 
-    // Generate export name with timestamp to ensure uniqueness
-    timestamp := time.Now().Format("20060102_150405")
-    var exportName string
+	// Generate export name with timestamp to ensure uniqueness
+	timestamp := time.Now().Format("20060102_150405")
+	var exportName string
 
-    if componentType == "Overlays" && systemTag != "" {
-        // Include system tag in export name for system-specific overlay exports
-        exportName = fmt.Sprintf("%s_%s_%s", strings.ToLower(componentType), systemTag, timestamp)
-    } else {
-        exportName = fmt.Sprintf("%s_%s", strings.ToLower(componentType), timestamp)
-    }
+	if componentType == "Overlays" && systemTag != "" {
+		// Include system tag in export name for system-specific overlay exports
+		exportName = fmt.Sprintf("%s_%s_%s", strings.ToLower(componentType), systemTag, timestamp)
+	} else {
+		exportName = fmt.Sprintf("%s_%s", strings.ToLower(componentType), timestamp)
+	}
 
-    // Map component type to export function
-    exportFunctions := map[string]func(string) error{
-        "Wallpapers": themes.ExportWallpapers,
-        "Icons":      themes.ExportIcons,
-        "Accents":    themes.ExportAccents,
-        "Fonts":      themes.ExportFonts,
-        "LEDs":       themes.ExportLEDs,
-    }
+	// Map component type to export function
+	exportFunctions := map[string]func(string) error{
+		"Wallpapers": themes.ExportWallpapers,
+		"Icons":      themes.ExportIcons,
+		"Accents":    themes.ExportAccents,
+		"Fonts":      themes.ExportFonts,
+		"LEDs":       themes.ExportLEDs,
+	}
 
-    // For overlays with a system tag, use the new function
-    var exportFunc func(string) error
-    var exportErr error
+	// For overlays with a system tag, use the new function
+	var exportFunc func(string) error
+	var exportErr error
 
-    if componentType == "Overlays" {
-        if systemTag != "" {
-            // Use system-specific overlay export function
-            exportErr = ui.ShowMessageWithOperation(
-                fmt.Sprintf("Exporting %s component for system %s...", componentType, systemTag),
-                func() error {
-                    return themes.ExportOverlaysForSystem(exportName, systemTag)
-                },
-            )
-        } else {
-            // Use general overlay export function
-            exportErr = ui.ShowMessageWithOperation(
-                fmt.Sprintf("Exporting %s component...", componentType),
-                func() error {
-                    return themes.ExportOverlays(exportName)
-                },
-            )
-        }
-    } else {
-        // Get the export function for other component types
-        exportFunc, _ = exportFunctions[componentType]
-        if exportFunc == nil {
-            logging.LogDebug("Unknown component type: %s", componentType)
-            ui.ShowMessage(fmt.Sprintf("Unknown component type: %s", componentType), "3")
-            return "", 1
-        }
+	if componentType == "Overlays" {
+		if systemTag != "" {
+			// Use system-specific overlay export function
+			exportErr = ui.ShowMessageWithOperation(
+				fmt.Sprintf("Exporting %s component for system %s...", componentType, systemTag),
+				func() error {
+					return themes.ExportOverlaysForSystem(exportName, systemTag)
+				},
+			)
+		} else {
+			// Use general overlay export function
+			exportErr = ui.ShowMessageWithOperation(
+				fmt.Sprintf("Exporting %s component...", componentType),
+				func() error {
+					return themes.ExportOverlays(exportName)
+				},
+			)
+		}
+	} else {
+		// Get the export function for other component types
+		exportFunc, _ = exportFunctions[componentType]
+		if exportFunc == nil {
+			logging.LogDebug("Unknown component type: %s", componentType)
+			ui.ShowMessage(fmt.Sprintf("Unknown component type: %s", componentType), "3")
+			return "", 1
+		}
 
-        // Export the component with operation message
-        exportErr = ui.ShowMessageWithOperation(
-            fmt.Sprintf("Exporting %s component...", componentType),
-            func() error {
-                return exportFunc(exportName)
-            },
-        )
-    }
+		// Export the component with operation message
+		exportErr = ui.ShowMessageWithOperation(
+			fmt.Sprintf("Exporting %s component...", componentType),
+			func() error {
+				return exportFunc(exportName)
+			},
+		)
+	}
 
-    if exportErr != nil {
-        logging.LogDebug("Error exporting component: %v", exportErr)
-        ui.ShowMessage(fmt.Sprintf("Error: %s", exportErr), "3")
-        return "", 1
-    }
+	if exportErr != nil {
+		logging.LogDebug("Error exporting component: %v", exportErr)
+		ui.ShowMessage(fmt.Sprintf("Error: %s", exportErr), "3")
+		return "", 1
+	}
 
-    // Show success message
-    if componentType == "Overlays" && systemTag != "" {
-        ui.ShowMessage(fmt.Sprintf("%s component for system %s exported successfully!", componentType, systemTag), "3")
-    } else {
-        ui.ShowMessage(fmt.Sprintf("%s component exported successfully!", componentType), "3")
-    }
+	// Show success message
+	if componentType == "Overlays" && systemTag != "" {
+		ui.ShowMessage(fmt.Sprintf("%s component for system %s exported successfully!", componentType, systemTag), "3")
+	} else {
+		ui.ShowMessage(fmt.Sprintf("%s component exported successfully!", componentType), "3")
+	}
 
-    // Return to component options screen
-    return "", 0
+	// Return to component options screen
+	return "", 0
 }
 
 // HandleExportComponent processes the export component result

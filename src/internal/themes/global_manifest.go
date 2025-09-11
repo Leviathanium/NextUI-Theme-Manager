@@ -15,8 +15,8 @@ import (
 
 // GlobalManifest represents the root-level manifest tracking all applied components
 type GlobalManifest struct {
-	LastUpdated      time.Time `json:"last_updated"`
-	CurrentTheme     string    `json:"current_theme,omitempty"` // Name of the full theme if applied
+	LastUpdated       time.Time `json:"last_updated"`
+	CurrentTheme      string    `json:"current_theme,omitempty"` // Name of the full theme if applied
 	AppliedComponents struct {
 		Wallpapers string `json:"wallpapers,omitempty"` // Name of applied wallpaper package
 		Icons      string `json:"icons,omitempty"`      // Name of applied icon package

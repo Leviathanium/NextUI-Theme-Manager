@@ -167,7 +167,7 @@ func UpdateWallpaperManifest(componentPath string, systemPaths *system.SystemPat
 	// Clear existing content data (but preserve other component_info fields)
 	wallpaperManifest.Content.Count = 0
 	wallpaperManifest.Content.SystemWallpapers = []string{}
-	wallpaperManifest.Content.ListWallpapers = []string{}    // Clear the list wallpapers array
+	wallpaperManifest.Content.ListWallpapers = []string{} // Clear the list wallpapers array
 	wallpaperManifest.Content.CollectionWallpapers = []string{}
 	wallpaperManifest.PathMappings = []PathMapping{}
 
