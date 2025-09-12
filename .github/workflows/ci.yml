@@ -10,31 +10,71 @@ on:
     branches:
       - main
 
+permissions:
+  attestations: write
+  id-token: write
+  contents: write
+
 jobs:
   build:
     name: build
     runs-on: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: "1.24.1"
 
-      - name: Build
-        working-directory: src
-        run: env GOOS=linux GOARCH=arm64 go build -o theme-manager cmd/theme-manager/main.go
+      - name: Create release
+        run: make clean build release
+        env:
+          RELEASE_VERSION: ${{ github.sha }}
 
-      - name: Build Package Folder
+      - name: Get Pak Name
+        id: pak-name
         run: |
-          mkdir "Theme Manager.pak"
-          cp -R src/theme-manager resources/launch.sh README.md LICENSE resources/pak.json resources/minui-list resources/minui-presenter "Theme Manager.pak"
+          echo "PAK_NAME=$(jq -r .name pak.json)" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v4
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v3.0.0
         with:
-          name: "Theme Manager.pak"
-          path: "Theme Manager.pak"
-          if-no-files-found: error
-          overwrite: true
+          subject-path: "dist/${{ steps.pak-name.outputs.PAK_NAME }}.pak.zip"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: "${{ steps.pak-name.outputs.PAK_NAME }}.pak.zip"
+          path: "dist/${{ steps.pak-name.outputs.PAK_NAME }}.pak.zip"
+
+  test-release:
+    name: test-release
+    runs-on: ubuntu-24.04
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Get Pak Name
+        id: pak-name
+        run: |
+          echo "PAK_NAME=$(jq -r .name pak.json)" >> $GITHUB_OUTPUT
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v5.0.0
+        with:
+          name: "${{ steps.pak-name.outputs.PAK_NAME }}.pak.zip"
+          path: "dist"
+
+      - name: Validate Artifact exists
+        run: |
+          if [ ! -f "dist/${{ steps.pak-name.outputs.PAK_NAME }}.pak.zip" ]; then
+            echo "Artifact does not exist"
+            exit 1
+          fi

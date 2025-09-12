@@ -1,8 +1,0 @@
-{
-  "label": "Theme Manager",
-  "launch": "launch.sh",
-  "description": "Download, install, and export themes and theme components",
-  "platforms": [
-    "tg5040"
-  ]
-}
