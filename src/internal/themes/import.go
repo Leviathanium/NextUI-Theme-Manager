@@ -76,11 +76,11 @@ func ImportTheme(themeName string) error {
 	}
 
 	// Clean up existing overlays (regardless of whether the theme includes them)
-	logger.DebugFn("Cleaning up existing overlays before theme import")
-	if err := cleanupExistingOverlays(systemPaths, logger); err != nil {
-		logger.DebugFn("Warning: Error cleaning up existing overlays: %v", err)
-		// Continue with import anyway
-	}
+	// logger.DebugFn("Cleaning up existing overlays before theme import")
+	// if err := cleanupExistingOverlays(systemPaths, logger); err != nil {
+	// 	logger.DebugFn("Warning: Error cleaning up existing overlays: %v", err)
+	// 	// Continue with import anyway
+	// }
 
 	// We've removed the conditional cleanup in favor of always cleaning up
 	// The old code cleaned up only if the theme didn't include these components:
@@ -172,16 +172,16 @@ func importThemeFiles(themePath string, manifest *ThemeManifest, systemPaths *sy
 	}
 
 	// Process overlay mappings
-	for _, mapping := range manifest.PathMappings.Overlays {
-		srcPath := filepath.Join(themePath, mapping.ThemePath)
-		dstPath := mapping.SystemPath
+	// for _, mapping := range manifest.PathMappings.Overlays {
+	// 	srcPath := filepath.Join(themePath, mapping.ThemePath)
+	// 	dstPath := mapping.SystemPath
 
-		// Copy the file
-		if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
-			logger.DebugFn("Warning: Failed to copy overlay: %v", err)
-			// Continue with other files
-		}
-	}
+	// 	// Copy the file
+	// 	if err := copyMappedFile(srcPath, dstPath, logger); err != nil {
+	// 		logger.DebugFn("Warning: Failed to copy overlay: %v", err)
+	// 		// Continue with other files
+	// 	}
+	// }
 
 	// Process font mappings
 	for fontType, mapping := range manifest.PathMappings.Fonts {
