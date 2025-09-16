@@ -6,7 +6,7 @@ clean:
 	rm -rf dist src/theme-manager
 
 build:
-	cd src && env GOOS=linux GOARCH=arm64 go build -o theme-manager cmd/theme-manager/main.go
+	cd src && env CGO_ENABLED=0 GOARCH=arm64 GOOS=linux go build -o theme-manager cmd/theme-manager/main.go
 
 release: build
 	mkdir -p "dist/$(PAK_NAME).pak"
